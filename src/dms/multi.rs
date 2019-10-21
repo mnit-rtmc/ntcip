@@ -137,49 +137,124 @@ pub enum MovingTextDirection {
     Right,
 }
 
-/// Values returned from a parsed MULTI.
+/// Values are tags or text from a parsed MULTI.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
-    ColorBackground(Option<Color>), // Legacy colors only
+    /// Background color tag
+    ///
+    /// * Optional color (legacy only)
+    ColorBackground(Option<Color>),
+    /// Foreground color tag
+    ///
+    /// * Optional color
     ColorForeground(Option<Color>),
+    /// Color rectangle tag
+    ///
+    /// * Dimensions to fill color
+    /// * Rectangle color
     ColorRectangle(Rectangle, Color),
+    /// Field tag
+    ///
+    /// * Field ID
+    /// * Field width
     Field(u8, Option<u8>),
+    /// Flash start tag
+    ///
+    /// * FlashOrder
+    /// * Optional flash On or Off time
+    /// * Optional flash Off or On time
     Flash(FlashOrder, Option<u8>, Option<u8>),
+    /// Flash end tag
     FlashEnd(),
+    /// Font tag
+    ///
+    /// * Tuple containing font number and optional version ID (hash)
     Font(Option<(u8, Option<u16>)>),
+    /// Graphic tag
+    ///
+    /// * Graphic number
+    /// * Optional tuple containing X and Y position and optional version ID
     Graphic(u8, Option<(u16, u16, Option<u16>)>),
+    /// Hexadecimal character tag
+    ///
+    /// * Character number (code point)
     HexadecimalCharacter(u16),
+    /// Line justification tag
     JustificationLine(Option<JustificationLine>),
+    /// Page justification tag
     JustificationPage(Option<JustificationPage>),
+    /// Manufacturer specific start tag
     ManufacturerSpecific(u32, Option<String>),
+    /// Manufacturer specific end tag
     ManufacturerSpecificEnd(u32, Option<String>),
+    /// Moving text tag
+    ///
+    /// * Moving text mode
+    /// * Moving text direction
+    /// * Width in pixels
+    /// * Pixels offset at each time step
+    /// * Deciseconds between time steps
+    /// * Text to be moved
     MovingText(MovingTextMode, MovingTextDirection, u16, u8, u8, String),
+    /// New line tag
+    ///
+    /// * Optional line spacing
     NewLine(Option<u8>),
+    /// New page tag
     NewPage(),
+    /// Page background color tag
+    ///
+    /// * Optional color
     PageBackground(Option<Color>),
+    /// Page time tag
+    ///
+    /// * Optional page-on time
+    /// * Optional page-off time
     PageTime(Option<u8>, Option<u8>),
+    /// Character spacing start tag
+    ///
+    /// * Pixel spacing between characters
     SpacingCharacter(u8),
+    /// Character spacing end tag
     SpacingCharacterEnd(),
+    /// Text value
     Text(String),
+    /// Text rectangle tag
+    ///
+    /// * Dimensions to restrict text
     TextRectangle(Rectangle),
 }
 
 /// Syntax errors from parsing MULTI.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SyntaxError {
-    Other,
+    /// An unspecified error
+    Other(&'static str),
+    /// Specified tag not supported
     UnsupportedTag(String),
+    /// Specified tag value not supported
     UnsupportedTagValue(String),
+    /// Specified text does not fit within text rectangle
     TextTooBig,
+    /// Specified font not defined
     FontNotDefined(u8),
+    /// Specified character not defined in font
     CharacterNotDefined(char),
+    /// Specified field device does not exist
     FieldDeviceNotExist,
+    /// Field device communication error
     FieldDeviceError,
+    /// Specified flash region not supported
     FlashRegionError,
+    /// Specified tags conflict with each other
     TagConflict,
+    /// Number of pages not supported
     TooManyPages,
+    /// Specified font version ID does not match
     FontVersionID,
+    /// Specified graphic version ID does not match
     GraphicID,
+    /// Specified graphic number not defined
     GraphicNotDefined(u8),
 }
 

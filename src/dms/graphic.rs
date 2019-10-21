@@ -78,7 +78,7 @@ impl Graphic {
         let h = self.height();
         if x + w > page.width() || y + h > page.height() {
             // There is no GraphicTooBig syntax error
-            return Err(SyntaxError::Other);
+            return Err(SyntaxError::Other("Graphic too big"));
         }
         let pix_fn = self.pixel_fn();
         for yy in 0..h {

@@ -5,8 +5,10 @@
 //! This module is for NTCIP 1203 DMS graphics.
 //!
 use crate::dms::multi::{Color, ColorCtx, ColorScheme, SyntaxError};
+use crate::dms::Result;
 use log::debug;
 use pix::{Raster, Rgb8};
+use std::collections::HashMap;
 
 /// An uncompressed DMS graphic
 #[derive(Deserialize, Serialize)]
@@ -26,6 +28,12 @@ pub struct Graphic {
     /// Bitmap data (by rows)
     #[serde(with = "super::base64")]
     bitmap: Vec<u8>,
+}
+
+/// Cache of graphics
+pub struct GraphicCache {
+    /// Graphics in cache
+    graphics: HashMap<u8, Graphic>,
 }
 
 /// Function to lookup a pixel from a graphic buffer
@@ -63,7 +71,7 @@ impl Graphic {
         x: u32,
         y: u32,
         ctx: &ColorCtx,
-    ) -> Result<(), SyntaxError> {
+    ) -> Result<()> {
         let x = x - 1; // x must be > 0
         let y = y - 1; // y must be > 0
         let w = self.width();
@@ -159,5 +167,30 @@ impl Graphic {
             }
         }
         Some(Rgb8::new(r, g, b))
+    }
+}
+
+impl GraphicCache {
+    /// Create a new graphic cache
+    pub fn new() -> Self {
+        let graphics = HashMap::new();
+        GraphicCache { graphics }
+    }
+    /// Insert a graphiu into the cache
+    pub fn insert(&mut self, graphic: Graphic) {
+        self.graphics.insert(graphic.number(), graphic);
+    }
+    /// Lookup a graphic by number
+    pub fn lookup<'a>(
+        &'a self,
+        gnum: u8,
+        version_id: Option<u16>,
+    ) -> Result<&'a Graphic> {
+        match (self.graphics.get(&gnum), version_id) {
+            // FIXME: calculate and check version_id
+            (Some(g), Some(_vid)) => Ok(g),
+            (Some(g), None) => Ok(g),
+            (None, _) => Err(SyntaxError::GraphicNotDefined(gnum)),
+        }
     }
 }

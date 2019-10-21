@@ -4,18 +4,13 @@
 //
 //! This module is for NTCIP 1203 DMS rendering.
 //!
-use crate::dms::font::Font;
-use crate::dms::graphic::Graphic;
 use crate::dms::multi::{
     ColorCtx, LineJustification, PageJustification, Parser, Rectangle,
     SyntaxError, Value,
 };
+use crate::dms::{Font, FontCache, GraphicCache, Result};
 use log::debug;
 use pix::{Raster, RasterBuilder, Rgb8};
-use std::collections::HashMap;
-
-/// Result type
-type Result<T> = std::result::Result<T, SyntaxError>;
 
 /// Page render state
 #[derive(Clone)]
@@ -44,8 +39,10 @@ pub struct State {
     line_spacing: Option<u8>,
     /// Current specified char spacing
     char_spacing: Option<u8>,
-    /// Font number and version_id
-    font: (u8, Option<u16>),
+    /// Font number
+    font_num: u8,
+    /// Font version_id
+    font_version_id: Option<u16>,
 }
 
 /// Text span
@@ -101,7 +98,8 @@ impl State {
         text_rectangle: Rectangle,
         just_page: PageJustification,
         just_line: LineJustification,
-        font: (u8, Option<u16>),
+        font_num: u8,
+        font_version_id: Option<u16>,
     ) -> Self {
         State {
             color_ctx,
@@ -116,7 +114,8 @@ impl State {
             span_number: 0,
             line_spacing: None,
             char_spacing: None,
-            font,
+            font_num,
+            font_version_id,
         }
     }
     /// Check if the sign is a character-matrix.
@@ -195,6 +194,10 @@ impl State {
         self.text_rectangle == other.text_rectangle
             && self.just_page == other.just_page
     }
+    /// Lookup current font in cache
+    fn font<'a>(&self, fonts: &'a FontCache) -> Result<&'a Font> {
+        fonts.lookup(self.font_num, self.font_version_id)
+    }
 }
 
 impl<'a> TextSpan {
@@ -202,25 +205,17 @@ impl<'a> TextSpan {
     fn new(state: State, text: String) -> Self {
         TextSpan { state, text }
     }
-    /// Get the font of a text span
-    fn font(&self, fonts: &'a HashMap<u8, Font>) -> Result<&'a Font> {
-        let fnum = self.state.font.0;
-        match fonts.get(&fnum) {
-            Some(f) => Ok(f),
-            None => Err(SyntaxError::FontNotDefined(fnum)),
-        }
-    }
     /// Get the width of a text span
-    fn width(&self, fonts: &HashMap<u8, Font>) -> Result<u16> {
-        let font = self.font(fonts)?;
+    fn width(&self, fonts: &FontCache) -> Result<u16> {
+        let font = self.state.font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
         Ok(font.text_width(&self.text, Some(cs))?)
     }
     /// Get the char spacing
-    fn char_spacing_fonts(&self, fonts: &HashMap<u8, Font>) -> Result<u16> {
+    fn char_spacing_fonts(&self, fonts: &FontCache) -> Result<u16> {
         match self.state.char_spacing {
             Some(s) => Ok(s.into()),
-            None => Ok(self.font(fonts)?.char_spacing().into()),
+            None => Ok(self.state.font(fonts)?.char_spacing().into()),
         }
     }
     /// Get the char spacing
@@ -234,7 +229,7 @@ impl<'a> TextSpan {
     fn char_spacing_between(
         &self,
         prev: &TextSpan,
-        fonts: &HashMap<u8, Font>,
+        fonts: &FontCache,
     ) -> Result<u16> {
         if let Some(c) = self.state.char_spacing {
             Ok(c.into())
@@ -248,12 +243,12 @@ impl<'a> TextSpan {
         }
     }
     /// Get the height of a text span
-    fn height(&self, fonts: &HashMap<u8, Font>) -> Result<u16> {
-        Ok(self.font(fonts)?.height().into())
+    fn height(&self, fonts: &FontCache) -> Result<u16> {
+        Ok(self.state.font(fonts)?.height().into())
     }
     /// Get the font line spacing
-    fn font_spacing(&self, fonts: &HashMap<u8, Font>) -> Result<u16> {
-        Ok(self.font(fonts)?.line_spacing().into())
+    fn font_spacing(&self, fonts: &FontCache) -> Result<u16> {
+        Ok(self.state.font(fonts)?.line_spacing().into())
     }
     /// Get the line spacing
     fn line_spacing(&self) -> Option<u16> {
@@ -361,8 +356,8 @@ impl PageRenderer {
     /// Render the page.
     pub fn render_page(
         &self,
-        fonts: &HashMap<u8, Font>,
-        graphics: &HashMap<u8, Graphic>,
+        fonts: &FontCache,
+        graphics: &GraphicCache,
     ) -> Result<Raster<Rgb8>> {
         let rs = &self.state;
         let w = rs.text_rectangle.w.into();
@@ -377,17 +372,11 @@ impl PageRenderer {
                     self.render_rect(&mut page, *rect, clr, v)?;
                 }
                 Value::Graphic(gn, None) => {
-                    let n = *gn;
-                    let g = graphics
-                        .get(&n)
-                        .ok_or(SyntaxError::GraphicNotDefined(*gn))?;
+                    let g = graphics.lookup(*gn, None)?;
                     g.render_graphic(&mut page, 1, 1, ctx)?;
                 }
-                Value::Graphic(gn, Some((x, y, _))) => {
-                    let n = *gn;
-                    let g = graphics
-                        .get(&n)
-                        .ok_or(SyntaxError::GraphicNotDefined(*gn))?;
+                Value::Graphic(gn, Some((x, y, gid))) => {
+                    let g = graphics.lookup(*gn, *gid)?;
                     let x = (*x).into();
                     let y = (*y).into();
                     g.render_graphic(&mut page, x, y, ctx)?;
@@ -398,7 +387,7 @@ impl PageRenderer {
         for s in &self.spans {
             let x = self.span_x(s, fonts)?.into();
             let y = self.span_y(s, fonts)?.into();
-            let font = s.font(fonts)?;
+            let font = self.state.font(fonts)?;
             s.render_text(&mut page, &font, x, y)?;
         }
         Ok(page)
@@ -426,7 +415,7 @@ impl PageRenderer {
         Err(SyntaxError::UnsupportedTagValue(v.into()))
     }
     /// Get the X position of a text span.
-    fn span_x(&self, s: &TextSpan, fonts: &HashMap<u8, Font>) -> Result<u16> {
+    fn span_x(&self, s: &TextSpan, fonts: &FontCache) -> Result<u16> {
         match s.state.just_line {
             LineJustification::Left => self.span_x_left(s, fonts),
             LineJustification::Center => self.span_x_center(s, fonts),
@@ -435,21 +424,13 @@ impl PageRenderer {
         }
     }
     /// Get the X position of a left-justified text span.
-    fn span_x_left(
-        &self,
-        span: &TextSpan,
-        fonts: &HashMap<u8, Font>,
-    ) -> Result<u16> {
+    fn span_x_left(&self, span: &TextSpan, fonts: &FontCache) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let (before, _) = self.offset_horiz(span, fonts)?;
         Ok(left + before)
     }
     /// Get the X position of a center-justified text span.
-    fn span_x_center(
-        &self,
-        span: &TextSpan,
-        fonts: &HashMap<u8, Font>,
-    ) -> Result<u16> {
+    fn span_x_center(&self, span: &TextSpan, fonts: &FontCache) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let w = span.state.text_rectangle.w;
         let (before, after) = self.offset_horiz(span, fonts)?;
@@ -460,11 +441,7 @@ impl PageRenderer {
         Ok((x / cw) * cw)
     }
     /// Get the X position of a right-justified span
-    fn span_x_right(
-        &self,
-        span: &TextSpan,
-        fonts: &HashMap<u8, Font>,
-    ) -> Result<u16> {
+    fn span_x_right(&self, span: &TextSpan, fonts: &FontCache) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let w = span.state.text_rectangle.w;
         let (_, after) = self.offset_horiz(span, fonts)?;
@@ -476,7 +453,7 @@ impl PageRenderer {
     fn offset_horiz(
         &self,
         span: &TextSpan,
-        fonts: &HashMap<u8, Font>,
+        fonts: &FontCache,
     ) -> Result<(u16, u16)> {
         debug!("offset_horiz '{}'", span.text);
         let rs = &span.state;
@@ -509,14 +486,14 @@ impl PageRenderer {
         }
     }
     /// Get the Y position of a text span.
-    fn span_y(&self, s: &TextSpan, fonts: &HashMap<u8, Font>) -> Result<u16> {
+    fn span_y(&self, s: &TextSpan, fonts: &FontCache) -> Result<u16> {
         let b = self.baseline(s, fonts)?;
         let h = s.height(fonts)?;
         debug_assert!(b >= h);
         Ok(b - h)
     }
     /// Get the baseline of a text span.
-    fn baseline(&self, s: &TextSpan, fonts: &HashMap<u8, Font>) -> Result<u16> {
+    fn baseline(&self, s: &TextSpan, fonts: &FontCache) -> Result<u16> {
         match s.state.just_page {
             PageJustification::Top => self.baseline_top(s, fonts),
             PageJustification::Middle => self.baseline_middle(s, fonts),
@@ -525,11 +502,7 @@ impl PageRenderer {
         }
     }
     /// Get the baseline of a top-justified span
-    fn baseline_top(
-        &self,
-        span: &TextSpan,
-        fonts: &HashMap<u8, Font>,
-    ) -> Result<u16> {
+    fn baseline_top(&self, span: &TextSpan, fonts: &FontCache) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let (above, _) = self.offset_vert(span, fonts)?;
         Ok(top + above)
@@ -538,7 +511,7 @@ impl PageRenderer {
     fn baseline_middle(
         &self,
         span: &TextSpan,
-        fonts: &HashMap<u8, Font>,
+        fonts: &FontCache,
     ) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let h = span.state.text_rectangle.h;
@@ -553,7 +526,7 @@ impl PageRenderer {
     fn baseline_bottom(
         &self,
         span: &TextSpan,
-        fonts: &HashMap<u8, Font>,
+        fonts: &FontCache,
     ) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let h = span.state.text_rectangle.h;
@@ -566,7 +539,7 @@ impl PageRenderer {
     fn offset_vert(
         &self,
         span: &TextSpan,
-        fonts: &HashMap<u8, Font>,
+        fonts: &FontCache,
     ) -> Result<(u16, u16)> {
         debug!("offset_vert '{}'", span.text);
         let rs = &span.state;
@@ -679,8 +652,14 @@ impl<'a> PageSplitter<'a> {
                 ctx.set_foreground(Some(c), &v)?;
                 page.values.push((v, ctx));
             }
-            Value::Font(None) => rs.font = ds.font,
-            Value::Font(Some(f)) => rs.font = f,
+            Value::Font(None) => {
+                rs.font_num = ds.font_num;
+                rs.font_version_id = ds.font_version_id;
+            }
+            Value::Font(Some(f)) => {
+                rs.font_num = f.0;
+                rs.font_version_id = f.1;
+            }
             Value::Graphic(_, _) => {
                 page.values.push((v, rs.color_ctx.clone()));
             }
@@ -810,7 +789,8 @@ mod test {
             Rectangle::new(1, 1, 60, 30),
             PageJustification::Top,
             LineJustification::Left,
-            (1, None),
+            1,
+            None,
         )
     }
     #[test]
@@ -854,7 +834,8 @@ mod test {
         assert_eq!(rs.char_spacing, None);
         assert_eq!(rs.char_width, 0);
         assert_eq!(rs.char_height, 0);
-        assert_eq!(rs.font, (1, None));
+        assert_eq!(rs.font_num, 1);
+        assert_eq!(rs.font_version_id, None);
         let mut pages = PageSplitter::new(
             rs.clone(),
             "[pt10o2][cb9][pb5][cf3]\
@@ -869,7 +850,8 @@ mod test {
         assert_eq!(rs.just_line, LineJustification::Left);
         assert_eq!(rs.line_spacing, None);
         assert_eq!(rs.char_spacing, None);
-        assert_eq!(rs.font, (1, None));
+        assert_eq!(rs.font_num, 1);
+        assert_eq!(rs.font_version_id, None);
         let p = pages.next().unwrap().unwrap();
         let rs = p.state;
         assert_eq!(rs.page_on_time_ds, 20);
@@ -879,7 +861,8 @@ mod test {
         assert_eq!(rs.just_line, LineJustification::Right);
         assert_eq!(rs.line_spacing, None);
         assert_eq!(rs.char_spacing, Some(2));
-        assert_eq!(rs.font, (3, Some(0x1234)));
+        assert_eq!(rs.font_num, 3);
+        assert_eq!(rs.font_version_id, Some(0x1234));
     }
     fn make_char_matrix() -> State {
         State::new(
@@ -895,7 +878,8 @@ mod test {
             Rectangle::new(1, 1, 100, 21),
             PageJustification::Top,
             LineJustification::Left,
-            (1, None),
+            1,
+            None,
         )
     }
     #[test]

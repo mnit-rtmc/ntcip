@@ -10,6 +10,9 @@ mod graphic;
 pub mod multi;
 mod render;
 
-pub use font::{Character, Font};
-pub use graphic::Graphic;
+/// Result type
+pub type Result<T> = std::result::Result<T, multi::SyntaxError>;
+
+pub use font::{Character, Font, FontCache};
+pub use graphic::{Graphic, GraphicCache};
 pub use render::{PageSplitter, State};

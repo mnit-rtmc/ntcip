@@ -5,8 +5,10 @@
 //! This module is for NTCIP 1203 DMS bitmap fonts.
 //!
 use crate::dms::multi::SyntaxError;
+use crate::dms::Result;
 use log::debug;
 use pix::{Raster, Rgb8};
+use std::collections::HashMap;
 
 /// A character for a bitmap font
 #[derive(Deserialize, Serialize)]
@@ -37,6 +39,12 @@ pub struct Font {
     characters: Vec<Character>,
     /// Version ID hash
     version_id: u16,
+}
+
+/// Cache of fonts
+pub struct FontCache {
+    /// Fonts in cache
+    fonts: HashMap<u8, Font>,
 }
 
 impl Character {
@@ -107,7 +115,7 @@ impl<'a> Font {
         self.line_spacing
     }
     /// Get a character
-    pub fn character(&'a self, ch: char) -> Result<&'a Character, SyntaxError> {
+    pub fn character(&'a self, ch: char) -> Result<&'a Character> {
         let code_point: u32 = ch.into();
         if code_point <= std::u16::MAX.into() {
             let n = code_point as u16;
@@ -121,11 +129,7 @@ impl<'a> Font {
     ///
     /// * `text` Span of text.
     /// * `cs` Character spacing in pixels.
-    pub fn text_width(
-        &self,
-        text: &str,
-        cs: Option<u16>,
-    ) -> Result<u16, SyntaxError> {
+    pub fn text_width(&self, text: &str, cs: Option<u16>) -> Result<u16> {
         let mut width = 0;
         let cs = cs.unwrap_or(self.char_spacing.into());
         for ch in text.chars() {
@@ -153,7 +157,7 @@ impl<'a> Font {
         y: u32,
         cs: u32,
         cf: Rgb8,
-    ) -> Result<(), SyntaxError> {
+    ) -> Result<()> {
         let height = self.height().into();
         debug!("render_text: {} @ {},{} height: {}", text, x, y, height);
         let mut xx = 0;
@@ -170,5 +174,40 @@ impl<'a> Font {
     /// Get version ID hash
     pub fn version_id(&self) -> u16 {
         self.version_id
+    }
+}
+
+impl FontCache {
+    /// Create a new font cache
+    pub fn new() -> Self {
+        let fonts = HashMap::new();
+        FontCache { fonts }
+    }
+    /// Insert a font into the cache
+    pub fn insert(&mut self, font: Font) {
+        self.fonts.insert(font.number(), font);
+    }
+    /// Lookup a font by number
+    pub fn lookup<'a>(
+        &'a self,
+        fnum: u8,
+        version_id: Option<u16>,
+    ) -> Result<&'a Font> {
+        match (self.fonts.get(&fnum), version_id) {
+            (Some(f), Some(vid)) => {
+                // FIXME: calculate version_id
+                if vid == f.version_id {
+                    Ok(f)
+                } else {
+                    Err(SyntaxError::FontVersionID)
+                }
+            }
+            (Some(f), None) => Ok(f),
+            (None, _) => Err(SyntaxError::FontNotDefined(fnum)),
+        }
+    }
+    /// Lookup a font by name
+    pub fn lookup_name<'a>(&'a self, name: &str) -> Option<&'a Font> {
+        self.fonts.values().find(|f| f.name() == name)
     }
 }

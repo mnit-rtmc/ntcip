@@ -5,7 +5,7 @@
 //! This module is for NTCIP 1203 DMS rendering.
 //!
 use crate::dms::multi::{
-    ColorCtx, LineJustification, PageJustification, Parser, Rectangle,
+    ColorCtx, JustificationLine, JustificationPage, Parser, Rectangle,
     SyntaxError, Value,
 };
 use crate::dms::{Font, FontCache, GraphicCache, Result};
@@ -28,9 +28,9 @@ pub struct State {
     /// Current text rectangle
     text_rectangle: Rectangle,
     /// Current page justification
-    just_page: PageJustification,
+    just_page: JustificationPage,
     /// Current line justification
-    just_line: LineJustification,
+    just_line: JustificationLine,
     /// Current line number
     line_number: u8,
     /// Current text span number
@@ -96,8 +96,8 @@ impl State {
         page_on_time_ds: u8,
         page_off_time_ds: u8,
         text_rectangle: Rectangle,
-        just_page: PageJustification,
-        just_line: LineJustification,
+        just_page: JustificationPage,
+        just_line: JustificationLine,
         font_num: u8,
         font_version_id: Option<u16>,
     ) -> Self {
@@ -316,8 +316,8 @@ impl PageRenderer {
     /// Check page and line justification ordering
     fn check_justification(&self) -> Result<()> {
         let mut tr = Rectangle::new(0, 0, 0, 0);
-        let mut jp = PageJustification::Other;
-        let mut jl = LineJustification::Other;
+        let mut jp = JustificationPage::Other;
+        let mut jl = JustificationLine::Other;
         let mut ln = 0;
         for s in &self.spans {
             let text_rectangle = s.state.text_rectangle;
@@ -417,9 +417,9 @@ impl PageRenderer {
     /// Get the X position of a text span.
     fn span_x(&self, s: &TextSpan, fonts: &FontCache) -> Result<u16> {
         match s.state.just_line {
-            LineJustification::Left => self.span_x_left(s, fonts),
-            LineJustification::Center => self.span_x_center(s, fonts),
-            LineJustification::Right => self.span_x_right(s, fonts),
+            JustificationLine::Left => self.span_x_left(s, fonts),
+            JustificationLine::Center => self.span_x_center(s, fonts),
+            JustificationLine::Right => self.span_x_right(s, fonts),
             _ => unreachable!(),
         }
     }
@@ -495,9 +495,9 @@ impl PageRenderer {
     /// Get the baseline of a text span.
     fn baseline(&self, s: &TextSpan, fonts: &FontCache) -> Result<u16> {
         match s.state.just_page {
-            PageJustification::Top => self.baseline_top(s, fonts),
-            PageJustification::Middle => self.baseline_middle(s, fonts),
-            PageJustification::Bottom => self.baseline_bottom(s, fonts),
+            JustificationPage::Top => self.baseline_top(s, fonts),
+            JustificationPage::Middle => self.baseline_middle(s, fonts),
+            JustificationPage::Bottom => self.baseline_bottom(s, fonts),
             _ => unreachable!(),
         }
     }
@@ -663,17 +663,17 @@ impl<'a> PageSplitter<'a> {
             Value::Graphic(_, _) => {
                 page.values.push((v, rs.color_ctx.clone()));
             }
-            Value::JustificationLine(Some(LineJustification::Other)) => {
+            Value::JustificationLine(Some(JustificationLine::Other)) => {
                 return Err(SyntaxError::UnsupportedTagValue(v.into()));
             }
-            Value::JustificationLine(Some(LineJustification::Full)) => {
+            Value::JustificationLine(Some(JustificationLine::Full)) => {
                 return Err(SyntaxError::UnsupportedTagValue(v.into()));
             }
             Value::JustificationLine(jl) => {
                 rs.just_line = jl.unwrap_or(ds.just_line);
                 rs.span_number = 0;
             }
-            Value::JustificationPage(Some(PageJustification::Other)) => {
+            Value::JustificationPage(Some(JustificationPage::Other)) => {
                 return Err(SyntaxError::UnsupportedTagValue(v.into()));
             }
             Value::JustificationPage(jp) => {
@@ -787,8 +787,8 @@ mod test {
             20,
             0,
             Rectangle::new(1, 1, 60, 30),
-            PageJustification::Top,
-            LineJustification::Left,
+            JustificationPage::Top,
+            JustificationLine::Left,
             1,
             None,
         )
@@ -828,8 +828,8 @@ mod test {
         assert_eq!(rs.page_on_time_ds, 20);
         assert_eq!(rs.page_off_time_ds, 0);
         assert_eq!(rs.text_rectangle, Rectangle::new(1, 1, 60, 30));
-        assert_eq!(rs.just_page, PageJustification::Top);
-        assert_eq!(rs.just_line, LineJustification::Left);
+        assert_eq!(rs.just_page, JustificationPage::Top);
+        assert_eq!(rs.just_line, JustificationLine::Left);
         assert_eq!(rs.line_spacing, None);
         assert_eq!(rs.char_spacing, None);
         assert_eq!(rs.char_width, 0);
@@ -846,8 +846,8 @@ mod test {
         assert_eq!(rs.page_on_time_ds, 10);
         assert_eq!(rs.page_off_time_ds, 2);
         assert_eq!(rs.text_rectangle, Rectangle::new(1, 1, 60, 30));
-        assert_eq!(rs.just_page, PageJustification::Top);
-        assert_eq!(rs.just_line, LineJustification::Left);
+        assert_eq!(rs.just_page, JustificationPage::Top);
+        assert_eq!(rs.just_line, JustificationLine::Left);
         assert_eq!(rs.line_spacing, None);
         assert_eq!(rs.char_spacing, None);
         assert_eq!(rs.font_num, 1);
@@ -857,8 +857,8 @@ mod test {
         assert_eq!(rs.page_on_time_ds, 20);
         assert_eq!(rs.page_off_time_ds, 0);
         assert_eq!(rs.text_rectangle, Rectangle::new(1, 1, 60, 30));
-        assert_eq!(rs.just_page, PageJustification::Middle);
-        assert_eq!(rs.just_line, LineJustification::Right);
+        assert_eq!(rs.just_page, JustificationPage::Middle);
+        assert_eq!(rs.just_line, JustificationLine::Right);
         assert_eq!(rs.line_spacing, None);
         assert_eq!(rs.char_spacing, Some(2));
         assert_eq!(rs.font_num, 3);
@@ -876,8 +876,8 @@ mod test {
             20,
             0,
             Rectangle::new(1, 1, 100, 21),
-            PageJustification::Top,
-            LineJustification::Left,
+            JustificationPage::Top,
+            JustificationLine::Left,
             1,
             None,
         )

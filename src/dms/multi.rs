@@ -29,9 +29,13 @@ pub enum ColorClassic {
 /// DMS color scheme.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ColorScheme {
+    /// Monochrome with 1-bit values
     Monochrome1Bit = 1,
+    /// Monochrome with 8-bit values
     Monochrome8Bit,
+    /// Classic color
     ColorClassic,
+    /// 24-bit Color (BGR)
     Color24Bit,
 }
 
@@ -80,20 +84,29 @@ pub struct Rectangle {
 
 /// Horizontal justification within a line.
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
-pub enum LineJustification {
+pub enum JustificationLine {
+    /// Other line justification; deprecated in v2
     Other = 1,
+    /// Left line justification
     Left,
+    /// Center line justification
     Center,
+    /// Right line justification
     Right,
+    /// Full line justification
     Full,
 }
 
 /// Vertical justification within a page.
 #[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
-pub enum PageJustification {
+pub enum JustificationPage {
+    /// Other page justification; deprecated in v2
     Other = 1,
+    /// Top page justification
     Top,
+    /// Middle page justification
     Middle,
+    /// Bottom page justification
     Bottom,
 }
 
@@ -136,8 +149,8 @@ pub enum Value {
     Font(Option<(u8, Option<u16>)>),
     Graphic(u8, Option<(u16, u16, Option<u16>)>),
     HexadecimalCharacter(u16),
-    JustificationLine(Option<LineJustification>),
-    JustificationPage(Option<PageJustification>),
+    JustificationLine(Option<JustificationLine>),
+    JustificationPage(Option<JustificationPage>),
     ManufacturerSpecific(u32, Option<String>),
     ManufacturerSpecificEnd(u32, Option<String>),
     MovingText(MovingTextMode, MovingTextDirection, u16, u8, u8, String),
@@ -398,42 +411,42 @@ impl Rectangle {
     }
 }
 
-impl fmt::Display for LineJustification {
+impl fmt::Display for JustificationLine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let v = (*self).clone();
         write!(f, "{}", v as u8)
     }
 }
 
-impl LineJustification {
+impl JustificationLine {
     /// Create a line justification.
     pub fn new(v: &str) -> Option<Self> {
         match v {
-            "1" => Some(LineJustification::Other),
-            "2" => Some(LineJustification::Left),
-            "3" => Some(LineJustification::Center),
-            "4" => Some(LineJustification::Right),
-            "5" => Some(LineJustification::Full),
+            "1" => Some(JustificationLine::Other),
+            "2" => Some(JustificationLine::Left),
+            "3" => Some(JustificationLine::Center),
+            "4" => Some(JustificationLine::Right),
+            "5" => Some(JustificationLine::Full),
             _ => None,
         }
     }
 }
 
-impl fmt::Display for PageJustification {
+impl fmt::Display for JustificationPage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let v = (*self).clone();
         write!(f, "{}", v as u8)
     }
 }
 
-impl PageJustification {
+impl JustificationPage {
     /// Create a page justification.
     pub fn new(v: &str) -> Option<Self> {
         match v {
-            "1" => Some(PageJustification::Other),
-            "2" => Some(PageJustification::Top),
-            "3" => Some(PageJustification::Middle),
-            "4" => Some(PageJustification::Bottom),
+            "1" => Some(JustificationPage::Other),
+            "2" => Some(JustificationPage::Top),
+            "3" => Some(JustificationPage::Middle),
+            "4" => Some(JustificationPage::Bottom),
             _ => None,
         }
     }
@@ -845,7 +858,7 @@ where
 /// Parse a Justification -- Line tag [jl].
 fn parse_justification_line(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
-        match LineJustification::new(&tag[2..]) {
+        match JustificationLine::new(&tag[2..]) {
             Some(jl) => Some(Value::JustificationLine(Some(jl))),
             None => None,
         }
@@ -857,7 +870,7 @@ fn parse_justification_line(tag: &str) -> Option<Value> {
 /// Parse a Justification -- Page tag [jp].
 fn parse_justification_page(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
-        match PageJustification::new(&tag[2..]) {
+        match JustificationPage::new(&tag[2..]) {
             Some(jl) => Some(Value::JustificationPage(Some(jl))),
             None => None,
         }
@@ -1879,25 +1892,25 @@ mod test {
         let mut m = Parser::new("[jL1][Jl2][JL3][jl4][JL5]");
         assert_eq!(
             m.next(),
-            Some(Ok(Value::JustificationLine(Some(LineJustification::Other))))
+            Some(Ok(Value::JustificationLine(Some(JustificationLine::Other))))
         );
         assert_eq!(
             m.next(),
-            Some(Ok(Value::JustificationLine(Some(LineJustification::Left))))
+            Some(Ok(Value::JustificationLine(Some(JustificationLine::Left))))
         );
         assert_eq!(
             m.next(),
             Some(Ok(Value::JustificationLine(Some(
-                LineJustification::Center
+                JustificationLine::Center
             ))))
         );
         assert_eq!(
             m.next(),
-            Some(Ok(Value::JustificationLine(Some(LineJustification::Right))))
+            Some(Ok(Value::JustificationLine(Some(JustificationLine::Right))))
         );
         assert_eq!(
             m.next(),
-            Some(Ok(Value::JustificationLine(Some(LineJustification::Full))))
+            Some(Ok(Value::JustificationLine(Some(JustificationLine::Full))))
         );
         assert_eq!(m.next(), None);
     }
@@ -1921,22 +1934,22 @@ mod test {
         let mut m = Parser::new("[jP1][Jp2][JP3][jp4]");
         assert_eq!(
             m.next(),
-            Some(Ok(Value::JustificationPage(Some(PageJustification::Other))))
+            Some(Ok(Value::JustificationPage(Some(JustificationPage::Other))))
         );
         assert_eq!(
             m.next(),
-            Some(Ok(Value::JustificationPage(Some(PageJustification::Top))))
+            Some(Ok(Value::JustificationPage(Some(JustificationPage::Top))))
         );
         assert_eq!(
             m.next(),
             Some(Ok(Value::JustificationPage(Some(
-                PageJustification::Middle
+                JustificationPage::Middle
             ))))
         );
         assert_eq!(
             m.next(),
             Some(Ok(Value::JustificationPage(Some(
-                PageJustification::Bottom
+                JustificationPage::Bottom
             ))))
         );
         assert_eq!(m.next(), None);

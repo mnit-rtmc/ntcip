@@ -182,32 +182,34 @@ impl ColorClassic {
     /// Get RGB triplet for a classic color.
     pub fn rgb(&self) -> (u8, u8, u8) {
         match self {
-            ColorClassic::Black   => (0x00, 0x00, 0x00),
-            ColorClassic::Red     => (0xFF, 0x00, 0x00),
-            ColorClassic::Yellow  => (0xFF, 0xFF, 0x00),
-            ColorClassic::Green   => (0x00, 0xFF, 0x00),
-            ColorClassic::Cyan    => (0x00, 0xFF, 0xFF),
-            ColorClassic::Blue    => (0x00, 0x00, 0xFF),
+            ColorClassic::Black => (0x00, 0x00, 0x00),
+            ColorClassic::Red => (0xFF, 0x00, 0x00),
+            ColorClassic::Yellow => (0xFF, 0xFF, 0x00),
+            ColorClassic::Green => (0x00, 0xFF, 0x00),
+            ColorClassic::Cyan => (0x00, 0xFF, 0xFF),
+            ColorClassic::Blue => (0x00, 0x00, 0xFF),
             ColorClassic::Magenta => (0xFF, 0x00, 0xFF),
-            ColorClassic::White   => (0xFF, 0xFF, 0xFF),
-            ColorClassic::Orange  => (0xFF, 0xA5, 0x00),
-            ColorClassic::Amber   => (0xFF, 0xD0, 0x00),
+            ColorClassic::White => (0xFF, 0xFF, 0xFF),
+            ColorClassic::Orange => (0xFF, 0xA5, 0x00),
+            ColorClassic::Amber => (0xFF, 0xD0, 0x00),
         }
     }
     /// Maybe convert a u8 into a ColorClassic
     pub fn from_u8(v: u8) -> Option<Self> {
         match v {
-            v if v == ColorClassic::Black   as u8 => Some(ColorClassic::Black),
-            v if v == ColorClassic::Red     as u8 => Some(ColorClassic::Red),
-            v if v == ColorClassic::Yellow  as u8 => Some(ColorClassic::Yellow),
-            v if v == ColorClassic::Green   as u8 => Some(ColorClassic::Green),
-            v if v == ColorClassic::Cyan    as u8 => Some(ColorClassic::Cyan),
-            v if v == ColorClassic::Blue    as u8 => Some(ColorClassic::Blue),
-            v if v == ColorClassic::Magenta as u8 => Some(ColorClassic::Magenta),
-            v if v == ColorClassic::White   as u8 => Some(ColorClassic::White),
-            v if v == ColorClassic::Orange  as u8 => Some(ColorClassic::Orange),
-            v if v == ColorClassic::Amber   as u8 => Some(ColorClassic::Amber),
-            _                                     => None,
+            v if v == ColorClassic::Black as u8 => Some(ColorClassic::Black),
+            v if v == ColorClassic::Red as u8 => Some(ColorClassic::Red),
+            v if v == ColorClassic::Yellow as u8 => Some(ColorClassic::Yellow),
+            v if v == ColorClassic::Green as u8 => Some(ColorClassic::Green),
+            v if v == ColorClassic::Cyan as u8 => Some(ColorClassic::Cyan),
+            v if v == ColorClassic::Blue as u8 => Some(ColorClassic::Blue),
+            v if v == ColorClassic::Magenta as u8 => {
+                Some(ColorClassic::Magenta)
+            }
+            v if v == ColorClassic::White as u8 => Some(ColorClassic::White),
+            v if v == ColorClassic::Orange as u8 => Some(ColorClassic::Orange),
+            v if v == ColorClassic::Amber as u8 => Some(ColorClassic::Amber),
+            _ => None,
         }
     }
 }
@@ -218,12 +220,12 @@ impl From<&str> for ColorScheme {
         match s {
             "monochrome1Bit" => ColorScheme::Monochrome1Bit,
             "monochrome8Bit" => ColorScheme::Monochrome8Bit,
-            "colorClassic"   => ColorScheme::ColorClassic,
-            "color24Bit"     => ColorScheme::Color24Bit,
+            "colorClassic" => ColorScheme::ColorClassic,
+            "color24Bit" => ColorScheme::Color24Bit,
             _ => {
                 warn!("Unknown color scheme: {}", s);
                 ColorScheme::Monochrome1Bit
-            },
+            }
         }
     }
 }
@@ -232,7 +234,7 @@ impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Color::Legacy(v) => write!(f, "{}", v),
-            Color::RGB(r,g,b) => write!(f, "{},{},{}", r, g, b),
+            Color::RGB(r, g, b) => write!(f, "{},{},{}", r, g, b),
         }
     }
 }
@@ -245,9 +247,11 @@ impl From<(u8, u8, u8)> for Color {
 
 impl ColorCtx {
     /// Create a new color context
-    pub fn new(color_scheme: ColorScheme, fg_default: (u8, u8, u8),
-        bg_default: (u8, u8, u8)) -> Self
-    {
+    pub fn new(
+        color_scheme: ColorScheme,
+        fg_default: (u8, u8, u8),
+        bg_default: (u8, u8, u8),
+    ) -> Self {
         let fg_current = fg_default.into();
         let bg_current = bg_default.into();
         ColorCtx {
@@ -259,14 +263,16 @@ impl ColorCtx {
         }
     }
     /// Set the foreground color
-    pub fn set_foreground(&mut self, c: Option<Color>, v: &Value)
-        -> Result<(), SyntaxError>
-    {
+    pub fn set_foreground(
+        &mut self,
+        c: Option<Color>,
+        v: &Value,
+    ) -> Result<(), SyntaxError> {
         self.fg_current = match c {
             Some(c) => match self.rgb(c) {
                 Some(_) => c,
                 None => return Err(SyntaxError::UnsupportedTagValue(v.into())),
-            }
+            },
             None => self.fg_default.into(),
         };
         Ok(())
@@ -283,14 +289,16 @@ impl ColorCtx {
         }
     }
     /// Set the background color
-    pub fn set_background(&mut self, c: Option<Color>, v: &Value)
-        -> Result<(), SyntaxError>
-    {
+    pub fn set_background(
+        &mut self,
+        c: Option<Color>,
+        v: &Value,
+    ) -> Result<(), SyntaxError> {
         self.bg_current = match c {
             Some(c) => match self.rgb(c) {
                 Some(_) => c,
                 None => return Err(SyntaxError::UnsupportedTagValue(v.into())),
-            }
+            },
             None => self.bg_default.into(),
         };
         Ok(())
@@ -311,11 +319,11 @@ impl ColorCtx {
         match (self.color_scheme, c) {
             (ColorScheme::Monochrome1Bit, Color::Legacy(v)) => {
                 self.rgb_monochrome_1(v)
-            },
+            }
             (ColorScheme::Monochrome1Bit, _) => None,
             (ColorScheme::Monochrome8Bit, Color::Legacy(v)) => {
                 self.rgb_monochrome_8(v)
-            },
+            }
             (ColorScheme::Monochrome8Bit, _) => None,
             (_, Color::Legacy(v)) => ColorCtx::rgb_classic(v),
             (ColorScheme::Color24Bit, Color::RGB(r, g, b)) => Some((r, g, b)),
@@ -369,14 +377,24 @@ impl Rectangle {
     }
     /// Create a rectangle matching another width and/or height
     pub fn match_width_height(&self, other: &Self) -> Self {
-        let w = if self.w > 0 { self.w } else { 1 + other.w - self.x };
-        let h = if self.h > 0 { self.h } else { 1 + other.h - self.y };
+        let w = if self.w > 0 {
+            self.w
+        } else {
+            1 + other.w - self.x
+        };
+        let h = if self.h > 0 {
+            self.h
+        } else {
+            1 + other.h - self.y
+        };
         Rectangle::new(self.x, self.y, w, h)
     }
     /// Check if a rectangle contains another rectangle
     pub fn contains(&self, other: &Self) -> bool {
-        other.x >= self.x && other.x + other.w <= self.x + self.w &&
-        other.y >= self.y && other.y + other.h <= self.y + self.h
+        other.x >= self.x
+            && other.x + other.w <= self.x + self.w
+            && other.y >= self.y
+            && other.y + other.h <= self.y + self.h
     }
 }
 
@@ -396,7 +414,7 @@ impl LineJustification {
             "3" => Some(LineJustification::Center),
             "4" => Some(LineJustification::Right),
             "5" => Some(LineJustification::Full),
-            _   => None,
+            _ => None,
         }
     }
 }
@@ -416,7 +434,7 @@ impl PageJustification {
             "2" => Some(PageJustification::Top),
             "3" => Some(PageJustification::Middle),
             "4" => Some(PageJustification::Bottom),
-            _   => None,
+            _ => None,
         }
     }
 }
@@ -446,76 +464,71 @@ impl fmt::Display for Value {
             Value::ColorBackground(Some(c)) => write!(f, "[cb{}]", c),
             Value::ColorForeground(None) => write!(f, "[cf]"),
             Value::ColorForeground(Some(c)) => write!(f, "[cf{}]", c),
-            Value::ColorRectangle(r,c) => write!(f, "[cr{},{}", r, c),
-            Value::Field(i, Some(w))   => write!(f, "[f{},{}]", i, w),
-            Value::Field(i, None)      => write!(f, "[f{}]", i),
-            Value::Flash(FlashOrder::OnOff, Some(a), Some(b))
-                                       => write!(f, "[flt{}o{}]", a, b),
-            Value::Flash(FlashOrder::OnOff, Some(a), None)
-                                       => write!(f, "[flt{}o]", a),
-            Value::Flash(FlashOrder::OnOff, None, Some(b))
-                                       => write!(f, "[flto{}]", b),
-            Value::Flash(FlashOrder::OnOff, None, None)
-                                       => write!(f, "[flto]"),
-            Value::Flash(FlashOrder::OffOn, Some(a), Some(b))
-                                       => write!(f, "[flo{}t{}]", a, b),
-            Value::Flash(FlashOrder::OffOn, Some(a), None)
-                                       => write!(f, "[flo{}t]", a),
-            Value::Flash(FlashOrder::OffOn, None, Some(b))
-                                       => write!(f, "[flot{}]", b),
-            Value::Flash(FlashOrder::OffOn, None, None)
-                                       => write!(f, "[flot]"),
-            Value::FlashEnd()          => write!(f, "[/fl]"),
-            Value::Font(None)          => write!(f, "[fo]"),
-            Value::Font(Some((i,None)))=> write!(f, "[fo{}]", i),
-            Value::Font(Some((i, Some(c))))
-                                       => write!(f, "[fo{},{:04x}]", i, c),
-            Value::Graphic(i, None)    => write!(f, "[g{}]", i),
-            Value::Graphic(i, Some((x,y,None)))
-                                       => write!(f, "[g{},{},{}]", i, x, y),
-            Value::Graphic(i, Some((x,y,Some(c))))
-                                       => write!(f, "[g{},{},{},{:04x}]",
-                                                 i, x, y, c),
-            Value::HexadecimalCharacter(c)
-                                       => write!(f, "[hc{}]", c),
-            Value::JustificationLine(Some(j))
-                                       => write!(f, "[jl{}]", j),
-            Value::JustificationLine(None)
-                                       => write!(f, "[jl]"),
-            Value::JustificationPage(Some(j))
-                                       => write!(f, "[jp{}]", j),
-            Value::JustificationPage(None)
-                                       => write!(f, "[jp]"),
-            Value::ManufacturerSpecific(i, Some(s))
-                                       => write!(f, "[ms{},{}]", i, s),
-            Value::ManufacturerSpecific(i, None)
-                                       => write!(f, "[ms{}]", i),
-            Value::ManufacturerSpecificEnd(i, Some(s))
-                                       => write!(f, "[/ms{},{}]", i, s),
-            Value::ManufacturerSpecificEnd(i, None)
-                                       => write!(f, "[/ms{}]", i),
-            Value::MovingText(t, d, w, s, r, text)
-                                       => write!(f, "[mv{}{}{},{},{},{}]",
-                                                 t, d, w, s, r, text),
-            Value::NewLine(Some(x))    => write!(f, "[nl{}]", x),
-            Value::NewLine(None)       => write!(f, "[nl]"),
-            Value::NewPage()           => write!(f, "[np]"),
-            Value::PageBackground(Some(c))
-                                       => write!(f, "[pb{}]", c),
-            Value::PageBackground(None)=> write!(f, "[pb]"),
-            Value::PageTime(Some(x), Some(y))
-                                       => write!(f, "[pt{}o{}]", x, y),
-            Value::PageTime(Some(x), None)
-                                       => write!(f, "[pt{}o]", x),
-            Value::PageTime(None, Some(y))
-                                       => write!(f, "[pto{}]", y),
-            Value::PageTime(None, None)=> write!(f, "[pto]"),
+            Value::ColorRectangle(r, c) => write!(f, "[cr{},{}", r, c),
+            Value::Field(i, Some(w)) => write!(f, "[f{},{}]", i, w),
+            Value::Field(i, None) => write!(f, "[f{}]", i),
+            Value::Flash(FlashOrder::OnOff, Some(a), Some(b)) => {
+                write!(f, "[flt{}o{}]", a, b)
+            }
+            Value::Flash(FlashOrder::OnOff, Some(a), None) => {
+                write!(f, "[flt{}o]", a)
+            }
+            Value::Flash(FlashOrder::OnOff, None, Some(b)) => {
+                write!(f, "[flto{}]", b)
+            }
+            Value::Flash(FlashOrder::OnOff, None, None) => write!(f, "[flto]"),
+            Value::Flash(FlashOrder::OffOn, Some(a), Some(b)) => {
+                write!(f, "[flo{}t{}]", a, b)
+            }
+            Value::Flash(FlashOrder::OffOn, Some(a), None) => {
+                write!(f, "[flo{}t]", a)
+            }
+            Value::Flash(FlashOrder::OffOn, None, Some(b)) => {
+                write!(f, "[flot{}]", b)
+            }
+            Value::Flash(FlashOrder::OffOn, None, None) => write!(f, "[flot]"),
+            Value::FlashEnd() => write!(f, "[/fl]"),
+            Value::Font(None) => write!(f, "[fo]"),
+            Value::Font(Some((i, None))) => write!(f, "[fo{}]", i),
+            Value::Font(Some((i, Some(c)))) => write!(f, "[fo{},{:04x}]", i, c),
+            Value::Graphic(i, None) => write!(f, "[g{}]", i),
+            Value::Graphic(i, Some((x, y, None))) => {
+                write!(f, "[g{},{},{}]", i, x, y)
+            }
+            Value::Graphic(i, Some((x, y, Some(c)))) => {
+                write!(f, "[g{},{},{},{:04x}]", i, x, y, c)
+            }
+            Value::HexadecimalCharacter(c) => write!(f, "[hc{}]", c),
+            Value::JustificationLine(Some(j)) => write!(f, "[jl{}]", j),
+            Value::JustificationLine(None) => write!(f, "[jl]"),
+            Value::JustificationPage(Some(j)) => write!(f, "[jp{}]", j),
+            Value::JustificationPage(None) => write!(f, "[jp]"),
+            Value::ManufacturerSpecific(i, Some(s)) => {
+                write!(f, "[ms{},{}]", i, s)
+            }
+            Value::ManufacturerSpecific(i, None) => write!(f, "[ms{}]", i),
+            Value::ManufacturerSpecificEnd(i, Some(s)) => {
+                write!(f, "[/ms{},{}]", i, s)
+            }
+            Value::ManufacturerSpecificEnd(i, None) => write!(f, "[/ms{}]", i),
+            Value::MovingText(t, d, w, s, r, text) => {
+                write!(f, "[mv{}{}{},{},{},{}]", t, d, w, s, r, text)
+            }
+            Value::NewLine(Some(x)) => write!(f, "[nl{}]", x),
+            Value::NewLine(None) => write!(f, "[nl]"),
+            Value::NewPage() => write!(f, "[np]"),
+            Value::PageBackground(Some(c)) => write!(f, "[pb{}]", c),
+            Value::PageBackground(None) => write!(f, "[pb]"),
+            Value::PageTime(Some(x), Some(y)) => write!(f, "[pt{}o{}]", x, y),
+            Value::PageTime(Some(x), None) => write!(f, "[pt{}o]", x),
+            Value::PageTime(None, Some(y)) => write!(f, "[pto{}]", y),
+            Value::PageTime(None, None) => write!(f, "[pto]"),
             Value::SpacingCharacter(s) => write!(f, "[sc{}]", s),
-            Value::SpacingCharacterEnd()
-                                       => write!(f, "[/sc]"),
-            Value::Text(t)             => write!(f, "{}", t.replace('[', "[[")
-                                                           .replace(']', "]]")),
-            Value::TextRectangle(r)    => write!(f, "[tr{}]", r),
+            Value::SpacingCharacterEnd() => write!(f, "[/sc]"),
+            Value::Text(t) => {
+                write!(f, "{}", t.replace('[', "[[").replace(']', "]]"))
+            }
+            Value::TextRectangle(r) => write!(f, "[tr{}]", r),
         }
     }
 }
@@ -538,13 +551,14 @@ impl fmt::Display for SyntaxError {
     }
 }
 
-impl std::error::Error for SyntaxError { }
+impl std::error::Error for SyntaxError {}
 
 /// Parse a color from a tag.
 ///
 /// * `v` Iterator of color parameters.
 fn parse_color<'a, I>(v: I) -> Option<Color>
-    where I: Iterator<Item = &'a str>
+where
+    I: Iterator<Item = &'a str>,
 {
     match v.map(|i| i.parse::<u8>()).collect::<Vec<_>>().as_slice() {
         [Ok(r), Ok(g), Ok(b)] => Some(Color::RGB(*r, *g, *b)),
@@ -557,13 +571,14 @@ fn parse_color<'a, I>(v: I) -> Option<Color>
 ///
 /// * `v` Iterator of rectangle parameters.
 fn parse_rectangle<'a, I>(v: &mut I) -> Option<Rectangle>
-    where I: Iterator<Item = &'a str>
+where
+    I: Iterator<Item = &'a str>,
 {
-    if let (Some(x),Some(y),Some(w),Some(h)) = (v.next(),v.next(),v.next(),
-        v.next())
+    if let (Some(x), Some(y), Some(w), Some(h)) =
+        (v.next(), v.next(), v.next(), v.next())
     {
-        if let (Ok(x),Ok(y),Ok(w),Ok(h)) = (x.parse(),y.parse(),w.parse(),
-            h.parse())
+        if let (Ok(x), Ok(y), Ok(w), Ok(h)) =
+            (x.parse(), y.parse(), w.parse(), h.parse())
         {
             if x > 0 && y > 0 {
                 return Some(Rectangle::new(x, y, w, h));
@@ -575,8 +590,9 @@ fn parse_rectangle<'a, I>(v: &mut I) -> Option<Rectangle>
 
 /// Parse an integer value.
 fn parse_int<'a, I, T>(v: &mut I) -> Option<T>
-    where I: Iterator<Item = &'a str>,
-          T: FromStr
+where
+    I: Iterator<Item = &'a str>,
+    T: FromStr,
 {
     if let Some(s) = v.next() {
         if let Ok(i) = s.parse::<T>() {
@@ -588,11 +604,14 @@ fn parse_int<'a, I, T>(v: &mut I) -> Option<T>
 
 /// Parse an optional value.
 fn parse_optional<'a, I, T>(v: &mut I) -> Result<Option<T>, ()>
-    where I: Iterator<Item = &'a str>,
-          T: FromStr
+where
+    I: Iterator<Item = &'a str>,
+    T: FromStr,
 {
     if let Some(s) = v.next() {
-        if s.len() == 0 { return Ok(None); }
+        if s.len() == 0 {
+            return Ok(None);
+        }
         if let Ok(i) = s.parse::<T>() {
             Ok(Some(i))
         } else {
@@ -605,12 +624,17 @@ fn parse_optional<'a, I, T>(v: &mut I) -> Result<Option<T>, ()>
 
 /// Parse an optional value ranging from 0 to 99.
 fn parse_optional_99<'a, I>(v: &mut I) -> Result<Option<u8>, ()>
-    where I: Iterator<Item = &'a str>
+where
+    I: Iterator<Item = &'a str>,
 {
     if let Some(s) = v.next() {
-        if s.len() == 0 { return Ok(None); }
+        if s.len() == 0 {
+            return Ok(None);
+        }
         if let Ok(i) = s.parse::<u8>() {
-            if i <= 99 { return Ok(Some(i)); }
+            if i <= 99 {
+                return Ok(Some(i));
+            }
         }
         return Err(());
     }
@@ -619,13 +643,16 @@ fn parse_optional_99<'a, I>(v: &mut I) -> Result<Option<u8>, ()>
 
 /// Parse a nonzero value.
 fn parse_nonzero<'a, I, T>(v: &mut I) -> Option<T>
-    where I: Iterator<Item = &'a str>,
-          T: FromStr+PartialOrd+Default
+where
+    I: Iterator<Item = &'a str>,
+    T: FromStr + PartialOrd + Default,
 {
     if let Some(s) = v.next() {
         if let Ok(i) = s.parse::<T>() {
             // Use default to check for nonzero
-            if i != T::default() { return Some(i); }
+            if i != T::default() {
+                return Some(i);
+            }
         }
     }
     None
@@ -633,17 +660,16 @@ fn parse_nonzero<'a, I, T>(v: &mut I) -> Option<T>
 
 /// Parse a version ID value.
 fn parse_version_id<'a, I>(v: &mut I) -> Result<Option<u16>, ()>
-    where I: Iterator<Item = &'a str>
+where
+    I: Iterator<Item = &'a str>,
 {
     match v.next() {
-        Some(s) if s.len() == 4 => {
-            match u16::from_str_radix(s, 16) {
-                Ok(i) => Ok(Some(i)),
-                _ => Err(()),
-            }
+        Some(s) if s.len() == 4 => match u16::from_str_radix(s, 16) {
+            Ok(i) => Ok(Some(i)),
+            _ => Err(()),
         },
         Some(_) => Err(()),
-        _ => Ok(None)
+        _ => Ok(None),
     }
 }
 
@@ -653,7 +679,7 @@ fn parse_color_background(tag: &str) -> Option<Value> {
         // 1203 specifies a numeric value between 0 and 999,
         // but anything above 255 does not make sense
         match tag[2..].parse::<u8>() {
-            Ok(n)  => Some(Value::ColorBackground(Some(Color::Legacy(n)))),
+            Ok(n) => Some(Value::ColorBackground(Some(Color::Legacy(n)))),
             Err(_) => None,
         }
     } else {
@@ -764,7 +790,7 @@ fn parse_graphic(tag: &str) -> Option<Value> {
     match (n, p, vid) {
         (Some(n), Ok(Some((x, y))), Ok(vid)) => {
             Some(Value::Graphic(n, Some((x, y, vid))))
-        },
+        }
         (Some(n), Ok(None), Ok(None)) => Some(Value::Graphic(n, None)),
         _ => None,
     }
@@ -772,12 +798,13 @@ fn parse_graphic(tag: &str) -> Option<Value> {
 
 /// Parse a pont value.
 fn parse_point<'a, I>(v: &mut I) -> Result<Option<(u16, u16)>, ()>
-    where I: Iterator<Item = &'a str>
+where
+    I: Iterator<Item = &'a str>,
 {
     match (v.next(), v.next()) {
         (Some(x), Some(y)) => Ok(Some(parse_xy(x, y)?)),
-        (Some(_), None)    => Err(()),
-        (_, _)             => Ok(None),
+        (Some(_), None) => Err(()),
+        (_, _) => Ok(None),
     }
 }
 
@@ -803,7 +830,8 @@ fn parse_hexadecimal_character(tag: &str) -> Option<Value> {
 
 /// Parse a hexadecimal value.
 fn parse_hexadecimal<'a, I>(v: &mut I) -> Result<u16, ()>
-    where I: Iterator<Item = &'a str>
+where
+    I: Iterator<Item = &'a str>,
 {
     if let Some(s) = v.next() {
         // May be 1 to 4 hexadecimal digits
@@ -844,7 +872,7 @@ fn parse_manufacturer_specific(tag: &str) -> Option<Value> {
     match (parse_int(&mut vs), vs.next()) {
         (Some(m), Some(t)) => {
             Some(Value::ManufacturerSpecific(m, Some(t.into())))
-        },
+        }
         (Some(m), None) => Some(Value::ManufacturerSpecific(m, None)),
         _ => None,
     }
@@ -856,7 +884,7 @@ fn parse_manufacturer_specific_end(tag: &str) -> Option<Value> {
     match (parse_int(&mut vs), vs.next()) {
         (Some(m), Some(t)) => {
             Some(Value::ManufacturerSpecificEnd(m, Some(t.into())))
-        },
+        }
         (Some(m), None) => Some(Value::ManufacturerSpecificEnd(m, None)),
         _ => None,
     }
@@ -899,8 +927,8 @@ fn parse_moving_text_mode(tag: &str, m: MovingTextMode) -> Option<Value> {
         let s = parse_int(&mut vs);
         let r = parse_int(&mut vs);
         let text = vs.next();
-        if let (Some(d), Some(w), Some(s), Some(r), Some(text)) = (d, w, s, r,
-            text)
+        if let (Some(d), Some(w), Some(s), Some(r), Some(text)) =
+            (d, w, s, r, text)
         {
             return Some(Value::MovingText(m, d, w, s, r, text.into()));
         }
@@ -923,9 +951,9 @@ fn parse_new_line(tag: &str) -> Option<Value> {
     match tag.len() {
         2 => Some(Value::NewLine(None)),
         3 => match tag[2..].parse::<u8>() {
-                 Ok(n) => Some(Value::NewLine(Some(n))),
-                 Err(_) => None,
-             },
+            Ok(n) => Some(Value::NewLine(Some(n))),
+            Err(_) => None,
+        },
         _ => None,
     }
 }
@@ -980,32 +1008,54 @@ fn parse_tag(tag: &str) -> Result<Option<Value>, SyntaxError> {
     let tl = &tag.to_ascii_lowercase();
     let t = tl.as_str();
     // Sorted by most likely occurrence
-    let v = if t.starts_with("nl") { parse_new_line(t) }
-       else if t.starts_with("np") { parse_new_page(t) }
-       else if t.starts_with("fo") { parse_font(t) }
-       else if t.starts_with("jl") { parse_justification_line(t) }
-       else if t.starts_with("jp") { parse_justification_page(t) }
-       else if t.starts_with("pt") { parse_page_time(t) }
-       else if t.starts_with("pb") { parse_page_background(t) }
-       else if t.starts_with("cf") { parse_color_foreground(t) }
-       else if t.starts_with("cr") { parse_color_rectangle(t) }
-       else if t.starts_with("tr") { parse_text_rectangle(t) }
-       else if t.starts_with("cb") { parse_color_background(t) }
-       else if t.starts_with("g") { parse_graphic(tag) }
-       else if t.starts_with("sc") { parse_spacing_character(t) }
-       else if t.starts_with("/sc") { parse_spacing_character_end(tag) }
-       else if t.starts_with("hc") { parse_hexadecimal_character(t) }
-       else if t.starts_with("fl") { parse_flash_time(t) }
-       else if t.starts_with("/fl") { parse_flash_end(tag) }
-        // Don't treat "fe" as a field tag -- this allows handling non-MULTI
-        // tag (e.g. [feedx]) properly by returning UnsupportedTag.
-       else if t.starts_with("f") && !t.starts_with("fe") { parse_field(tag) }
-       else if t.starts_with("mv") { parse_moving_text(tag) }
-       else if t.starts_with("ms") { parse_manufacturer_specific(tag) }
-       else if t.starts_with("/ms") { parse_manufacturer_specific_end(tag) }
-       else {
-           return Err(SyntaxError::UnsupportedTag(tag.into()));
-       };
+    let v = if t.starts_with("nl") {
+        parse_new_line(t)
+    } else if t.starts_with("np") {
+        parse_new_page(t)
+    } else if t.starts_with("fo") {
+        parse_font(t)
+    } else if t.starts_with("jl") {
+        parse_justification_line(t)
+    } else if t.starts_with("jp") {
+        parse_justification_page(t)
+    } else if t.starts_with("pt") {
+        parse_page_time(t)
+    } else if t.starts_with("pb") {
+        parse_page_background(t)
+    } else if t.starts_with("cf") {
+        parse_color_foreground(t)
+    } else if t.starts_with("cr") {
+        parse_color_rectangle(t)
+    } else if t.starts_with("tr") {
+        parse_text_rectangle(t)
+    } else if t.starts_with("cb") {
+        parse_color_background(t)
+    } else if t.starts_with("g") {
+        parse_graphic(tag)
+    } else if t.starts_with("sc") {
+        parse_spacing_character(t)
+    } else if t.starts_with("/sc") {
+        parse_spacing_character_end(tag)
+    } else if t.starts_with("hc") {
+        parse_hexadecimal_character(t)
+    } else if t.starts_with("fl") {
+        parse_flash_time(t)
+    } else if t.starts_with("/fl") {
+        parse_flash_end(tag)
+    }
+    // Don't treat "fe" as a field tag -- this allows handling non-MULTI
+    // tag (e.g. [feedx]) properly by returning UnsupportedTag.
+    else if t.starts_with("f") && !t.starts_with("fe") {
+        parse_field(tag)
+    } else if t.starts_with("mv") {
+        parse_moving_text(tag)
+    } else if t.starts_with("ms") {
+        parse_manufacturer_specific(tag)
+    } else if t.starts_with("/ms") {
+        parse_manufacturer_specific_end(tag)
+    } else {
+        return Err(SyntaxError::UnsupportedTag(tag.into()));
+    };
     match v {
         Some(v) => Ok(Some(v)),
         None => Err(SyntaxError::UnsupportedTagValue(tag.into())),
@@ -1015,7 +1065,10 @@ fn parse_tag(tag: &str) -> Result<Option<Value>, SyntaxError> {
 impl<'a> Parser<'a> {
     /// Create a new MULTI parser.
     pub fn new(m: &'a str) -> Self {
-        Parser { remaining: m.chars().peekable(), within_tag: false }
+        Parser {
+            remaining: m.chars().peekable(),
+            within_tag: false,
+        }
     }
 
     /// Peek at the next character.
@@ -1033,7 +1086,7 @@ impl<'a> Parser<'a> {
             // NTCIP 1203 mentions Extended ASCII (codepage 437) -- don't do it!
             match c {
                 ' '..='~' => Ok(Some(c)),
-                _         => Err(SyntaxError::CharacterNotDefined(c)),
+                _ => Err(SyntaxError::CharacterNotDefined(c)),
             }
         } else {
             Ok(None)
@@ -1047,7 +1100,7 @@ impl<'a> Parser<'a> {
             match c {
                 '[' => return Err(SyntaxError::UnsupportedTagValue(s)),
                 ']' => return parse_tag(&s),
-                _   => s.push(c),
+                _ => s.push(c),
             }
         }
         Err(SyntaxError::UnsupportedTag(s))
@@ -1130,8 +1183,11 @@ mod test {
     }
     #[test]
     fn color_mono_1() {
-        let mut ctx = ColorCtx::new(ColorScheme::Monochrome1Bit,
-            ColorClassic::Amber.rgb(), ColorClassic::Black.rgb());
+        let mut ctx = ColorCtx::new(
+            ColorScheme::Monochrome1Bit,
+            ColorClassic::Amber.rgb(),
+            ColorClassic::Black.rgb(),
+        );
         assert_eq!(ctx.foreground_rgb(), (0xFF, 0xD0, 0x00));
         assert_eq!(ctx.background_rgb(), (0x00, 0x00, 0x00));
         let v = Value::ColorForeground(Some(Color::Legacy(2)));
@@ -1155,8 +1211,11 @@ mod test {
     }
     #[test]
     fn color_mono_8() {
-        let mut ctx = ColorCtx::new(ColorScheme::Monochrome8Bit,
-            ColorClassic::White.rgb(), ColorClassic::Black.rgb());
+        let mut ctx = ColorCtx::new(
+            ColorScheme::Monochrome8Bit,
+            ColorClassic::White.rgb(),
+            ColorClassic::Black.rgb(),
+        );
         assert_eq!(ctx.foreground_rgb(), (0xFF, 0xFF, 0xFF));
         assert_eq!(ctx.background_rgb(), (0x00, 0x00, 0x00));
         let v = Value::ColorForeground(Some(Color::Legacy(128)));
@@ -1172,8 +1231,11 @@ mod test {
     }
     #[test]
     fn color_classic() {
-        let mut ctx = ColorCtx::new(ColorScheme::ColorClassic,
-            ColorClassic::White.rgb(), ColorClassic::Green.rgb());
+        let mut ctx = ColorCtx::new(
+            ColorScheme::ColorClassic,
+            ColorClassic::White.rgb(),
+            ColorClassic::Green.rgb(),
+        );
         assert_eq!(ctx.foreground_rgb(), (0xFF, 0xFF, 0xFF));
         assert_eq!(ctx.background_rgb(), (0x00, 0xFF, 0x00));
         let v = Value::ColorForeground(Some(Color::Legacy(10)));
@@ -1185,15 +1247,20 @@ mod test {
         assert_eq!(ctx.set_foreground(Some(Color::Legacy(5)), &v), Ok(()));
         assert_eq!(ctx.foreground_rgb(), (0x00, 0x00, 0xFF));
         let v = Value::PageBackground(Some(Color::RGB(255, 0, 255)));
-        assert_eq!(ctx.set_background(Some(Color::RGB(255, 0, 255)), &v),
-            Err(SyntaxError::UnsupportedTagValue("[pb255,0,255]".into())));
+        assert_eq!(
+            ctx.set_background(Some(Color::RGB(255, 0, 255)), &v),
+            Err(SyntaxError::UnsupportedTagValue("[pb255,0,255]".into()))
+        );
         assert_eq!(ctx.set_foreground(None, &v), Ok(()));
         assert_eq!(ctx.foreground_rgb(), (0xFF, 0xFF, 0xFF));
     }
     #[test]
     fn color_24() {
-        let mut ctx = ColorCtx::new(ColorScheme::Color24Bit,
-            ColorClassic::Yellow.rgb(), ColorClassic::Red.rgb());
+        let mut ctx = ColorCtx::new(
+            ColorScheme::Color24Bit,
+            ColorClassic::Yellow.rgb(),
+            ColorClassic::Red.rgb(),
+        );
         assert_eq!(ctx.foreground_rgb(), (0xFF, 0xFF, 0x00));
         assert_eq!(ctx.background_rgb(), (0xFF, 0x00, 0x00));
         let v = Value::ColorForeground(Some(Color::Legacy(10)));
@@ -1241,181 +1308,271 @@ mod test {
     }
     #[test]
     fn norm_cb() {
-		assert!(normalize("[cb1][CB255]") == "[cb1][cb255]");
-		assert!(normalize("[cb][cb256]") == "[cb]");
+        assert!(normalize("[cb1][CB255]") == "[cb1][cb255]");
+        assert!(normalize("[cb][cb256]") == "[cb]");
     }
     #[test]
     fn parse_cb1() {
         let mut m = Parser::new("[cb0][CB1][cB255][cb256][cb]");
-        assert!(m.next() == Some(Ok(Value::ColorBackground(Some(
-            Color::Legacy(0))))));
-        assert!(m.next() == Some(Ok(Value::ColorBackground(Some(
-            Color::Legacy(1))))));
-        assert!(m.next() == Some(Ok(Value::ColorBackground(Some(
-            Color::Legacy(255))))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "cb256".into()))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::ColorBackground(Some(Color::Legacy(0)))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::ColorBackground(Some(Color::Legacy(1)))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::ColorBackground(Some(Color::Legacy(255)))))
+        );
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("cb256".into())))
+        );
         assert!(m.next() == Some(Ok(Value::ColorBackground(None))));
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cb2() {
         let mut m = Parser::new("[cbX][cb0,0,0]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "cbX".into()))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "cb0,0,0".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("cbX".into())))
+        );
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "cb0,0,0".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn norm_pb() {
-		assert!(normalize("[pb0][PB255]") == "[pb0][pb255]");
-		assert!(normalize("[pb][pb256]") == "[pb]");
-		assert!(normalize("[pb0,0,0][PB255,255,255]") ==
-                          "[pb0,0,0][pb255,255,255]");
-		assert!(normalize("[pb256,0,0][PBx]") == "");
+        assert!(normalize("[pb0][PB255]") == "[pb0][pb255]");
+        assert!(normalize("[pb][pb256]") == "[pb]");
+        assert!(
+            normalize("[pb0,0,0][PB255,255,255]") == "[pb0,0,0][pb255,255,255]"
+        );
+        assert!(normalize("[pb256,0,0][PBx]") == "");
     }
     #[test]
     fn parse_pb1() {
         let mut m = Parser::new("[pb0][PB1][pB255][pb256][pb]");
-        assert!(m.next() == Some(Ok(Value::PageBackground(Some(
-            Color::Legacy(0))))));
-        assert!(m.next() == Some(Ok(Value::PageBackground(Some(
-            Color::Legacy(1))))));
-        assert!(m.next() == Some(Ok(Value::PageBackground(Some(
-            Color::Legacy(255))))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "pb256".into()))));
+        assert!(
+            m.next() == Some(Ok(Value::PageBackground(Some(Color::Legacy(0)))))
+        );
+        assert!(
+            m.next() == Some(Ok(Value::PageBackground(Some(Color::Legacy(1)))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::PageBackground(Some(Color::Legacy(255)))))
+        );
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("pb256".into())))
+        );
         assert!(m.next() == Some(Ok(Value::PageBackground(None))));
         assert!(m.next() == None);
     }
     #[test]
     fn parse_pb2() {
         let mut m = Parser::new("[pb0,0]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "pb0,0".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("pb0,0".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_pb3() {
         let mut m = Parser::new("[pb50,150,200]");
-        assert!(m.next() == Some(Ok(Value::PageBackground(Some(
-            Color::RGB(50, 150, 200))))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::PageBackground(Some(Color::RGB(
+                    50, 150, 200
+                )))))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_pb4() {
         let mut m = Parser::new("[pb0,0,255,0]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "pb0,0,255,0".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "pb0,0,255,0".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_pb5() {
         let mut m = Parser::new("[pb0,0.5,255]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "pb0,0.5,255".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "pb0,0.5,255".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn norm_cf() {
-		assert!(normalize("[cf0][CF255]") == "[cf0][cf255]");
-		assert!(normalize("[cf][cf256]") == "[cf]");
-		assert!(normalize("[cf0,0,0][CF255,255,255]") ==
-                          "[cf0,0,0][cf255,255,255]");
-		assert!(normalize("[cf256,0,0][CFx]") == "");
+        assert!(normalize("[cf0][CF255]") == "[cf0][cf255]");
+        assert!(normalize("[cf][cf256]") == "[cf]");
+        assert!(
+            normalize("[cf0,0,0][CF255,255,255]") == "[cf0,0,0][cf255,255,255]"
+        );
+        assert!(normalize("[cf256,0,0][CFx]") == "");
     }
     #[test]
     fn parse_cf1() {
         let mut m = Parser::new("[cf0][CF1][cF255][cf256][cf]");
-        assert!(m.next() == Some(Ok(Value::ColorForeground(Some(
-            Color::Legacy(0))))));
-        assert!(m.next() == Some(Ok(Value::ColorForeground(Some(
-            Color::Legacy(1))))));
-        assert!(m.next() == Some(Ok(Value::ColorForeground(Some(
-            Color::Legacy(255))))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "cf256".into()))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::ColorForeground(Some(Color::Legacy(0)))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::ColorForeground(Some(Color::Legacy(1)))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::ColorForeground(Some(Color::Legacy(255)))))
+        );
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("cf256".into())))
+        );
         assert!(m.next() == Some(Ok(Value::ColorForeground(None))));
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cf2() {
         let mut m = Parser::new("[cf0,0]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "cf0,0".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("cf0,0".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cf3() {
         let mut m = Parser::new("[cf255,0,208][CF0,a,0]");
-        assert!(m.next() == Some(Ok(Value::ColorForeground(Some(
-            Color::RGB(255, 0, 208))))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "CF0,a,0".into()))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::ColorForeground(Some(Color::RGB(
+                    255, 0, 208
+                )))))
+        );
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "CF0,a,0".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cf4() {
         let mut m = Parser::new("[cf0,0,255,0]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "cf0,0,255,0".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "cf0,0,255,0".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cf5() {
         let mut m = Parser::new("[cf0,0.5,255]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "cf0,0.5,255".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "cf0,0.5,255".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cr() {
         let mut m = Parser::new("[cr1,1,10,10,0]");
-        assert!(m.next() == Some(Ok(Value::ColorRectangle(Rectangle::new(
-            1, 1, 10, 10), Color::Legacy(0)))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::ColorRectangle(
+                    Rectangle::new(1, 1, 10, 10),
+                    Color::Legacy(0)
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cr2() {
         let mut m = Parser::new("[CR1,0,10,10,0]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "CR1,0,10,10,0".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "CR1,0,10,10,0".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cr3() {
         let mut m = Parser::new("[cR1,1,100,100,0,1]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "cR1,1,100,100,0,1".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "cR1,1,100,100,0,1".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cr4() {
         let mut m = Parser::new("[Cr5,7,100,80,100,150,200]");
-        assert!(m.next() == Some(Ok(Value::ColorRectangle(Rectangle::new(
-            5, 7, 100, 80), Color::RGB(100, 150, 200)))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::ColorRectangle(
+                    Rectangle::new(5, 7, 100, 80),
+                    Color::RGB(100, 150, 200)
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cr5() {
         let mut m = Parser::new("[cr1,1,100,100,0,1,2,3]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "cr1,1,100,100,0,1,2,3".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "cr1,1,100,100,0,1,2,3".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_cr6() {
         let mut m = Parser::new("[cr100,200,1000,2000,255,208,0]");
-        assert!(m.next() == Some(Ok(Value::ColorRectangle(Rectangle::new(
-            100, 200, 1000, 2000), Color::RGB(255, 208, 0)))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::ColorRectangle(
+                    Rectangle::new(100, 200, 1000, 2000),
+                    Color::RGB(255, 208, 0)
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_f() {
         let mut m = Parser::new("[F]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "F".into()))));
+        assert!(
+            m.next() == Some(Err(SyntaxError::UnsupportedTagValue("F".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1433,8 +1590,10 @@ mod test {
     #[test]
     fn parse_f3() {
         let mut m = Parser::new("[f100]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "f100".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("f100".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1446,50 +1605,68 @@ mod test {
     #[test]
     fn parse_fl() {
         let mut m = Parser::new("[flto]");
-        assert!(m.next() == Some(Ok(Value::Flash(FlashOrder::OnOff, None,
-            None))));
+        assert!(
+            m.next() == Some(Ok(Value::Flash(FlashOrder::OnOff, None, None)))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_fl2() {
         let mut m = Parser::new("[FLOT]");
-        assert!(m.next() == Some(Ok(Value::Flash(FlashOrder::OffOn, None,
-            None))));
+        assert!(
+            m.next() == Some(Ok(Value::Flash(FlashOrder::OffOn, None, None)))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_fl3() {
         let mut m = Parser::new("[Flt10o5]");
-        assert!(m.next() == Some(Ok(Value::Flash(FlashOrder::OnOff,
-            Some(10), Some(5)))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::Flash(FlashOrder::OnOff, Some(10), Some(5))))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_fl4() {
         let mut m = Parser::new("[fLo0t99]");
-        assert!(m.next() == Some(Ok(Value::Flash(FlashOrder::OffOn,
-            Some(0), Some(99)))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::Flash(FlashOrder::OffOn, Some(0), Some(99))))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_fl5() {
         let mut m = Parser::new("[flt10o5x]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "flt10o5x".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "flt10o5x".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_fl6() {
         let mut m = Parser::new("[flt10o100]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "flt10o100".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "flt10o100".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_fl7() {
         let mut m = Parser::new("[flt10o10o10]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "flt10o10o10".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "flt10o10o10".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1501,8 +1678,10 @@ mod test {
     #[test]
     fn parse_fle1() {
         let mut m = Parser::new("[/fl1]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "/fl1".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("/fl1".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1532,22 +1711,34 @@ mod test {
     #[test]
     fn parse_fo4() {
         let mut m = Parser::new("[FO4,FFFFF]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "FO4,FFFFF".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "FO4,FFFFF".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_fo5() {
         let mut m = Parser::new("[fo5,xxxx]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "fo5,xxxx".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "fo5,xxxx".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_fo6() {
         let mut m = Parser::new("[fo6,0000,0]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "fo6,0000,0".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "fo6,0000,0".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1559,15 +1750,18 @@ mod test {
     #[test]
     fn parse_fo8() {
         let mut m = Parser::new("[fo0]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "fo0".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("fo0".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_g() {
         let mut m = Parser::new("[G]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "G".into()))));
+        assert!(
+            m.next() == Some(Err(SyntaxError::UnsupportedTagValue("G".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1585,50 +1779,69 @@ mod test {
     #[test]
     fn parse_g3() {
         let mut m = Parser::new("[g3,1]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "g3,1".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("g3,1".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_g4() {
         let mut m = Parser::new("[g4,1,1,0123]");
-        assert!(m.next() == Some(Ok(Value::Graphic(4, Some((1, 1,
-            Some(0x0123)))))));
+        assert!(
+            m.next() == Some(Ok(Value::Graphic(4, Some((1, 1, Some(0x0123))))))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_g5() {
         let mut m = Parser::new("[g5,1,0,0123]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "g5,1,0,0123".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "g5,1,0,0123".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_g6() {
         let mut m = Parser::new("[g6,300,300,12345]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "g6,300,300,12345".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "g6,300,300,12345".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_g7() {
         let mut m = Parser::new("[g7,30,30,1245,]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "g7,30,30,1245,".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "g7,30,30,1245,".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_g8() {
         let mut m = Parser::new("[G8,50,50,Beef]");
-        assert!(m.next() == Some(Ok(Value::Graphic(8, Some((50, 50,
-            Some(0xbeef)))))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::Graphic(8, Some((50, 50, Some(0xbeef))))))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_hc() {
         let mut m = Parser::new("[hc]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "hc".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("hc".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1646,15 +1859,21 @@ mod test {
     #[test]
     fn parse_hc3() {
         let mut m = Parser::new("[hc1FFFF]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "hc1FFFF".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "hc1FFFF".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_hc4() {
         let mut m = Parser::new("[hcXXxx]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "hcXXxx".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("hcXXxx".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1672,23 +1891,45 @@ mod test {
     #[test]
     fn parse_jl0() {
         let mut m = Parser::new("[JL0]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "JL0".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("JL0".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_jl15() {
         let mut m = Parser::new("[jL1][Jl2][JL3][jl4][JL5]");
-        assert!(m.next() == Some(Ok(Value::JustificationLine(Some(
-            LineJustification::Other)))));
-        assert!(m.next() == Some(Ok(Value::JustificationLine(Some(
-            LineJustification::Left)))));
-        assert!(m.next() == Some(Ok(Value::JustificationLine(Some(
-            LineJustification::Center)))));
-        assert!(m.next() == Some(Ok(Value::JustificationLine(Some(
-            LineJustification::Right)))));
-        assert!(m.next() == Some(Ok(Value::JustificationLine(Some(
-            LineJustification::Full)))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::JustificationLine(Some(
+                    LineJustification::Other
+                ))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::JustificationLine(Some(
+                    LineJustification::Left
+                ))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::JustificationLine(Some(
+                    LineJustification::Center
+                ))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::JustificationLine(Some(
+                    LineJustification::Right
+                ))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::JustificationLine(Some(
+                    LineJustification::Full
+                ))))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1700,21 +1941,39 @@ mod test {
     #[test]
     fn parse_jp0() {
         let mut m = Parser::new("[JP0]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "JP0".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("JP0".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_jp14() {
         let mut m = Parser::new("[jP1][Jp2][JP3][jp4]");
-        assert!(m.next() == Some(Ok(Value::JustificationPage(Some(
-            PageJustification::Other)))));
-        assert!(m.next() == Some(Ok(Value::JustificationPage(Some(
-            PageJustification::Top)))));
-        assert!(m.next() == Some(Ok(Value::JustificationPage(Some(
-            PageJustification::Middle)))));
-        assert!(m.next() == Some(Ok(Value::JustificationPage(Some(
-            PageJustification::Bottom)))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::JustificationPage(Some(
+                    PageJustification::Other
+                ))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::JustificationPage(Some(
+                    PageJustification::Top
+                ))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::JustificationPage(Some(
+                    PageJustification::Middle
+                ))))
+        );
+        assert!(
+            m.next()
+                == Some(Ok(Value::JustificationPage(Some(
+                    PageJustification::Bottom
+                ))))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1726,22 +1985,34 @@ mod test {
     #[test]
     fn parse_ms1() {
         let mut m = Parser::new("[Ms1,Test]");
-        assert!(m.next() == Some(Ok(Value::ManufacturerSpecific(1, Some(
-            "Test".into())))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::ManufacturerSpecific(
+                    1,
+                    Some("Test".into())
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_ms2() {
         let mut m = Parser::new("[Ms999,RANDOM junk]");
-        assert!(m.next() == Some(Ok(Value::ManufacturerSpecific(999, Some(
-            "RANDOM junk".into())))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::ManufacturerSpecific(
+                    999,
+                    Some("RANDOM junk".into())
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_ms3() {
         let mut m = Parser::new("[Ms9x9]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "Ms9x9".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("Ms9x9".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1753,113 +2024,196 @@ mod test {
     #[test]
     fn parse_mse1() {
         let mut m = Parser::new("[/Ms1,Test]");
-        assert!(m.next() == Some(Ok(Value::ManufacturerSpecificEnd(1, Some(
-            "Test".into())))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::ManufacturerSpecificEnd(
+                    1,
+                    Some("Test".into())
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mse2() {
         let mut m = Parser::new("[/Ms999,RANDOM junk]");
-        assert!(m.next() == Some(Ok(Value::ManufacturerSpecificEnd(999, Some(
-            "RANDOM junk".into())))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::ManufacturerSpecificEnd(
+                    999,
+                    Some("RANDOM junk".into())
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mse3() {
         let mut m = Parser::new("[/Ms9x9]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "/Ms9x9".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("/Ms9x9".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv() {
         let mut m = Parser::new("[mv]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "mv".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("mv".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv1() {
         let mut m = Parser::new("[mvc]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "mvc".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("mvc".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv2() {
         let mut m = Parser::new("[mvcl]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "mvcl".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("mvcl".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv3() {
         let mut m = Parser::new("[mvcl100]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "mvcl100".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "mvcl100".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv4() {
         let mut m = Parser::new("[mvcl100,1]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "mvcl100,1".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "mvcl100,1".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv5() {
         let mut m = Parser::new("[mvcl100,1,10]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "mvcl100,1,10".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "mvcl100,1,10".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv6() {
         let mut m = Parser::new("[mvcl100,1,10,Text]");
-        assert!(m.next() == Some(Ok(Value::MovingText(MovingTextMode::Circular,
-            MovingTextDirection::Left, 100, 1, 10, "Text".into()))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::MovingText(
+                    MovingTextMode::Circular,
+                    MovingTextDirection::Left,
+                    100,
+                    1,
+                    10,
+                    "Text".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv7() {
         let mut m = Parser::new("[mvcr150,2,5,*MOVING*]");
-        assert!(m.next() == Some(Ok(Value::MovingText(MovingTextMode::Circular,
-            MovingTextDirection::Right, 150, 2, 5, "*MOVING*".into()))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::MovingText(
+                    MovingTextMode::Circular,
+                    MovingTextDirection::Right,
+                    150,
+                    2,
+                    5,
+                    "*MOVING*".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv8() {
         let mut m = Parser::new("[mvll75,3,4,Linear]");
-        assert!(m.next() == Some(Ok(Value::MovingText(MovingTextMode::Linear(0),
-            MovingTextDirection::Left, 75, 3, 4, "Linear".into()))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::MovingText(
+                    MovingTextMode::Linear(0),
+                    MovingTextDirection::Left,
+                    75,
+                    3,
+                    4,
+                    "Linear".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv9() {
         let mut m = Parser::new("[mvlr1000,4,5,right]");
-        assert!(m.next() == Some(Ok(Value::MovingText(MovingTextMode::Linear(0),
-            MovingTextDirection::Right, 1000, 4, 5, "right".into()))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::MovingText(
+                    MovingTextMode::Linear(0),
+                    MovingTextDirection::Right,
+                    1000,
+                    4,
+                    5,
+                    "right".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv10() {
         let mut m = Parser::new("[mvl2l100,5,1,left]");
-        assert!(m.next() == Some(Ok(Value::MovingText(MovingTextMode::Linear(2),
-            MovingTextDirection::Left, 100, 5, 1, "left".into()))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::MovingText(
+                    MovingTextMode::Linear(2),
+                    MovingTextDirection::Left,
+                    100,
+                    5,
+                    1,
+                    "left".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv11() {
         let mut m = Parser::new("[mvl4x100,5,1,left]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "mvl4x100,5,1,left".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "mvl4x100,5,1,left".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_mv12() {
         let mut m = Parser::new("[mvl4r100,5,300,left]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "mvl4r100,5,300,left".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "mvl4r100,5,300,left".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1889,8 +2243,12 @@ mod test {
     #[test]
     fn parse_pt4() {
         let mut m = Parser::new("[pt10o2o]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "pt10o2o".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "pt10o2o".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1908,22 +2266,30 @@ mod test {
     #[test]
     fn parse_pt7() {
         let mut m = Parser::new("[pt256o256]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "pt256o256".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "pt256o256".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_pt8() {
         let mut m = Parser::new("[pt%%%]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "pt%%%".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("pt%%%".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_sc() {
         let mut m = Parser::new("[sc]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "sc".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("sc".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1941,15 +2307,19 @@ mod test {
     #[test]
     fn parse_sc3() {
         let mut m = Parser::new("[sc100]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "sc100".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("sc100".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_sc4() {
         let mut m = Parser::new("[sc2,1]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "sc2,1".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("sc2,1".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -1961,50 +2331,72 @@ mod test {
     #[test]
     fn parse_sce1() {
         let mut m = Parser::new("[/sc1]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "/sc1".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("/sc1".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_tr() {
         let mut m = Parser::new("[tr1,1,10,10]");
-        assert!(m.next() == Some(Ok(Value::TextRectangle(Rectangle::new(
-            1, 1, 10, 10)))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::TextRectangle(Rectangle::new(1, 1, 10, 10))))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_tr2() {
         let mut m = Parser::new("[TR1,0,10,10]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "TR1,0,10,10".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "TR1,0,10,10".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_tr3() {
         let mut m = Parser::new("[tR1,1,100,100,1]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "tR1,1,100,100,1".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "tR1,1,100,100,1".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_tr4() {
         let mut m = Parser::new("[Tr5,7,100,80]");
-        assert!(m.next() == Some(Ok(Value::TextRectangle(Rectangle::new(
-            5, 7, 100, 80)))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::TextRectangle(Rectangle::new(
+                    5, 7, 100, 80
+                ))))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_tr5() {
         let mut m = Parser::new("[tr1,1,,100]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "tr1,1,,100".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue(
+                    "tr1,1,,100".into()
+                )))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_tr6() {
         let mut m = Parser::new("[tr1,1,0,0]");
-        assert!(m.next() == Some(Ok(Value::TextRectangle(Rectangle::new(
-            1, 1, 0, 0)))));
+        assert!(
+            m.next()
+                == Some(Ok(Value::TextRectangle(Rectangle::new(1, 1, 0, 0))))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -2014,8 +2406,10 @@ mod test {
         assert!(m.next() == Some(Ok(Value::NewLine(Some(0)))));
         assert!(m.next() == Some(Ok(Value::NewLine(Some(1)))));
         assert!(m.next() == Some(Ok(Value::NewLine(Some(9)))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "nl10".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTagValue("nl10".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -2039,17 +2433,21 @@ mod test {
     #[test]
     fn parse_rustacean() {
         let mut m = Parser::new("🦀🦀");
-        assert!(m.next() == Some(Err(SyntaxError::CharacterNotDefined('🦀'))));
-        assert!(m.next() == Some(Err(SyntaxError::CharacterNotDefined('🦀'))));
+        assert!(
+            m.next() == Some(Err(SyntaxError::CharacterNotDefined('🦀')))
+        );
+        assert!(
+            m.next() == Some(Err(SyntaxError::CharacterNotDefined('🦀')))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_tag() {
         let mut m = Parser::new("[x[x]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTagValue(
-            "x".into()))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag(
-            "x".into()))));
+        assert!(
+            m.next() == Some(Err(SyntaxError::UnsupportedTagValue("x".into())))
+        );
+        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag("x".into()))));
         assert!(m.next() == None);
     }
     #[test]
@@ -2061,8 +2459,9 @@ mod test {
     #[test]
     fn parse_tag3() {
         let mut m = Parser::new("[nl");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag(
-            "nl".into()))));
+        assert!(
+            m.next() == Some(Err(SyntaxError::UnsupportedTag("nl".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -2080,32 +2479,47 @@ mod test {
     #[test]
     fn parse_tag6() {
         let mut m = Parser::new("bad]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag(
-            "bad".into()))));
+        assert!(
+            m.next() == Some(Err(SyntaxError::UnsupportedTag("bad".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_tag7() {
         let mut m = Parser::new("[ttS123][vsa][slow45,10][feedL123][tz1,2,3]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag(
-            "ttS123".into()))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag(
-            "vsa".into()))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag(
-            "slow45,10".into()))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag(
-            "feedL123".into()))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag(
-            "tz1,2,3".into()))));
+        assert!(
+            m.next() == Some(Err(SyntaxError::UnsupportedTag("ttS123".into())))
+        );
+        assert!(
+            m.next() == Some(Err(SyntaxError::UnsupportedTag("vsa".into())))
+        );
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTag("slow45,10".into())))
+        );
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTag("feedL123".into())))
+        );
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTag("tz1,2,3".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
     fn parse_tag8() {
         let mut m = Parser::new("[pa1,LOW,CLOSED][loca,b,c,d]");
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag(
-            "pa1,LOW,CLOSED".into()))));
-        assert!(m.next() == Some(Err(SyntaxError::UnsupportedTag(
-            "loca,b,c,d".into()))));
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTag(
+                    "pa1,LOW,CLOSED".into()
+                )))
+        );
+        assert!(
+            m.next()
+                == Some(Err(SyntaxError::UnsupportedTag("loca,b,c,d".into())))
+        );
         assert!(m.next() == None);
     }
     #[test]
@@ -2118,51 +2532,51 @@ mod test {
         assert!(normalize("SPACE SPACE") == "SPACE SPACE");
         assert!(normalize("AB|C") == "AB|C");
         assert!(normalize("AB|{}{}C{}") == "AB|{}{}C{}");
-		assert!(normalize("!\"#$%&\'()*+,-./") == "!\"#$%&\'()*+,-./");
-		assert!(normalize(":;<=>?@\\^_`{|}~") == ":;<=>?@\\^_`{|}~");
-		assert!(normalize("[[") == "[[");
-		assert!(normalize("]]") == "]]");
-		assert!(normalize("[[NOT TAG]]") == "[[NOT TAG]]");
-		assert!(normalize("\t\n\rTAIL") == "TAIL");
+        assert!(normalize("!\"#$%&\'()*+,-./") == "!\"#$%&\'()*+,-./");
+        assert!(normalize(":;<=>?@\\^_`{|}~") == ":;<=>?@\\^_`{|}~");
+        assert!(normalize("[[") == "[[");
+        assert!(normalize("]]") == "]]");
+        assert!(normalize("[[NOT TAG]]") == "[[NOT TAG]]");
+        assert!(normalize("\t\n\rTAIL") == "TAIL");
     }
     #[test]
     fn norm_2() {
-		assert!(normalize("ABC[NL]DEF") == "ABC[nl]DEF");
-		assert!(normalize("ABC[nl3]DEF") == "ABC[nl3]DEF");
-		assert!(normalize("ABC[np]DEF") == "ABC[np]DEF");
-		assert!(normalize("ABC[jl4]DEF") == "ABC[jl4]DEF");
-		assert!(normalize("ABC[jl6]DEF") == "ABCDEF");
-		assert!(normalize("ABC[jp4]DEF") == "ABC[jp4]DEF");
-		assert!(normalize("[fo3]ABC DEF") == "[fo3]ABC DEF");
-		assert!(normalize("[fo3,beef]ABC DEF") == "[fo3,beef]ABC DEF");
-		assert!(normalize("[g1]") == "[g1]");
-		assert!(normalize("[g1_]") == "");
-		assert!(normalize("[g1,5,5]") == "[g1,5,5]");
-		assert!(normalize("[g1,5,5,beef]") == "[g1,5,5,beef]");
-		assert!(normalize("[g1,4,4,BEEF]") == "[g1,4,4,beef]");
-		assert!(normalize("[cf255,255,255]") == "[cf255,255,255]");
-		assert!(normalize("[cf0,255,255]") == "[cf0,255,255]");
-		assert!(normalize("[cf0,255,0]") == "[cf0,255,0]");
-		assert!(normalize("[pto]") == "[pto]");
-		assert!(normalize("[pt10o]") == "[pt10o]");
-		assert!(normalize("[pt10o5]") == "[pt10o5]");
-		assert!(normalize("[pto5]") == "[pto5]");
-		assert!(normalize("ABC[sc3]DEF") == "ABC[sc3]DEF");
-		assert!(normalize("ABC[sc3]DEF[/sc]GHI") == "ABC[sc3]DEF[/sc]GHI");
-		assert!(normalize("[tr1,1,40,20]") == "[tr1,1,40,20]");
-		assert!(normalize("[tr1,1,0,0]") == "[tr1,1,0,0]");
-		assert!(normalize("[pb0,128,255]") == "[pb0,128,255]");
+        assert!(normalize("ABC[NL]DEF") == "ABC[nl]DEF");
+        assert!(normalize("ABC[nl3]DEF") == "ABC[nl3]DEF");
+        assert!(normalize("ABC[np]DEF") == "ABC[np]DEF");
+        assert!(normalize("ABC[jl4]DEF") == "ABC[jl4]DEF");
+        assert!(normalize("ABC[jl6]DEF") == "ABCDEF");
+        assert!(normalize("ABC[jp4]DEF") == "ABC[jp4]DEF");
+        assert!(normalize("[fo3]ABC DEF") == "[fo3]ABC DEF");
+        assert!(normalize("[fo3,beef]ABC DEF") == "[fo3,beef]ABC DEF");
+        assert!(normalize("[g1]") == "[g1]");
+        assert!(normalize("[g1_]") == "");
+        assert!(normalize("[g1,5,5]") == "[g1,5,5]");
+        assert!(normalize("[g1,5,5,beef]") == "[g1,5,5,beef]");
+        assert!(normalize("[g1,4,4,BEEF]") == "[g1,4,4,beef]");
+        assert!(normalize("[cf255,255,255]") == "[cf255,255,255]");
+        assert!(normalize("[cf0,255,255]") == "[cf0,255,255]");
+        assert!(normalize("[cf0,255,0]") == "[cf0,255,0]");
+        assert!(normalize("[pto]") == "[pto]");
+        assert!(normalize("[pt10o]") == "[pt10o]");
+        assert!(normalize("[pt10o5]") == "[pt10o5]");
+        assert!(normalize("[pto5]") == "[pto5]");
+        assert!(normalize("ABC[sc3]DEF") == "ABC[sc3]DEF");
+        assert!(normalize("ABC[sc3]DEF[/sc]GHI") == "ABC[sc3]DEF[/sc]GHI");
+        assert!(normalize("[tr1,1,40,20]") == "[tr1,1,40,20]");
+        assert!(normalize("[tr1,1,0,0]") == "[tr1,1,0,0]");
+        assert!(normalize("[pb0,128,255]") == "[pb0,128,255]");
     }
     #[test]
     fn norm_3() {
-		assert!(normalize("[") == "");
-		assert!(normalize("]") == "");
-		assert!(normalize("[bad tag") == "");
-		assert!(normalize("bad tag]") == "");
-		assert!(normalize("bad[tag") == "bad");
-		assert!(normalize("bad]tag") == "tag");
-		assert!(normalize("bad[ [nl] tag") == "bad tag");
-		assert!(normalize("bad ]tag [nl]") == "tag [nl]");
-		assert!(normalize("[ttS123]") == "");
+        assert!(normalize("[") == "");
+        assert!(normalize("]") == "");
+        assert!(normalize("[bad tag") == "");
+        assert!(normalize("bad tag]") == "");
+        assert!(normalize("bad[tag") == "bad");
+        assert!(normalize("bad]tag") == "tag");
+        assert!(normalize("bad[ [nl] tag") == "bad tag");
+        assert!(normalize("bad ]tag [nl]") == "tag [nl]");
+        assert!(normalize("[ttS123]") == "");
     }
 }

@@ -55,9 +55,14 @@ impl Character {
     /// * `y` Top position of character (0-based).
     /// * `height` Font height in pixels.
     /// * `cf` Foreground color.
-    fn render_char(&self, page: &mut Raster<Rgb8>, x: u32, y: u32, height: u32,
-        cf: Rgb8)
-    {
+    fn render_char(
+        &self,
+        page: &mut Raster<Rgb8>,
+        x: u32,
+        y: u32,
+        height: u32,
+        cf: Rgb8,
+    ) {
         let width = self.width.into();
         debug!("render_char: {} @ {},{}", self.number, x, y);
         let mut xx = 0;
@@ -107,7 +112,7 @@ impl<'a> Font {
         if code_point <= std::u16::MAX.into() {
             let n = code_point as u16;
             if let Some(c) = self.characters.iter().find(|c| c.number == n) {
-                return Ok(c)
+                return Ok(c);
             }
         }
         Err(SyntaxError::CharacterNotDefined(ch))
@@ -116,9 +121,11 @@ impl<'a> Font {
     ///
     /// * `text` Span of text.
     /// * `cs` Character spacing in pixels.
-    pub fn text_width(&self, text: &str, cs: Option<u16>)
-        -> Result<u16, SyntaxError>
-    {
+    pub fn text_width(
+        &self,
+        text: &str,
+        cs: Option<u16>,
+    ) -> Result<u16, SyntaxError> {
         let mut width = 0;
         let cs = cs.unwrap_or(self.char_spacing.into());
         for ch in text.chars() {
@@ -138,9 +145,15 @@ impl<'a> Font {
     /// * `y` Top position of character (0-based).
     /// * `cs` Character spacing in pixels.
     /// * `cf` Foreground color.
-    pub fn render_text(&self, page: &mut Raster<Rgb8>, text: &str, x: u32,
-        y: u32, cs: u32, cf: Rgb8) -> Result<(), SyntaxError>
-    {
+    pub fn render_text(
+        &self,
+        page: &mut Raster<Rgb8>,
+        text: &str,
+        x: u32,
+        y: u32,
+        cs: u32,
+        cf: Rgb8,
+    ) -> Result<(), SyntaxError> {
         let height = self.height().into();
         debug!("render_text: {} @ {},{} height: {}", text, x, y, height);
         let mut xx = 0;

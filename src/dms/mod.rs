@@ -11,5 +11,5 @@ pub mod multi;
 mod render;
 
 pub use font::{Character, Font};
-pub use graphic::{Graphic};
+pub use graphic::Graphic;
 pub use render::{PageSplitter, State};

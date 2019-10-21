@@ -92,16 +92,17 @@ pub struct PageSplitter<'a> {
 
 impl State {
     /// Create a new render state.
-    pub fn new(color_ctx        : ColorCtx,
-               char_width       : u8,
-               char_height      : u8,
-               page_on_time_ds  : u8,
-               page_off_time_ds : u8,
-               text_rectangle   : Rectangle,
-               just_page        : PageJustification,
-               just_line        : LineJustification,
-               font             : (u8, Option<u16>)) -> Self
-    {
+    pub fn new(
+        color_ctx: ColorCtx,
+        char_width: u8,
+        char_height: u8,
+        page_on_time_ds: u8,
+        page_off_time_ds: u8,
+        text_rectangle: Rectangle,
+        just_page: PageJustification,
+        just_line: LineJustification,
+        font: (u8, Option<u16>),
+    ) -> Self {
         State {
             color_ctx,
             char_width,
@@ -143,9 +144,12 @@ impl State {
         }
     }
     /// Update the text rectangle.
-    fn update_text_rectangle(&mut self, default_state: &State,
-        r: Rectangle, v: &Value) -> Result<()>
-    {
+    fn update_text_rectangle(
+        &mut self,
+        default_state: &State,
+        r: Rectangle,
+        v: &Value,
+    ) -> Result<()> {
         let r = r.match_width_height(&default_state.text_rectangle);
         if !default_state.text_rectangle.contains(&r) {
             return Err(SyntaxError::UnsupportedTagValue(v.into()));
@@ -181,15 +185,15 @@ impl State {
     }
     /// Check if states match for text spans
     fn matches_span(&self, other: &State) -> bool {
-        self.text_rectangle == other.text_rectangle &&
-        self.just_page      == other.just_page &&
-        self.line_number    == other.line_number &&
-        self.just_line      == other.just_line
+        self.text_rectangle == other.text_rectangle
+            && self.just_page == other.just_page
+            && self.line_number == other.line_number
+            && self.just_line == other.just_line
     }
     /// Check if states match for lines
     fn matches_line(&self, other: &State) -> bool {
-        self.text_rectangle == other.text_rectangle &&
-        self.just_page      == other.just_page
+        self.text_rectangle == other.text_rectangle
+            && self.just_page == other.just_page
     }
 }
 
@@ -227,9 +231,11 @@ impl<'a> TextSpan {
         }
     }
     /// Get the char spacing from a previous span
-    fn char_spacing_between(&self, prev: &TextSpan, fonts: &HashMap<u8, Font>)
-        -> Result<u16>
-    {
+    fn char_spacing_between(
+        &self,
+        prev: &TextSpan,
+        fonts: &HashMap<u8, Font>,
+    ) -> Result<u16> {
         if let Some(c) = self.state.char_spacing {
             Ok(c.into())
         } else {
@@ -257,9 +263,13 @@ impl<'a> TextSpan {
         }
     }
     /// Render the text span
-    fn render_text(&self, page: &mut Raster<Rgb8>, font: &Font, x: u32, y: u32)
-        -> Result<()>
-    {
+    fn render_text(
+        &self,
+        page: &mut Raster<Rgb8>,
+        font: &Font,
+        x: u32,
+        y: u32,
+    ) -> Result<()> {
         let cs = self.char_spacing_font(font).into();
         let cf = self.state.foreground_rgb();
         Ok(font.render_text(page, &self.text, x, y, cs, cf)?)
@@ -269,7 +279,11 @@ impl<'a> TextSpan {
 impl TextLine {
     /// Create a new text line
     fn new(height: u16, font_spacing: u16, line_spacing: Option<u16>) -> Self {
-        TextLine { height, font_spacing, line_spacing }
+        TextLine {
+            height,
+            font_spacing,
+            line_spacing,
+        }
     }
     /// Combine a text line with another
     fn combine(&mut self, other: &TextLine) {
@@ -298,7 +312,11 @@ impl PageRenderer {
     fn new(state: State) -> Self {
         let values = vec![];
         let spans = vec![];
-        PageRenderer { state, values, spans }
+        PageRenderer {
+            state,
+            values,
+            spans,
+        }
     }
     /// Check page and line justification ordering
     fn check_justification(&self) -> Result<()> {
@@ -311,9 +329,9 @@ impl PageRenderer {
             let just_page = s.state.just_page;
             let just_line = s.state.just_line;
             let line_number = s.state.line_number;
-            if text_rectangle == tr &&
-              (just_page < jp ||
-              (just_page == jp && line_number == ln && just_line < jl))
+            if text_rectangle == tr
+                && (just_page < jp
+                    || (just_page == jp && line_number == ln && just_line < jl))
             {
                 return Err(SyntaxError::TagConflict);
             }
@@ -341,9 +359,11 @@ impl PageRenderer {
         RasterBuilder::new().with_color(w.into(), h.into(), clr)
     }
     /// Render the page.
-    pub fn render_page(&self, fonts: &HashMap<u8, Font>,
-        graphics: &HashMap<u8, Graphic>) -> Result<Raster<Rgb8>>
-    {
+    pub fn render_page(
+        &self,
+        fonts: &HashMap<u8, Font>,
+        graphics: &HashMap<u8, Graphic>,
+    ) -> Result<Raster<Rgb8>> {
         let rs = &self.state;
         let w = rs.text_rectangle.w.into();
         let h = rs.text_rectangle.h.into();
@@ -355,21 +375,23 @@ impl PageRenderer {
                     let (r, g, b) = ctx.foreground_rgb();
                     let clr = Rgb8::new(r, g, b);
                     self.render_rect(&mut page, *rect, clr, v)?;
-                },
+                }
                 Value::Graphic(gn, None) => {
                     let n = *gn;
-                    let g = graphics.get(&n)
-                                    .ok_or(SyntaxError::GraphicNotDefined(*gn))?;
+                    let g = graphics
+                        .get(&n)
+                        .ok_or(SyntaxError::GraphicNotDefined(*gn))?;
                     g.render_graphic(&mut page, 1, 1, ctx)?;
-                },
-                Value::Graphic(gn, Some((x,y,_))) => {
+                }
+                Value::Graphic(gn, Some((x, y, _))) => {
                     let n = *gn;
-                    let g = graphics.get(&n)
-                                    .ok_or(SyntaxError::GraphicNotDefined(*gn))?;
+                    let g = graphics
+                        .get(&n)
+                        .ok_or(SyntaxError::GraphicNotDefined(*gn))?;
                     let x = (*x).into();
                     let y = (*y).into();
                     g.render_graphic(&mut page, x, y, ctx)?;
-                },
+                }
                 _ => unreachable!(),
             }
         }
@@ -382,9 +404,13 @@ impl PageRenderer {
         Ok(page)
     }
     /// Render a color rectangle
-    fn render_rect(&self, page: &mut Raster<Rgb8>, r: Rectangle, clr: Rgb8,
-        v: &Value) -> Result<()>
-    {
+    fn render_rect(
+        &self,
+        page: &mut Raster<Rgb8>,
+        r: Rectangle,
+        clr: Rgb8,
+        v: &Value,
+    ) -> Result<()> {
         let rx = <u32>::from(r.x) - 1; // r.x must be > 0
         let ry = <u32>::from(r.y) - 1; // r.y must be > 0
         let rw = r.w.into();
@@ -402,24 +428,28 @@ impl PageRenderer {
     /// Get the X position of a text span.
     fn span_x(&self, s: &TextSpan, fonts: &HashMap<u8, Font>) -> Result<u16> {
         match s.state.just_line {
-            LineJustification::Left   => self.span_x_left(s, fonts),
+            LineJustification::Left => self.span_x_left(s, fonts),
             LineJustification::Center => self.span_x_center(s, fonts),
-            LineJustification::Right  => self.span_x_right(s, fonts),
-            _                         => unreachable!(),
+            LineJustification::Right => self.span_x_right(s, fonts),
+            _ => unreachable!(),
         }
     }
     /// Get the X position of a left-justified text span.
-    fn span_x_left(&self, span: &TextSpan, fonts: &HashMap<u8, Font>)
-        -> Result<u16>
-    {
+    fn span_x_left(
+        &self,
+        span: &TextSpan,
+        fonts: &HashMap<u8, Font>,
+    ) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let (before, _) = self.offset_horiz(span, fonts)?;
         Ok(left + before)
     }
     /// Get the X position of a center-justified text span.
-    fn span_x_center(&self, span: &TextSpan, fonts: &HashMap<u8, Font>)
-        -> Result<u16>
-    {
+    fn span_x_center(
+        &self,
+        span: &TextSpan,
+        fonts: &HashMap<u8, Font>,
+    ) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let w = span.state.text_rectangle.w;
         let (before, after) = self.offset_horiz(span, fonts)?;
@@ -430,9 +460,11 @@ impl PageRenderer {
         Ok((x / cw) * cw)
     }
     /// Get the X position of a right-justified span
-    fn span_x_right(&self, span: &TextSpan, fonts: &HashMap<u8, Font>)
-        -> Result<u16>
-    {
+    fn span_x_right(
+        &self,
+        span: &TextSpan,
+        fonts: &HashMap<u8, Font>,
+    ) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let w = span.state.text_rectangle.w;
         let (_, after) = self.offset_horiz(span, fonts)?;
@@ -441,9 +473,11 @@ impl PageRenderer {
     /// Calculate horizontal offsets of a span.
     ///
     /// Returns a tuple of (before, after) widths of matching spans.
-    fn offset_horiz(&self, span: &TextSpan, fonts: &HashMap<u8, Font>)
-        -> Result<(u16, u16)>
-    {
+    fn offset_horiz(
+        &self,
+        span: &TextSpan,
+        fonts: &HashMap<u8, Font>,
+    ) -> Result<(u16, u16)> {
         debug!("offset_horiz '{}'", span.text);
         let rs = &span.state;
         let mut before = 0;
@@ -452,13 +486,19 @@ impl PageRenderer {
         for s in self.spans.iter().filter(|s| rs.matches_span(&s.state)) {
             if let Some(ps) = pspan {
                 let w = s.char_spacing_between(ps, fonts)?;
-                if s.state.span_number <= rs.span_number { before += w }
-                else { after += w }
+                if s.state.span_number <= rs.span_number {
+                    before += w
+                } else {
+                    after += w
+                }
                 debug!("  spacing {} before {} after {}", w, before, after);
             }
             let w = s.width(fonts)?;
-            if s.state.span_number < rs.span_number { before += w }
-            else { after += w }
+            if s.state.span_number < rs.span_number {
+                before += w
+            } else {
+                after += w
+            }
             debug!("  span '{}'  before {} after {}", s.text, before, after);
             pspan = Some(s);
         }
@@ -478,24 +518,28 @@ impl PageRenderer {
     /// Get the baseline of a text span.
     fn baseline(&self, s: &TextSpan, fonts: &HashMap<u8, Font>) -> Result<u16> {
         match s.state.just_page {
-            PageJustification::Top    => self.baseline_top(s, fonts),
+            PageJustification::Top => self.baseline_top(s, fonts),
             PageJustification::Middle => self.baseline_middle(s, fonts),
             PageJustification::Bottom => self.baseline_bottom(s, fonts),
-            _                         => unreachable!(),
+            _ => unreachable!(),
         }
     }
     /// Get the baseline of a top-justified span
-    fn baseline_top(&self, span: &TextSpan, fonts: &HashMap<u8, Font>)
-        -> Result<u16>
-    {
+    fn baseline_top(
+        &self,
+        span: &TextSpan,
+        fonts: &HashMap<u8, Font>,
+    ) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let (above, _) = self.offset_vert(span, fonts)?;
         Ok(top + above)
     }
     /// Get the baseline of a middle-justified span
-    fn baseline_middle(&self, span: &TextSpan, fonts: &HashMap<u8, Font>)
-        -> Result<u16>
-    {
+    fn baseline_middle(
+        &self,
+        span: &TextSpan,
+        fonts: &HashMap<u8, Font>,
+    ) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let h = span.state.text_rectangle.h;
         let (above, below) = self.offset_vert(span, fonts)?;
@@ -506,9 +550,11 @@ impl PageRenderer {
         Ok((y / ch) * ch)
     }
     /// Get the baseline of a bottom-justified span
-    fn baseline_bottom(&self, span: &TextSpan, fonts: &HashMap<u8, Font>)
-        -> Result<u16>
-    {
+    fn baseline_bottom(
+        &self,
+        span: &TextSpan,
+        fonts: &HashMap<u8, Font>,
+    ) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let h = span.state.text_rectangle.h;
         let (_, below) = self.offset_vert(span, fonts)?;
@@ -517,12 +563,14 @@ impl PageRenderer {
     /// Calculate vertical offset of a span.
     ///
     /// Returns a tuple of (above, below) heights of matching lines.
-    fn offset_vert(&self, span: &TextSpan, fonts: &HashMap<u8, Font>)
-        -> Result<(u16, u16)>
-    {
+    fn offset_vert(
+        &self,
+        span: &TextSpan,
+        fonts: &HashMap<u8, Font>,
+    ) -> Result<(u16, u16)> {
         debug!("offset_vert '{}'", span.text);
         let rs = &span.state;
-        let mut lines = vec!();
+        let mut lines = vec![];
         for s in self.spans.iter().filter(|s| rs.matches_line(&s.state)) {
             let ln: usize = s.state.line_number.into();
             let h = s.height(fonts)?;
@@ -542,13 +590,19 @@ impl PageRenderer {
             let line = &lines[ln];
             if ln > 0 {
                 let h = line.spacing(&lines[ln - 1]);
-                if ln <= sln { above += h }
-                else { below += h }
+                if ln <= sln {
+                    above += h
+                } else {
+                    below += h
+                }
                 debug!("  spacing {}  above {} below {}", h, above, below);
             }
             let h = line.height;
-            if ln <= sln { above += h }
-            else { below += h }
+            if ln <= sln {
+                above += h
+            } else {
+                below += h
+            }
             debug!("  line {}  above {} below {}", ln, above, below);
         }
         if above + below <= span.state.text_rectangle.h {
@@ -569,7 +623,13 @@ impl<'a> PageSplitter<'a> {
         let state = default_state.clone();
         let more_pages = true;
         let line_blank = true;
-        PageSplitter { default_state, state, parser, more_pages, line_blank }
+        PageSplitter {
+            default_state,
+            state,
+            parser,
+            more_pages,
+            line_blank,
+        }
     }
     /// Make the next page.
     fn make_page(&mut self) -> Result<PageRenderer> {
@@ -578,7 +638,9 @@ impl<'a> PageSplitter<'a> {
         let mut page = PageRenderer::new(self.page_state());
         while let Some(v) = self.parser.next() {
             self.update_state(v?, &mut page)?;
-            if self.more_pages { break; }
+            if self.more_pages {
+                break;
+            }
         }
         page.check_justification()?;
         Ok(page)
@@ -595,7 +657,11 @@ impl<'a> PageSplitter<'a> {
     ///
     /// * `v` MULTI value.
     /// * `page` Page renderer.
-    fn update_state(&mut self, v: Value, page: &mut PageRenderer) -> Result<()> {
+    fn update_state(
+        &mut self,
+        v: Value,
+        page: &mut PageRenderer,
+    ) -> Result<()> {
         let ds = &self.default_state;
         let mut rs = &mut self.state;
         match v {
@@ -603,39 +669,39 @@ impl<'a> PageSplitter<'a> {
                 // This tag remains for backward compatibility with 1203v1
                 rs.color_ctx.set_background(c, &v)?;
                 page.state.color_ctx.set_background(c, &v)?;
-            },
+            }
             Value::ColorForeground(c) => {
                 rs.color_ctx.set_foreground(c, &v)?;
-            },
+            }
             Value::ColorRectangle(_, c) => {
                 let mut ctx = rs.color_ctx.clone();
                 // only set foreground color in cloned context
                 ctx.set_foreground(Some(c), &v)?;
                 page.values.push((v, ctx));
-            },
-            Value::Font(None) => { rs.font = ds.font },
-            Value::Font(Some(f)) => { rs.font = f },
-            Value::Graphic(_, _) =>  {
+            }
+            Value::Font(None) => rs.font = ds.font,
+            Value::Font(Some(f)) => rs.font = f,
+            Value::Graphic(_, _) => {
                 page.values.push((v, rs.color_ctx.clone()));
-            },
+            }
             Value::JustificationLine(Some(LineJustification::Other)) => {
                 return Err(SyntaxError::UnsupportedTagValue(v.into()));
-            },
+            }
             Value::JustificationLine(Some(LineJustification::Full)) => {
                 return Err(SyntaxError::UnsupportedTagValue(v.into()));
-            },
+            }
             Value::JustificationLine(jl) => {
                 rs.just_line = jl.unwrap_or(ds.just_line);
                 rs.span_number = 0;
-            },
+            }
             Value::JustificationPage(Some(PageJustification::Other)) => {
                 return Err(SyntaxError::UnsupportedTagValue(v.into()));
-            },
+            }
             Value::JustificationPage(jp) => {
                 rs.just_page = jp.unwrap_or(ds.just_page);
                 rs.line_number = 0;
                 rs.span_number = 0;
-            },
+            }
             Value::NewLine(ls) => {
                 if !rs.is_full_matrix() {
                     if let Some(_) = ls {
@@ -650,45 +716,46 @@ impl<'a> PageSplitter<'a> {
                 rs.line_spacing = ls;
                 rs.line_number += 1;
                 rs.span_number = 0;
-            },
+            }
             Value::NewPage() => {
                 rs.line_number = 0;
                 rs.span_number = 0;
                 self.more_pages = true;
-            },
+            }
             Value::PageBackground(c) => {
                 rs.color_ctx.set_background(c, &v)?;
                 page.state.color_ctx.set_background(c, &v)?;
-            },
+            }
             Value::PageTime(on, off) => {
                 rs.page_on_time_ds = on.unwrap_or(ds.page_on_time_ds);
                 rs.page_off_time_ds = off.unwrap_or(ds.page_off_time_ds);
                 page.state.page_on_time_ds = on.unwrap_or(ds.page_on_time_ds);
-                page.state.page_off_time_ds = off.unwrap_or(ds.page_off_time_ds);
-            },
+                page.state.page_off_time_ds =
+                    off.unwrap_or(ds.page_off_time_ds);
+            }
             Value::SpacingCharacter(sc) => {
                 if rs.is_char_matrix() {
                     return Err(SyntaxError::UnsupportedTag(v.into()));
                 }
                 rs.char_spacing = Some(sc);
-            },
+            }
             Value::SpacingCharacterEnd() => {
                 if rs.is_char_matrix() {
                     return Err(SyntaxError::UnsupportedTag(v.into()));
                 }
                 rs.char_spacing = None;
-            },
+            }
             Value::TextRectangle(r) => {
                 self.line_blank = true;
                 rs.line_number = 0;
                 rs.span_number = 0;
                 rs.update_text_rectangle(ds, r, &v)?;
-            },
+            }
             Value::Text(t) => {
                 page.spans.push(TextSpan::new(rs.clone(), t));
                 rs.span_number += 1;
                 self.line_blank = false;
-            },
+            }
             Value::HexadecimalCharacter(hc) => {
                 match std::char::from_u32(hc.into()) {
                     Some(c) => {
@@ -697,17 +764,17 @@ impl<'a> PageSplitter<'a> {
                         page.spans.push(TextSpan::new(rs.clone(), t));
                         rs.span_number += 1;
                         self.line_blank = false;
-                    },
+                    }
                     None => {
                         // Invalid code point (surrogate in D800-DFFF range)
                         return Err(SyntaxError::UnsupportedTagValue(v.into()));
-                    },
+                    }
                 }
-            },
+            }
             _ => {
                 // Unsupported tags: [f], [fl], [ms], [mv]
                 return Err(SyntaxError::UnsupportedTag(v.into()));
-            },
+            }
         }
         Ok(())
     }
@@ -727,18 +794,24 @@ impl<'a> Iterator for PageSplitter<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::dms::multi::{ColorClassic, ColorCtx, ColorScheme};
     use super::*;
+    use crate::dms::multi::{ColorClassic, ColorCtx, ColorScheme};
     fn make_full_matrix() -> State {
-        State::new(ColorCtx::new(ColorScheme::Color24Bit,
-                                 ColorClassic::White.rgb(),
-                                 ColorClassic::Black.rgb()),
-                   0, 0,
-                   20, 0,
-                   Rectangle::new(1, 1, 60, 30),
-                   PageJustification::Top,
-                   LineJustification::Left,
-                   (1, None))
+        State::new(
+            ColorCtx::new(
+                ColorScheme::Color24Bit,
+                ColorClassic::White.rgb(),
+                ColorClassic::Black.rgb(),
+            ),
+            0,
+            0,
+            20,
+            0,
+            Rectangle::new(1, 1, 60, 30),
+            PageJustification::Top,
+            LineJustification::Left,
+            (1, None),
+        )
     }
     #[test]
     fn page_count() {
@@ -753,12 +826,17 @@ mod test {
         assert_eq!(pages.len(), 2);
         let pages: Vec<_> = PageSplitter::new(rs.clone(), "1[Np]2").collect();
         assert_eq!(pages.len(), 2);
-        let pages: Vec<_> = PageSplitter::new(rs.clone(), "1[np]2[nP]").collect();
+        let pages: Vec<_> =
+            PageSplitter::new(rs.clone(), "1[np]2[nP]").collect();
         assert_eq!(pages.len(), 3);
-        let pages: Vec<_> = PageSplitter::new(rs.clone(), "[fo6][nl]\
-            [jl2][cf255,255,255]RAMP A[jl4][cf255,255,0]FULL[nl]\
-            [jl2][cf255,255,255]RAMP B[jl4][cf255,255,0]FULL[nl]\
-            [jl2][cf255,255,255]RAMP C[jl4][cf255,255,0]FULL").collect();
+        let pages: Vec<_> = PageSplitter::new(
+            rs.clone(),
+            "[fo6][nl]\
+             [jl2][cf255,255,255]RAMP A[jl4][cf255,255,0]FULL[nl]\
+             [jl2][cf255,255,255]RAMP B[jl4][cf255,255,0]FULL[nl]\
+             [jl2][cf255,255,255]RAMP C[jl4][cf255,255,0]FULL",
+        )
+        .collect();
         assert_eq!(pages.len(), 1);
     }
     #[test]
@@ -769,7 +847,7 @@ mod test {
         let rs = p.state;
         assert_eq!(rs.page_on_time_ds, 20);
         assert_eq!(rs.page_off_time_ds, 0);
-        assert_eq!(rs.text_rectangle, Rectangle::new(1,1,60,30));
+        assert_eq!(rs.text_rectangle, Rectangle::new(1, 1, 60, 30));
         assert_eq!(rs.just_page, PageJustification::Top);
         assert_eq!(rs.just_line, LineJustification::Left);
         assert_eq!(rs.line_spacing, None);
@@ -777,8 +855,11 @@ mod test {
         assert_eq!(rs.char_width, 0);
         assert_eq!(rs.char_height, 0);
         assert_eq!(rs.font, (1, None));
-        let mut pages = PageSplitter::new(rs.clone(), "[pt10o2][cb9][pb5][cf3]\
-            [jp3][jl4][tr1,1,10,10][nl4][fo3,1234][sc2][np][pb][pt][cb][/sc]");
+        let mut pages = PageSplitter::new(
+            rs.clone(),
+            "[pt10o2][cb9][pb5][cf3]\
+             [jp3][jl4][tr1,1,10,10][nl4][fo3,1234][sc2][np][pb][pt][cb][/sc]",
+        );
         let p = pages.next().unwrap().unwrap();
         let rs = p.state;
         assert_eq!(rs.page_on_time_ds, 10);
@@ -793,7 +874,7 @@ mod test {
         let rs = p.state;
         assert_eq!(rs.page_on_time_ds, 20);
         assert_eq!(rs.page_off_time_ds, 0);
-        assert_eq!(rs.text_rectangle, Rectangle::new(1,1,60,30));
+        assert_eq!(rs.text_rectangle, Rectangle::new(1, 1, 60, 30));
         assert_eq!(rs.just_page, PageJustification::Middle);
         assert_eq!(rs.just_line, LineJustification::Right);
         assert_eq!(rs.line_spacing, None);
@@ -801,15 +882,21 @@ mod test {
         assert_eq!(rs.font, (3, Some(0x1234)));
     }
     fn make_char_matrix() -> State {
-        State::new(ColorCtx::new(ColorScheme::Monochrome1Bit,
-                                 ColorClassic::White.rgb(),
-                                 ColorClassic::Black.rgb()),
-                   5, 7,
-                   20, 0,
-                   Rectangle::new(1, 1, 100, 21),
-                   PageJustification::Top,
-                   LineJustification::Left,
-                   (1, None))
+        State::new(
+            ColorCtx::new(
+                ColorScheme::Monochrome1Bit,
+                ColorClassic::White.rgb(),
+                ColorClassic::Black.rgb(),
+            ),
+            5,
+            7,
+            20,
+            0,
+            Rectangle::new(1, 1, 100, 21),
+            PageJustification::Top,
+            LineJustification::Left,
+            (1, None),
+        )
     }
     #[test]
     fn page_char_matrix() {
@@ -817,21 +904,32 @@ mod test {
         let mut pages = PageSplitter::new(rs.clone(), "[tr1,1,12,12]");
         if let Some(Err(SyntaxError::UnsupportedTagValue(_))) = pages.next() {
             assert!(true);
-        } else { assert!(false) }
+        } else {
+            assert!(false)
+        }
         let mut pages = PageSplitter::new(rs.clone(), "[tr1,1,50,12]");
         if let Some(Err(SyntaxError::UnsupportedTagValue(_))) = pages.next() {
             assert!(true);
-        } else { assert!(false) }
+        } else {
+            assert!(false)
+        }
         let mut pages = PageSplitter::new(rs.clone(), "[tr1,1,12,14]");
         if let Some(Err(SyntaxError::UnsupportedTagValue(_))) = pages.next() {
             assert!(true);
-        } else { assert!(false) }
+        } else {
+            assert!(false)
+        }
         let mut pages = PageSplitter::new(rs.clone(), "[tr1,1,50,14]");
-        if let Some(Ok(_)) = pages.next() { assert!(true); }
-        else { assert!(false) }
+        if let Some(Ok(_)) = pages.next() {
+            assert!(true);
+        } else {
+            assert!(false)
+        }
         let mut pages = PageSplitter::new(rs.clone(), "[pb9]");
         if let Some(Err(SyntaxError::UnsupportedTagValue(_))) = pages.next() {
             assert!(true);
-        } else { assert!(false) }
+        } else {
+            assert!(false)
+        }
     }
 }

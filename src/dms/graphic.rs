@@ -57,9 +57,13 @@ impl Graphic {
         self.transparent_color
     }
     /// Render graphic onto a Raster
-    pub fn render_graphic(&self, page: &mut Raster<Rgb8>, x: u32, y: u32,
-        ctx: &ColorCtx) -> Result<(), SyntaxError>
-    {
+    pub fn render_graphic(
+        &self,
+        page: &mut Raster<Rgb8>,
+        x: u32,
+        y: u32,
+        ctx: &ColorCtx,
+    ) -> Result<(), SyntaxError> {
         let x = x - 1; // x must be > 0
         let y = y - 1; // y must be > 0
         let w = self.width();
@@ -82,15 +86,20 @@ impl Graphic {
     fn pixel_fn(&self) -> &PixFn {
         match self.color_scheme[..].into() {
             ColorScheme::Monochrome1Bit => &Graphic::pixel_1,
-            ColorScheme::Monochrome8Bit |
-            ColorScheme::ColorClassic => &Graphic::pixel_8,
+            ColorScheme::Monochrome8Bit | ColorScheme::ColorClassic => {
+                &Graphic::pixel_8
+            }
             ColorScheme::Color24Bit => &Graphic::pixel_24,
         }
     }
     /// Get one pixel of a monochrome 1-bit graphic
-    fn pixel_1(&self, x: u32, y: u32, ctx: &ColorCtx, buf: &[u8])
-        -> Option<Rgb8>
-    {
+    fn pixel_1(
+        &self,
+        x: u32,
+        y: u32,
+        ctx: &ColorCtx,
+        buf: &[u8],
+    ) -> Option<Rgb8> {
         let p = y * self.width() + x;
         let by = p as usize / 8;
         let bi = 7 - (p & 7);
@@ -109,9 +118,13 @@ impl Graphic {
         }
     }
     /// Get one pixel of an 8-bit (monochrome or classic) color graphic
-    fn pixel_8(&self, x: u32, y: u32, ctx: &ColorCtx, buf: &[u8])
-        -> Option<Rgb8>
-    {
+    fn pixel_8(
+        &self,
+        x: u32,
+        y: u32,
+        ctx: &ColorCtx,
+        buf: &[u8],
+    ) -> Option<Rgb8> {
         let p = y * self.width() + x;
         let v = buf[p as usize];
         if let Some(tc) = self.transparent_color {
@@ -124,13 +137,17 @@ impl Graphic {
             None => {
                 debug!("pixel_8 -- Bad color {}", v);
                 None
-            },
+            }
         }
     }
     /// Get one pixel of a 24-bit color graphic
-    fn pixel_24(&self, x: u32, y: u32, _ctx: &ColorCtx, buf: &[u8])
-        -> Option<Rgb8>
-    {
+    fn pixel_24(
+        &self,
+        x: u32,
+        y: u32,
+        _ctx: &ColorCtx,
+        buf: &[u8],
+    ) -> Option<Rgb8> {
         let p = 3 * (y * self.width() + x) as usize;
         let r = buf[p + 0];
         let g = buf[p + 1];

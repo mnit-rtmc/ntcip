@@ -5,7 +5,7 @@
 //! This module is for NTCIP 1203 DMS MULTI (Markup Language for Transportation
 //! Information).
 //!
-use log::warn;
+use log::{debug, warn};
 use std::fmt;
 use std::iter::Peekable;
 use std::str::Chars;
@@ -1153,6 +1153,7 @@ fn parse_tag(tag: &str) -> Result<Option<Value>, SyntaxError> {
 impl<'a> Parser<'a> {
     /// Create a new MULTI parser.
     pub fn new(m: &'a str) -> Self {
+        debug!("Parser::new {}", m);
         Parser {
             remaining: m.chars().peekable(),
             within_tag: false,

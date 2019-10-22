@@ -196,6 +196,7 @@ impl State {
     }
     /// Lookup current font in cache
     fn font<'a>(&self, fonts: &'a FontCache) -> Result<&'a Font> {
+        debug!("State::font {}", self.font_num);
         fonts.lookup(self.font_num, self.font_version_id)
     }
 }
@@ -362,6 +363,7 @@ impl PageRenderer {
         let rs = &self.state;
         let w = rs.text_rectangle.w.into();
         let h = rs.text_rectangle.h.into();
+        debug!("render_page: {}x{}", w, h);
         let clr = rs.background_rgb();
         let mut page = RasterBuilder::new().with_color(w, h, clr);
         for (v, ctx) in &self.values {
@@ -387,7 +389,7 @@ impl PageRenderer {
         for s in &self.spans {
             let x = self.span_x(s, fonts)?.into();
             let y = self.span_y(s, fonts)?.into();
-            let font = self.state.font(fonts)?;
+            let font = s.state.font(fonts)?;
             s.render_text(&mut page, &font, x, y)?;
         }
         Ok(page)

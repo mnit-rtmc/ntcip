@@ -72,7 +72,7 @@ impl Character {
         cf: Rgb8,
     ) {
         let width = self.width.into();
-        debug!("render_char: {} @ {},{}", self.number, x, y);
+        debug!("render_char: {} @ {},{} width: {}", self.number, x, y, width);
         let mut xx = 0;
         let mut yy = 0;
         for by in &self.bitmap {
@@ -159,6 +159,8 @@ impl<'a> Font {
         cf: Rgb8,
     ) -> Result<()> {
         let height = self.height().into();
+        debug!("render_text: font number {}, name {}", self.number(),
+            self.name());
         debug!("render_text: {} @ {},{} height: {}", text, x, y, height);
         let mut xx = 0;
         for ch in text.chars() {

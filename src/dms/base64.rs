@@ -19,6 +19,6 @@ pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let s = <&str>::deserialize(deserializer)?;
-    base64::decode(s).map_err(de::Error::custom)
+    let s = <String>::deserialize(deserializer)?;
+    base64::decode(&s).map_err(de::Error::custom)
 }

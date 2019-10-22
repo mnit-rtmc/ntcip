@@ -50,11 +50,11 @@ impl Graphic {
     }
     /// Get the height in pixels
     pub fn height(&self) -> u32 {
-        self.height as u32
+        self.height.into()
     }
     /// Get the width in pixels
     pub fn width(&self) -> u32 {
-        self.width as u32
+        self.width.into()
     }
     /// Get the color scheme
     pub fn color_scheme(&self) -> &str {
@@ -134,11 +134,9 @@ impl Graphic {
         buf: &[u8],
     ) -> Option<Rgb8> {
         let p = y * self.width() + x;
-        let v = buf[p as usize];
-        if let Some(tc) = self.transparent_color {
-            if tc == v as i32 {
-                return None;
-            }
+        let v: u8 = buf[p as usize];
+        if self.transparent_color == Some(v.into()) {
+            return None;
         }
         match ctx.rgb(Color::Legacy(v)) {
             Some((r, g, b)) => Some(Rgb8::new(r, g, b)),

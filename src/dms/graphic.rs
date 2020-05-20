@@ -1,14 +1,15 @@
 // graphic.rs
 //
-// Copyright (C) 2018-2019  Minnesota Department of Transportation
+// Copyright (C) 2018-2020  Minnesota Department of Transportation
 //
 //! This module is for NTCIP 1203 DMS graphics.
 //!
 use crate::dms::multi::{Color, ColorCtx, ColorScheme, SyntaxError};
 use crate::dms::Result;
 use log::debug;
-use pix::{Raster, Rgb8};
+use pix::{Raster, rgb::Rgb8};
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 /// An uncompressed DMS graphic
 #[derive(Deserialize, Serialize)]
@@ -37,7 +38,7 @@ pub struct GraphicCache {
 }
 
 /// Function to lookup a pixel from a graphic buffer
-type PixFn = dyn Fn(&Graphic, u32, u32, &ColorCtx, &[u8]) -> Option<Rgb8>;
+type PixFn = dyn Fn(&Graphic, i32, i32, &ColorCtx, &[u8]) -> Option<Rgb8>;
 
 impl Graphic {
     /// Get the number
@@ -68,15 +69,19 @@ impl Graphic {
     pub fn render_graphic(
         &self,
         page: &mut Raster<Rgb8>,
-        x: u32,
-        y: u32,
+        x: i32,
+        y: i32,
         ctx: &ColorCtx,
     ) -> Result<()> {
-        let x = x - 1; // x must be > 0
-        let y = y - 1; // y must be > 0
-        let w = self.width();
-        let h = self.height();
-        if x + w > page.width() || y + h > page.height() {
+        debug_assert!(x > 0);
+        debug_assert!(y > 0);
+        let x = x - 1;
+        let y = y - 1;
+        let w = self.width.into();
+        let h = self.height.into();
+        let width = i32::try_from(page.width()).unwrap();
+        let height = i32::try_from(page.height()).unwrap();
+        if x + w > width || y + h > height {
             // There is no GraphicTooBig syntax error
             return Err(SyntaxError::Other("Graphic too big"));
         }
@@ -84,7 +89,7 @@ impl Graphic {
         for yy in 0..h {
             for xx in 0..w {
                 if let Some(clr) = pix_fn(self, xx, yy, ctx, &self.bitmap) {
-                    page.set_pixel(x + xx, y + yy, clr);
+                    *page.pixel_mut(x + xx, y + yy) = clr;
                 }
             }
         }
@@ -103,12 +108,12 @@ impl Graphic {
     /// Get one pixel of a monochrome 1-bit graphic
     fn pixel_1(
         &self,
-        x: u32,
-        y: u32,
+        x: i32,
+        y: i32,
         ctx: &ColorCtx,
         buf: &[u8],
     ) -> Option<Rgb8> {
-        let p = y * self.width() + x;
+        let p = y * i32::from(self.width) + x;
         let by = p as usize / 8;
         let bi = 7 - (p & 7);
         let lit = ((buf[by] >> bi) & 1) != 0;
@@ -128,12 +133,12 @@ impl Graphic {
     /// Get one pixel of an 8-bit (monochrome or classic) color graphic
     fn pixel_8(
         &self,
-        x: u32,
-        y: u32,
+        x: i32,
+        y: i32,
         ctx: &ColorCtx,
         buf: &[u8],
     ) -> Option<Rgb8> {
-        let p = y * self.width() + x;
+        let p = y * i32::from(self.width) + x;
         let v: u8 = buf[p as usize];
         if self.transparent_color == Some(v.into()) {
             return None;
@@ -149,12 +154,12 @@ impl Graphic {
     /// Get one pixel of a 24-bit color graphic
     fn pixel_24(
         &self,
-        x: u32,
-        y: u32,
+        x: i32,
+        y: i32,
         _ctx: &ColorCtx,
         buf: &[u8],
     ) -> Option<Rgb8> {
-        let p = 3 * (y * self.width() + x) as usize;
+        let p = 3 * (y * i32::from(self.width) + x) as usize;
         let r = buf[p + 0];
         let g = buf[p + 1];
         let b = buf[p + 2];

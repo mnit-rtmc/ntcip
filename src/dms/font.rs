@@ -1,13 +1,13 @@
 // font.rs
 //
-// Copyright (C) 2018-2019  Minnesota Department of Transportation
+// Copyright (C) 2018-2020  Minnesota Department of Transportation
 //
 //! This module is for NTCIP 1203 DMS bitmap fonts.
 //!
 use crate::dms::multi::SyntaxError;
 use crate::dms::Result;
 use log::debug;
-use pix::{Raster, Rgb8};
+use pix::{Raster, rgb::Rgb8};
 use std::collections::HashMap;
 
 /// A character for a bitmap font
@@ -66,9 +66,9 @@ impl Character {
     fn render_char(
         &self,
         page: &mut Raster<Rgb8>,
-        x: u32,
-        y: u32,
-        height: u32,
+        x: i32,
+        y: i32,
+        height: i32,
         cf: Rgb8,
     ) {
         let width = self.width.into();
@@ -78,7 +78,7 @@ impl Character {
         for by in &self.bitmap {
             for bi in 0..8 {
                 if by >> (7 - bi) & 1u8 != 0u8 {
-                    page.set_pixel(x + xx, y + yy, cf);
+                    *page.pixel_mut(x + xx, y + yy) = cf;
                 }
                 xx += 1;
                 if xx >= width {
@@ -137,7 +137,7 @@ impl<'a> Font {
             if width > 0 {
                 width += cs;
             }
-            width += <u16>::from(c.width());
+            width += u16::from(c.width());
         }
         Ok(width)
     }
@@ -153,9 +153,9 @@ impl<'a> Font {
         &self,
         page: &mut Raster<Rgb8>,
         text: &str,
-        x: u32,
-        y: u32,
-        cs: u32,
+        x: i32,
+        y: i32,
+        cs: i32,
         cf: Rgb8,
     ) -> Result<()> {
         let height = self.height().into();
@@ -169,7 +169,7 @@ impl<'a> Font {
                 xx += cs;
             }
             c.render_char(page, x + xx, y, height, cf);
-            xx += <u32>::from(c.width());
+            xx += i32::from(c.width());
         }
         Ok(())
     }

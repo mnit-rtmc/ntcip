@@ -1,6 +1,6 @@
 // render.rs
 //
-// Copyright (C) 2018-2019  Minnesota Department of Transportation
+// Copyright (C) 2018-2020  Minnesota Department of Transportation
 //
 //! This module is for NTCIP 1203 DMS rendering.
 //!
@@ -10,7 +10,8 @@ use crate::dms::multi::{
 };
 use crate::dms::{Font, FontCache, GraphicCache, Result};
 use log::debug;
-use pix::{Raster, RasterBuilder, Rgb8};
+use pix::{Raster, rgb::Rgb8};
+use std::convert::TryFrom;
 
 /// Page render state
 #[derive(Clone)]
@@ -263,8 +264,8 @@ impl<'a> TextSpan {
         &self,
         page: &mut Raster<Rgb8>,
         font: &Font,
-        x: u32,
-        y: u32,
+        x: i32,
+        y: i32,
     ) -> Result<()> {
         let cs = self.char_spacing_font(font).into();
         let cf = self.state.foreground_rgb();
@@ -352,7 +353,7 @@ impl PageRenderer {
         let w = rs.text_rectangle.w;
         let h = rs.text_rectangle.h;
         let clr = rs.background_rgb();
-        RasterBuilder::new().with_color(w.into(), h.into(), clr)
+        Raster::with_color(w.into(), h.into(), clr)
     }
     /// Render the page.
     pub fn render_page(
@@ -365,7 +366,7 @@ impl PageRenderer {
         let h = rs.text_rectangle.h.into();
         debug!("render_page: {}x{}", w, h);
         let clr = rs.background_rgb();
-        let mut page = RasterBuilder::new().with_color(w, h, clr);
+        let mut page = Raster::with_color(w, h, clr);
         for (v, ctx) in &self.values {
             match v {
                 Value::ColorRectangle(rect, _) => {
@@ -402,14 +403,18 @@ impl PageRenderer {
         clr: Rgb8,
         v: &Value,
     ) -> Result<()> {
-        let rx = <u32>::from(r.x) - 1; // r.x must be > 0
-        let ry = <u32>::from(r.y) - 1; // r.y must be > 0
+        debug_assert!(r.x > 0);
+        debug_assert!(r.y > 0);
+        let rx = i32::from(r.x) - 1;
+        let ry = i32::from(r.y) - 1;
         let rw = r.w.into();
         let rh = r.h.into();
-        if rx + rw <= page.width() && ry + rh <= page.height() {
+        let width = i32::try_from(page.width()).unwrap();
+        let height = i32::try_from(page.height()).unwrap();
+        if rx + rw <= width && ry + rh <= height {
             for y in 0..rh {
                 for x in 0..rw {
-                    page.set_pixel(rx + x, ry + y, clr);
+                    *page.pixel_mut(rx + x, ry + y) = clr;
                 }
             }
             return Ok(());

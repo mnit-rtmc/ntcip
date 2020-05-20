@@ -77,8 +77,8 @@ impl Graphic {
         debug_assert!(y > 0);
         let x = x - 1;
         let y = y - 1;
-        let w = self.width.into();
-        let h = self.height.into();
+        let w = i32::from(self.width);
+        let h = i32::from(self.height);
         let width = i32::try_from(page.width()).unwrap();
         let height = i32::try_from(page.height()).unwrap();
         if x + w > width || y + h > height {

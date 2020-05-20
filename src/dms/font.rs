@@ -71,7 +71,7 @@ impl Character {
         height: i32,
         cf: Rgb8,
     ) {
-        let width = self.width.into();
+        let width = i32::from(self.width);
         debug!("render_char: {} @ {},{} width: {}", self.number, x, y, width);
         let mut xx = 0;
         let mut yy = 0;
@@ -116,8 +116,8 @@ impl<'a> Font {
     }
     /// Get a character
     pub fn character(&'a self, ch: char) -> Result<&'a Character> {
-        let code_point: u32 = ch.into();
-        if code_point <= std::u16::MAX.into() {
+        let code_point = u32::from(ch);
+        if code_point <= u32::from(std::u16::MAX) {
             let n = code_point as u16;
             if let Some(c) = self.characters.iter().find(|c| c.number == n) {
                 return Ok(c);
@@ -131,7 +131,7 @@ impl<'a> Font {
     /// * `cs` Character spacing in pixels.
     pub fn text_width(&self, text: &str, cs: Option<u16>) -> Result<u16> {
         let mut width = 0;
-        let cs = cs.unwrap_or(self.char_spacing.into());
+        let cs = cs.unwrap_or(u16::from(self.char_spacing));
         for ch in text.chars() {
             let c = self.character(ch)?;
             if width > 0 {
@@ -158,7 +158,7 @@ impl<'a> Font {
         cs: i32,
         cf: Rgb8,
     ) -> Result<()> {
-        let height = self.height().into();
+        let height = i32::from(self.height());
         debug!("render_text: font number {}, name {}", self.number(),
             self.name());
         debug!("render_text: {} @ {},{} height: {}", text, x, y, height);

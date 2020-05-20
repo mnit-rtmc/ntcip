@@ -407,8 +407,8 @@ impl PageRenderer {
         debug_assert!(r.y > 0);
         let rx = i32::from(r.x) - 1;
         let ry = i32::from(r.y) - 1;
-        let rw = r.w.into();
-        let rh = r.h.into();
+        let rw = i32::from(r.w);
+        let rh = i32::from(r.h);
         let width = i32::try_from(page.width()).unwrap();
         let height = i32::try_from(page.height()).unwrap();
         if rx + rw <= width && ry + rh <= height {
@@ -552,7 +552,7 @@ impl PageRenderer {
         let rs = &span.state;
         let mut lines = vec![];
         for s in self.spans.iter().filter(|s| rs.matches_line(&s.state)) {
-            let ln: usize = s.state.line_number.into();
+            let ln = usize::from(s.state.line_number);
             let h = s.height(fonts)?;
             let fs = s.font_spacing(fonts)?;
             let ls = s.line_spacing();
@@ -563,7 +563,7 @@ impl PageRenderer {
                 &lines[ln].combine(&line);
             }
         }
-        let sln: usize = rs.line_number.into();
+        let sln = usize::from(rs.line_number);
         let mut above = 0;
         let mut below = 0;
         for ln in 0..lines.len() {

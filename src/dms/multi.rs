@@ -1,6 +1,6 @@
 // multi.rs
 //
-// Copyright (C) 2018-2019  Minnesota Department of Transportation
+// Copyright (C) 2018-2020  Minnesota Department of Transportation
 //
 //! This module is for NTCIP 1203 DMS MULTI (Markup Language for Transportation
 //! Information).
@@ -12,7 +12,7 @@ use std::str::Chars;
 use std::str::FromStr;
 
 /// Classic color values
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ColorClassic {
     Black,
     Red,
@@ -27,7 +27,7 @@ pub enum ColorClassic {
 }
 
 /// DMS color scheme.
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ColorScheme {
     /// Monochrome with 1-bit values
     Monochrome1Bit = 1,
@@ -42,7 +42,7 @@ pub enum ColorScheme {
 /// Color for a DMS pixel.
 ///
 /// Legacy colors are dependent on the ColorScheme.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Color {
     /// Legacy (non-RGB) color.
     ///
@@ -54,7 +54,7 @@ pub enum Color {
     RGB(u8, u8, u8),
 }
 
-/// Color context
+/// A color context combines a scheme with foreground and background colors
 #[derive(Clone)]
 pub struct ColorCtx {
     /// Color scheme
@@ -70,7 +70,7 @@ pub struct ColorCtx {
 }
 
 /// A rectangular area of a DMS.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Rectangle {
     /// Left edge (starting from 1).
     pub x: u16,
@@ -83,7 +83,7 @@ pub struct Rectangle {
 }
 
 /// Horizontal justification within a line.
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum JustificationLine {
     /// Other line justification; deprecated in v2
     Other = 1,
@@ -98,7 +98,7 @@ pub enum JustificationLine {
 }
 
 /// Vertical justification within a page.
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum JustificationPage {
     /// Other page justification; deprecated in v2
     Other = 1,
@@ -111,7 +111,7 @@ pub enum JustificationPage {
 }
 
 /// Order of flashing messages.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FlashOrder {
     /// Flash on, then off
     OnOff,
@@ -120,7 +120,7 @@ pub enum FlashOrder {
 }
 
 /// Mode for moving text.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MovingTextMode {
     /// Text wraps around, appearing circular
     Circular,
@@ -129,7 +129,7 @@ pub enum MovingTextMode {
 }
 
 /// Direction for moving text.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MovingTextDirection {
     /// Left-moving text
     Left,
@@ -138,7 +138,7 @@ pub enum MovingTextDirection {
 }
 
 /// Values are tags or text from a parsed MULTI.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
     /// Background color tag
     ///
@@ -226,7 +226,7 @@ pub enum Value {
 }
 
 /// Syntax errors from parsing MULTI.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SyntaxError {
     /// An unspecified error
     Other(&'static str),

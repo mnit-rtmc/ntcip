@@ -10,7 +10,7 @@ use crate::dms::multi::{
 };
 use crate::dms::{Font, FontCache, GraphicCache, Result};
 use log::debug;
-use pix::{Raster, rgb::Rgb8};
+use pix::{rgb::Rgb8, Raster};
 use std::convert::TryFrom;
 
 /// Page render state

@@ -2479,14 +2479,8 @@ mod test {
     #[test]
     fn parse_rustacean() {
         let mut m = Parser::new("🦀🦀");
-        assert_eq!(
-            m.next(),
-            Some(Err(SyntaxError::CharacterNotDefined('🦀')))
-        );
-        assert_eq!(
-            m.next(),
-            Some(Err(SyntaxError::CharacterNotDefined('🦀')))
-        );
+        assert_eq!(m.next(), Some(Err(SyntaxError::CharacterNotDefined('🦀'))));
+        assert_eq!(m.next(), Some(Err(SyntaxError::CharacterNotDefined('🦀'))));
         assert_eq!(m.next(), None);
     }
     #[test]

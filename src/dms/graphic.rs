@@ -7,7 +7,7 @@
 use crate::dms::multi::{Color, ColorCtx, ColorScheme, SyntaxError};
 use crate::dms::Result;
 use log::debug;
-use pix::{Raster, rgb::Rgb8};
+use pix::{rgb::Rgb8, Raster};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 

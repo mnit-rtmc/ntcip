@@ -7,7 +7,7 @@
 use crate::dms::multi::SyntaxError;
 use crate::dms::Result;
 use log::debug;
-use pix::{Raster, rgb::Rgb8};
+use pix::{rgb::Rgb8, Raster};
 use std::collections::HashMap;
 
 /// A character for a bitmap [font].
@@ -76,7 +76,10 @@ impl Character {
         cf: Rgb8,
     ) {
         let width = i32::from(self.width);
-        debug!("render_char: {} @ {},{} width: {}", self.number, x, y, width);
+        debug!(
+            "render_char: {} @ {},{} width: {}",
+            self.number, x, y, width
+        );
         let mut xx = 0;
         let mut yy = 0;
         for by in &self.bitmap {
@@ -170,8 +173,11 @@ impl<'a> Font {
         cf: Rgb8,
     ) -> Result<()> {
         let height = i32::from(self.height());
-        debug!("render_text: font number {}, name {}", self.number(),
-            self.name());
+        debug!(
+            "render_text: font number {}, name {}",
+            self.number(),
+            self.name()
+        );
         debug!("render_text: {} @ {},{} height: {}", text, x, y, height);
         let mut xx = 0;
         for ch in text.chars() {

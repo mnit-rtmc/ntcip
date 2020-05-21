@@ -32,6 +32,7 @@ pub struct Graphic {
 }
 
 /// Cache of graphics
+#[derive(Default)]
 pub struct GraphicCache {
     /// Graphics in cache
     graphics: HashMap<u8, Graphic>,
@@ -121,20 +122,20 @@ impl Graphic {
         ctx: &ColorCtx,
         buf: &[u8],
     ) -> Option<Rgb8> {
-        let p = y * i32::from(self.width) + x;
-        let by = p as usize / 8;
-        let bi = 7 - (p & 7);
+        let offset = y * i32::from(self.width) + x;
+        let by = offset as usize / 8;
+        let bi = 7 - (offset & 7);
         let lit = ((buf[by] >> bi) & 1) != 0;
         match (lit, self.transparent_color) {
             (false, Some(0)) => None,
             (true, Some(1)) => None,
             (false, _) => {
-                let (r, g, b) = ctx.rgb(ctx.background())?;
-                Some(Rgb8::new(r, g, b))
+                let (red, green, blue) = ctx.rgb(ctx.background())?;
+                Some(Rgb8::new(red, green, blue))
             }
             (true, _) => {
-                let (r, g, b) = ctx.rgb(ctx.foreground())?;
-                Some(Rgb8::new(r, g, b))
+                let (red, green, blue) = ctx.rgb(ctx.foreground())?;
+                Some(Rgb8::new(red, green, blue))
             }
         }
     }
@@ -147,13 +148,13 @@ impl Graphic {
         ctx: &ColorCtx,
         buf: &[u8],
     ) -> Option<Rgb8> {
-        let p = y * i32::from(self.width) + x;
-        let v: u8 = buf[p as usize];
+        let offset = y * i32::from(self.width) + x;
+        let v: u8 = buf[offset as usize];
         if self.transparent_color == Some(v.into()) {
             return None;
         }
         match ctx.rgb(Color::Legacy(v)) {
-            Some((r, g, b)) => Some(Rgb8::new(r, g, b)),
+            Some((red, green, blue)) => Some(Rgb8::new(red, green, blue)),
             None => {
                 debug!("pixel_8 -- Bad color {}", v);
                 None
@@ -169,27 +170,22 @@ impl Graphic {
         _ctx: &ColorCtx,
         buf: &[u8],
     ) -> Option<Rgb8> {
-        let p = 3 * (y * i32::from(self.width) + x) as usize;
-        let r = buf[p + 0];
-        let g = buf[p + 1];
-        let b = buf[p + 2];
+        let offset = 3 * (y * i32::from(self.width) + x) as usize;
+        let red = buf[offset];
+        let green = buf[offset + 1];
+        let blue = buf[offset + 2];
         if let Some(tc) = self.transparent_color {
-            let rgb = ((r as i32) << 16) + ((g as i32) << 8) + b as i32;
+            let rgb =
+                ((red as i32) << 16) + ((green as i32) << 8) + blue as i32;
             if rgb == tc {
                 return None;
             }
         }
-        Some(Rgb8::new(r, g, b))
+        Some(Rgb8::new(red, green, blue))
     }
 }
 
 impl GraphicCache {
-    /// Create a new graphic cache
-    pub fn new() -> Self {
-        let graphics = HashMap::new();
-        GraphicCache { graphics }
-    }
-
     /// Insert a graphiu into the cache
     pub fn insert(&mut self, graphic: Graphic) {
         self.graphics.insert(graphic.number(), graphic);

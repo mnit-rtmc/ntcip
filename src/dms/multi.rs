@@ -268,7 +268,7 @@ pub struct Parser<'a> {
 
 impl ColorClassic {
     /// Get RGB triplet for a classic color.
-    pub fn rgb(&self) -> (u8, u8, u8) {
+    pub fn rgb(self) -> (u8, u8, u8) {
         match self {
             ColorClassic::Black => (0x00, 0x00, 0x00),
             ColorClassic::Red => (0xFF, 0x00, 0x00),
@@ -477,7 +477,7 @@ impl Rectangle {
     }
 
     /// Create a rectangle matching another width and/or height
-    pub fn match_width_height(&self, other: &Self) -> Self {
+    pub fn match_width_height(self, other: Self) -> Self {
         let w = if self.w > 0 {
             self.w
         } else {
@@ -492,7 +492,7 @@ impl Rectangle {
     }
 
     /// Check if a rectangle contains another rectangle
-    pub fn contains(&self, other: &Self) -> bool {
+    pub fn contains(self, other: Self) -> bool {
         other.x >= self.x
             && other.x + other.w <= self.x + self.w
             && other.y >= self.y
@@ -502,8 +502,7 @@ impl Rectangle {
 
 impl fmt::Display for JustificationLine {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let v = (*self).clone();
-        write!(f, "{}", v as u8)
+        write!(f, "{}", *self as u8)
     }
 }
 
@@ -523,8 +522,7 @@ impl JustificationLine {
 
 impl fmt::Display for JustificationPage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let v = (*self).clone();
-        write!(f, "{}", v as u8)
+        write!(f, "{}", *self as u8)
     }
 }
 
@@ -591,14 +589,16 @@ impl fmt::Display for Value {
             Value::Flash(FlashOrder::OffOn, None, None) => write!(f, "[flot]"),
             Value::FlashEnd() => write!(f, "[/fl]"),
             Value::Font(None) => write!(f, "[fo]"),
-            Value::Font(Some((i, None))) => write!(f, "[fo{}]", i),
-            Value::Font(Some((i, Some(c)))) => write!(f, "[fo{},{:04x}]", i, c),
-            Value::Graphic(i, None) => write!(f, "[g{}]", i),
-            Value::Graphic(i, Some((x, y, None))) => {
-                write!(f, "[g{},{},{}]", i, x, y)
+            Value::Font(Some((num, None))) => write!(f, "[fo{}]", num),
+            Value::Font(Some((num, Some(c)))) => {
+                write!(f, "[fo{},{:04x}]", num, c)
             }
-            Value::Graphic(i, Some((x, y, Some(c)))) => {
-                write!(f, "[g{},{},{},{:04x}]", i, x, y, c)
+            Value::Graphic(num, None) => write!(f, "[g{}]", num),
+            Value::Graphic(num, Some((x, y, None))) => {
+                write!(f, "[g{},{},{}]", num, x, y)
+            }
+            Value::Graphic(num, Some((x, y, Some(c)))) => {
+                write!(f, "[g{},{},{},{:04x}]", num, x, y, c)
             }
             Value::HexadecimalCharacter(c) => write!(f, "[hc{}]", c),
             Value::JustificationLine(Some(j)) => write!(f, "[jl{}]", j),
@@ -613,8 +613,8 @@ impl fmt::Display for Value {
                 write!(f, "[/ms{},{}]", i, s)
             }
             Value::ManufacturerSpecificEnd(i, None) => write!(f, "[/ms{}]", i),
-            Value::MovingText(t, d, w, s, r, text) => {
-                write!(f, "[mv{}{}{},{},{},{}]", t, d, w, s, r, text)
+            Value::MovingText(mode, dir, width, s, r, text) => {
+                write!(f, "[mv{}{}{},{},{},{}]", mode, dir, width, s, r, text)
             }
             Value::NewLine(Some(x)) => write!(f, "[nl{}]", x),
             Value::NewLine(None) => write!(f, "[nl]"),
@@ -711,7 +711,7 @@ where
     T: FromStr,
 {
     if let Some(s) = v.next() {
-        if s.len() == 0 {
+        if s.is_empty() {
             return Ok(None);
         }
         if let Ok(i) = s.parse::<T>() {
@@ -730,7 +730,7 @@ where
     I: Iterator<Item = &'a str>,
 {
     if let Some(s) = v.next() {
-        if s.len() == 0 {
+        if s.is_empty() {
             return Ok(None);
         }
         if let Ok(i) = s.parse::<u8>() {
@@ -792,7 +792,7 @@ fn parse_color_background(tag: &str) -> Option<Value> {
 /// Parse a Page -- Background tag [pb].
 fn parse_page_background(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
-        match parse_color(tag[2..].split(",")) {
+        match parse_color(tag[2..].split(',')) {
             Some(c) => Some(Value::PageBackground(Some(c))),
             _ => None,
         }
@@ -804,7 +804,7 @@ fn parse_page_background(tag: &str) -> Option<Value> {
 /// Parse a Color -- Foreground tag [cf].
 fn parse_color_foreground(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
-        match parse_color(tag[2..].split(",")) {
+        match parse_color(tag[2..].split(',')) {
             Some(c) => Some(Value::ColorForeground(Some(c))),
             _ => None,
         }
@@ -815,7 +815,7 @@ fn parse_color_foreground(tag: &str) -> Option<Value> {
 
 /// Parse a Color Rectangle tag [cr].
 fn parse_color_rectangle(tag: &str) -> Option<Value> {
-    let mut vs = tag[2..].splitn(7, ",");
+    let mut vs = tag[2..].splitn(7, ',');
     match (parse_rectangle(&mut vs), parse_color(vs)) {
         (Some(r), Some(c)) => Some(Value::ColorRectangle(r, c)),
         _ => None,
@@ -824,7 +824,7 @@ fn parse_color_rectangle(tag: &str) -> Option<Value> {
 
 /// Parse a Field tag [f].
 fn parse_field(tag: &str) -> Option<Value> {
-    let mut vs = tag[1..].splitn(2, ",");
+    let mut vs = tag[1..].splitn(2, ',');
     match (parse_int(&mut vs), parse_optional(&mut vs)) {
         (Some(fid), Ok(w)) if fid < 100 => Some(Value::Field(fid, w)),
         _ => None,
@@ -847,7 +847,7 @@ fn parse_flash_time(tag: &str) -> Option<Value> {
 
 /// Parse a flash on -> off tag fragment.
 fn parse_flash_on(v: &str) -> Option<Value> {
-    let mut vs = v.splitn(2, "o");
+    let mut vs = v.splitn(2, 'o');
     let t = parse_optional_99(&mut vs).ok()?;
     let o = parse_optional_99(&mut vs).ok()?;
     Some(Value::Flash(FlashOrder::OnOff, t, o))
@@ -855,7 +855,7 @@ fn parse_flash_on(v: &str) -> Option<Value> {
 
 /// Parse a flash off -> on tag fragment.
 fn parse_flash_off(v: &str) -> Option<Value> {
-    let mut vs = v.splitn(2, "t");
+    let mut vs = v.splitn(2, 't');
     let o = parse_optional_99(&mut vs).ok()?;
     let t = parse_optional_99(&mut vs).ok()?;
     Some(Value::Flash(FlashOrder::OffOn, o, t))
@@ -873,7 +873,7 @@ fn parse_flash_end(tag: &str) -> Option<Value> {
 /// Parse a Font tag [fo]
 fn parse_font(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
-        let mut vs = tag[2..].splitn(2, ",");
+        let mut vs = tag[2..].splitn(2, ',');
         match (parse_nonzero(&mut vs), parse_version_id(&mut vs)) {
             (Some(n), Ok(vid)) => Some(Value::Font(Some((n, vid)))),
             _ => None,
@@ -885,7 +885,7 @@ fn parse_font(tag: &str) -> Option<Value> {
 
 /// Parse a Graphic tag [g]
 fn parse_graphic(tag: &str) -> Option<Value> {
-    let mut vs = tag[1..].splitn(4, ",");
+    let mut vs = tag[1..].splitn(4, ',');
     let n = parse_nonzero(&mut vs);
     let p = parse_point(&mut vs);
     let vid = parse_version_id(&mut vs);
@@ -923,7 +923,7 @@ fn parse_xy(x: &str, y: &str) -> Result<(u16, u16), ()> {
 /// Parse a hexadecimal character tag [hc].
 fn parse_hexadecimal_character(tag: &str) -> Option<Value> {
     // Not really looking for commas -- just need an iterator
-    let mut vs = tag[2..].splitn(1, ",");
+    let mut vs = tag[2..].splitn(1, ',');
     match parse_hexadecimal(&mut vs) {
         Ok(hc) => Some(Value::HexadecimalCharacter(hc)),
         Err(_) => None,
@@ -970,7 +970,7 @@ fn parse_justification_page(tag: &str) -> Option<Value> {
 
 /// Parse a Manufacturer Specific tag [ms].
 fn parse_manufacturer_specific(tag: &str) -> Option<Value> {
-    let mut vs = tag[2..].splitn(2, ",");
+    let mut vs = tag[2..].splitn(2, ',');
     match (parse_int(&mut vs), vs.next()) {
         (Some(m), Some(t)) => {
             Some(Value::ManufacturerSpecific(m, Some(t.into())))
@@ -982,7 +982,7 @@ fn parse_manufacturer_specific(tag: &str) -> Option<Value> {
 
 /// Parse a Manufacturer Specific end tag [/ms].
 fn parse_manufacturer_specific_end(tag: &str) -> Option<Value> {
-    let mut vs = tag[3..].splitn(2, ",");
+    let mut vs = tag[3..].splitn(2, ',');
     match (parse_int(&mut vs), vs.next()) {
         (Some(m), Some(t)) => {
             Some(Value::ManufacturerSpecificEnd(m, Some(t.into())))
@@ -1008,7 +1008,7 @@ fn parse_moving_text(tag: &str) -> Option<Value> {
 
 /// Parse a moving text linear fragment.
 fn parse_moving_text_linear(tag: &str) -> Option<Value> {
-    if tag.len() > 0 {
+    if !tag.is_empty() {
         let t = &tag[1..];
         if let Ok(i) = &tag[..1].parse::<u8>() {
             parse_moving_text_mode(t, MovingTextMode::Linear(*i))
@@ -1021,18 +1021,25 @@ fn parse_moving_text_linear(tag: &str) -> Option<Value> {
 }
 
 /// Parse a moving text mode fragment.
-fn parse_moving_text_mode(tag: &str, m: MovingTextMode) -> Option<Value> {
-    if tag.len() > 0 {
-        let d = parse_moving_text_dir(tag.chars().next());
-        let mut vs = tag[1..].splitn(4, ",");
-        let w = parse_int(&mut vs);
+fn parse_moving_text_mode(tag: &str, mode: MovingTextMode) -> Option<Value> {
+    if !tag.is_empty() {
+        let dir = parse_moving_text_dir(tag.chars().next());
+        let mut vs = tag[1..].splitn(4, ',');
+        let width = parse_int(&mut vs);
         let s = parse_int(&mut vs);
         let r = parse_int(&mut vs);
         let text = vs.next();
-        if let (Some(d), Some(w), Some(s), Some(r), Some(text)) =
-            (d, w, s, r, text)
+        if let (Some(dir), Some(width), Some(s), Some(r), Some(text)) =
+            (dir, width, s, r, text)
         {
-            return Some(Value::MovingText(m, d, w, s, r, text.into()));
+            return Some(Value::MovingText(
+                mode,
+                dir,
+                width,
+                s,
+                r,
+                text.into(),
+            ));
         }
     }
     None
@@ -1070,7 +1077,7 @@ fn parse_new_page(tag: &str) -> Option<Value> {
 
 /// Parse a Page Time tag [pt].
 fn parse_page_time(tag: &str) -> Option<Value> {
-    let mut vs = tag[2..].splitn(2, "o");
+    let mut vs = tag[2..].splitn(2, 'o');
     match (parse_optional(&mut vs), parse_optional(&mut vs)) {
         (Ok(t), Ok(o)) => Some(Value::PageTime(t, o)),
         _ => None,
@@ -1080,7 +1087,7 @@ fn parse_page_time(tag: &str) -> Option<Value> {
 /// Parse a Spacing -- Character tag [sc].
 fn parse_spacing_character(tag: &str) -> Option<Value> {
     // Not really looking for commas -- just need an iterator
-    let mut vs = tag[2..].splitn(1, ",");
+    let mut vs = tag[2..].splitn(1, ',');
     match parse_int(&mut vs) {
         Some(s) if s < 100 => Some(Value::SpacingCharacter(s)),
         _ => None,
@@ -1098,7 +1105,7 @@ fn parse_spacing_character_end(tag: &str) -> Option<Value> {
 
 /// Parse a Text Rectangle tag [tr].
 fn parse_text_rectangle(tag: &str) -> Option<Value> {
-    let mut vs = tag[2..].splitn(4, ",");
+    let mut vs = tag[2..].splitn(4, ',');
     match parse_rectangle(&mut vs) {
         Some(r) => Some(Value::TextRectangle(r)),
         _ => None,
@@ -1132,7 +1139,7 @@ fn parse_tag(tag: &str) -> Result<Option<Value>, SyntaxError> {
         parse_text_rectangle(t)
     } else if t.starts_with("cb") {
         parse_color_background(t)
-    } else if t.starts_with("g") {
+    } else if t.starts_with('g') {
         parse_graphic(tag)
     } else if t.starts_with("sc") {
         parse_spacing_character(t)
@@ -1147,7 +1154,7 @@ fn parse_tag(tag: &str) -> Result<Option<Value>, SyntaxError> {
     }
     // Don't treat "fe" as a field tag -- this allows handling non-MULTI
     // tag (e.g. [feedx]) properly by returning UnsupportedTag.
-    else if t.starts_with("f") && !t.starts_with("fe") {
+    else if t.starts_with('f') && !t.starts_with("fe") {
         parse_field(tag)
     } else if t.starts_with("mv") {
         parse_moving_text(tag)
@@ -1220,11 +1227,11 @@ impl<'a> Parser<'a> {
             if c == '[' {
                 if let Some('[') = self.peek_char() {
                     self.next_char()?;
-                } else if s.len() > 0 {
+                } else if s.is_empty() {
+                    return self.parse_tag();
+                } else {
                     self.within_tag = true;
                     break;
-                } else {
-                    return self.parse_tag();
                 }
             } else if c == ']' {
                 if let Some(']') = self.peek_char() {
@@ -1235,10 +1242,10 @@ impl<'a> Parser<'a> {
             }
             s.push(c);
         }
-        if s.len() > 0 {
-            Ok(Some(Value::Text(s)))
-        } else {
+        if s.is_empty() {
             Ok(None)
+        } else {
+            Ok(Some(Value::Text(s)))
         }
     }
 }

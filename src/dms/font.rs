@@ -44,6 +44,7 @@ pub struct Font {
 }
 
 /// Cache of fonts
+#[derive(Default)]
 pub struct FontCache {
     /// Fonts in cache
     fonts: HashMap<u8, Font>,
@@ -144,7 +145,7 @@ impl<'a> Font {
     /// * `cs` Character spacing in pixels.
     pub fn text_width(&self, text: &str, cs: Option<u16>) -> Result<u16> {
         let mut width = 0;
-        let cs = cs.unwrap_or(u16::from(self.char_spacing));
+        let cs = cs.unwrap_or_else(|| u16::from(self.char_spacing));
         for ch in text.chars() {
             let c = self.character(ch)?;
             if width > 0 {
@@ -198,12 +199,6 @@ impl<'a> Font {
 }
 
 impl FontCache {
-    /// Create a new font cache
-    pub fn new() -> Self {
-        let fonts = HashMap::new();
-        FontCache { fonts }
-    }
-
     /// Insert a font into the cache
     pub fn insert(&mut self, font: Font) {
         self.fonts.insert(font.number(), font);

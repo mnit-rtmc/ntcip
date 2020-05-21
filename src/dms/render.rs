@@ -78,7 +78,6 @@ pub struct PageRenderer {
 }
 
 /// Page splitter (iterator)
-#[derive(Clone)]
 pub struct PageSplitter<'a> {
     /// Default rendering state
     default_state: State,
@@ -159,8 +158,8 @@ impl State {
         r: Rectangle,
         v: &Value,
     ) -> Result<()> {
-        let r = r.match_width_height(&default_state.text_rectangle);
-        if !default_state.text_rectangle.contains(&r) {
+        let r = r.match_width_height(default_state.text_rectangle);
+        if !default_state.text_rectangle.contains(r) {
             return Err(SyntaxError::UnsupportedTagValue(v.into()));
         }
         let cw = self.char_width();
@@ -391,11 +390,11 @@ impl PageRenderer {
         graphics: &GraphicCache,
     ) -> Result<Raster<Rgb8>> {
         let rs = &self.state;
-        let w = rs.text_rectangle.w.into();
-        let h = rs.text_rectangle.h.into();
-        debug!("render_page: {}x{}", w, h);
+        let width = rs.text_rectangle.w.into();
+        let height = rs.text_rectangle.h.into();
+        debug!("render_page: {}x{}", width, height);
         let clr = rs.background_rgb();
-        let mut page = Raster::with_color(w, h, clr);
+        let mut page = Raster::with_color(width, height, clr);
         for (v, ctx) in &self.values {
             match v {
                 Value::ColorRectangle(rect, _) => {
@@ -601,7 +600,7 @@ impl PageRenderer {
             if ln >= lines.len() {
                 lines.push(line);
             } else {
-                &lines[ln].combine(&line);
+                lines[ln].combine(&line);
             }
         }
         let sln = usize::from(rs.line_number);
@@ -733,10 +732,8 @@ impl<'a> PageSplitter<'a> {
                 rs.span_number = 0;
             }
             Value::NewLine(ls) => {
-                if !rs.is_full_matrix() {
-                    if let Some(_) = ls {
-                        return Err(SyntaxError::UnsupportedTagValue(v.into()));
-                    }
+                if !rs.is_full_matrix() && ls.is_some() {
+                    return Err(SyntaxError::UnsupportedTagValue(v.into()));
                 }
                 // Insert an empty text span for blank lines.
                 if self.line_blank {

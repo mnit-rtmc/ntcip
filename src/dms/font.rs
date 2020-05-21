@@ -10,7 +10,9 @@ use log::debug;
 use pix::{Raster, rgb::Rgb8};
 use std::collections::HashMap;
 
-/// A character for a bitmap font
+/// A character for a bitmap [font].
+///
+/// [font]: struct.Font.html
 #[derive(Deserialize, Serialize)]
 pub struct Character {
     /// Character number (code point)
@@ -52,10 +54,12 @@ impl Character {
     pub fn number(&self) -> u16 {
         self.number
     }
+
     /// Get width in pixels
     pub fn width(&self) -> u8 {
         self.width
     }
+
     /// Render the character to a raster
     ///
     /// * `page` Raster to render on.
@@ -98,22 +102,27 @@ impl<'a> Font {
     pub fn number(&self) -> u8 {
         self.number
     }
+
     /// Get font name
     pub fn name(&self) -> &str {
         &self.name
     }
+
     /// Get font height
     pub fn height(&self) -> u8 {
         self.height
     }
+
     /// Get default pixel spacing between characters
     pub fn char_spacing(&self) -> u8 {
         self.char_spacing
     }
+
     /// Get default pixel spacing between lines
     pub fn line_spacing(&self) -> u8 {
         self.line_spacing
     }
+
     /// Get a character
     pub fn character(&'a self, ch: char) -> Result<&'a Character> {
         let code_point = u32::from(ch);
@@ -125,6 +134,7 @@ impl<'a> Font {
         }
         Err(SyntaxError::CharacterNotDefined(ch))
     }
+
     /// Calculate the width of a span of text.
     ///
     /// * `text` Span of text.
@@ -141,6 +151,7 @@ impl<'a> Font {
         }
         Ok(width)
     }
+
     /// Render a span of text.
     ///
     /// * `page` Raster to render on.
@@ -173,6 +184,7 @@ impl<'a> Font {
         }
         Ok(())
     }
+
     /// Get version ID hash
     pub fn version_id(&self) -> u16 {
         self.version_id
@@ -185,10 +197,12 @@ impl FontCache {
         let fonts = HashMap::new();
         FontCache { fonts }
     }
+
     /// Insert a font into the cache
     pub fn insert(&mut self, font: Font) {
         self.fonts.insert(font.number(), font);
     }
+
     /// Lookup a font by number
     pub fn lookup<'a>(
         &'a self,
@@ -208,6 +222,7 @@ impl FontCache {
             (None, _) => Err(SyntaxError::FontNotDefined(fnum)),
         }
     }
+
     /// Lookup a font by name
     pub fn lookup_name<'a>(&'a self, name: &str) -> Option<&'a Font> {
         self.fonts.values().find(|f| f.name() == name)

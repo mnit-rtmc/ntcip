@@ -45,26 +45,32 @@ impl Graphic {
     pub fn number(&self) -> u8 {
         self.number
     }
+
     /// Get the name
     pub fn name(&self) -> &str {
         &self.name
     }
+
     /// Get the height in pixels
     pub fn height(&self) -> u32 {
         self.height.into()
     }
+
     /// Get the width in pixels
     pub fn width(&self) -> u32 {
         self.width.into()
     }
+
     /// Get the color scheme
     pub fn color_scheme(&self) -> &str {
         &self.color_scheme
     }
+
     /// Get the transparent color
     pub fn transparent_color(&self) -> Option<i32> {
         self.transparent_color
     }
+
     /// Render graphic onto a Raster
     pub fn render_graphic(
         &self,
@@ -95,6 +101,7 @@ impl Graphic {
         }
         Ok(())
     }
+
     /// Get pixel lookup function for the color scheme
     fn pixel_fn(&self) -> &PixFn {
         match self.color_scheme[..].into() {
@@ -105,6 +112,7 @@ impl Graphic {
             ColorScheme::Color24Bit => &Graphic::pixel_24,
         }
     }
+
     /// Get one pixel of a monochrome 1-bit graphic
     fn pixel_1(
         &self,
@@ -130,6 +138,7 @@ impl Graphic {
             }
         }
     }
+
     /// Get one pixel of an 8-bit (monochrome or classic) color graphic
     fn pixel_8(
         &self,
@@ -151,6 +160,7 @@ impl Graphic {
             }
         }
     }
+
     /// Get one pixel of a 24-bit color graphic
     fn pixel_24(
         &self,
@@ -179,10 +189,12 @@ impl GraphicCache {
         let graphics = HashMap::new();
         GraphicCache { graphics }
     }
+
     /// Insert a graphiu into the cache
     pub fn insert(&mut self, graphic: Graphic) {
         self.graphics.insert(graphic.number(), graphic);
     }
+
     /// Lookup a graphic by number
     pub fn lookup<'a>(
         &'a self,

@@ -47,6 +47,7 @@ pub struct State {
 }
 
 /// Text span
+#[derive(Clone)]
 struct TextSpan {
     /// Render state at start of span
     state: State,
@@ -55,6 +56,7 @@ struct TextSpan {
 }
 
 /// Text line
+#[derive(Clone)]
 struct TextLine {
     /// Height in pixels
     height: u16,
@@ -65,6 +67,7 @@ struct TextLine {
 }
 
 /// Page renderer
+#[derive(Clone)]
 pub struct PageRenderer {
     /// Render state at start of page
     state: State,
@@ -75,6 +78,7 @@ pub struct PageRenderer {
 }
 
 /// Page splitter (iterator)
+#[derive(Clone)]
 pub struct PageSplitter<'a> {
     /// Default rendering state
     default_state: State,
@@ -119,14 +123,17 @@ impl State {
             font_version_id,
         }
     }
+
     /// Check if the sign is a character-matrix.
     fn is_char_matrix(&self) -> bool {
         self.char_width > 0
     }
+
     /// Check if the sign is a full-matrix.
     fn is_full_matrix(&self) -> bool {
         self.char_width == 0 && self.char_height == 0
     }
+
     /// Get the character width (1 for variable width).
     fn char_width(&self) -> u16 {
         if self.is_char_matrix() {
@@ -135,6 +142,7 @@ impl State {
             1
         }
     }
+
     /// Get the character height (1 for variable height).
     fn char_height(&self) -> u16 {
         if self.char_height > 0 {
@@ -143,6 +151,7 @@ impl State {
             1
         }
     }
+
     /// Update the text rectangle.
     fn update_text_rectangle(
         &mut self,
@@ -173,16 +182,19 @@ impl State {
         self.text_rectangle = r;
         Ok(())
     }
+
     /// Get the background RGB color.
     fn background_rgb(&self) -> Rgb8 {
         let (r, g, b) = self.color_ctx.background_rgb();
         Rgb8::new(r, g, b)
     }
+
     /// Get the foreground RGB color.
     fn foreground_rgb(&self) -> Rgb8 {
         let (r, g, b) = self.color_ctx.foreground_rgb();
         Rgb8::new(r, g, b)
     }
+
     /// Check if states match for text spans
     fn matches_span(&self, other: &State) -> bool {
         self.text_rectangle == other.text_rectangle
@@ -190,11 +202,13 @@ impl State {
             && self.line_number == other.line_number
             && self.just_line == other.just_line
     }
+
     /// Check if states match for lines
     fn matches_line(&self, other: &State) -> bool {
         self.text_rectangle == other.text_rectangle
             && self.just_page == other.just_page
     }
+
     /// Lookup current font in cache
     fn font<'a>(&self, fonts: &'a FontCache) -> Result<&'a Font> {
         debug!("State::font {}", self.font_num);
@@ -207,12 +221,14 @@ impl<'a> TextSpan {
     fn new(state: State, text: String) -> Self {
         TextSpan { state, text }
     }
+
     /// Get the width of a text span
     fn width(&self, fonts: &FontCache) -> Result<u16> {
         let font = self.state.font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
         Ok(font.text_width(&self.text, Some(cs))?)
     }
+
     /// Get the char spacing
     fn char_spacing_fonts(&self, fonts: &FontCache) -> Result<u16> {
         match self.state.char_spacing {
@@ -220,6 +236,7 @@ impl<'a> TextSpan {
             None => Ok(self.state.font(fonts)?.char_spacing().into()),
         }
     }
+
     /// Get the char spacing
     fn char_spacing_font(&self, font: &Font) -> u8 {
         match self.state.char_spacing {
@@ -227,6 +244,7 @@ impl<'a> TextSpan {
             None => font.char_spacing(),
         }
     }
+
     /// Get the char spacing from a previous span
     fn char_spacing_between(
         &self,
@@ -244,14 +262,17 @@ impl<'a> TextSpan {
             Ok(((psc + sc) >> 1) + ((psc + sc) & 1))
         }
     }
+
     /// Get the height of a text span
     fn height(&self, fonts: &FontCache) -> Result<u16> {
         Ok(self.state.font(fonts)?.height().into())
     }
+
     /// Get the font line spacing
     fn font_spacing(&self, fonts: &FontCache) -> Result<u16> {
         Ok(self.state.font(fonts)?.line_spacing().into())
     }
+
     /// Get the line spacing
     fn line_spacing(&self) -> Option<u16> {
         match self.state.line_spacing {
@@ -259,6 +280,7 @@ impl<'a> TextSpan {
             None => None,
         }
     }
+
     /// Render the text span
     fn render_text(
         &self,
@@ -282,12 +304,14 @@ impl TextLine {
             line_spacing,
         }
     }
+
     /// Combine a text line with another
     fn combine(&mut self, other: &TextLine) {
         self.height = self.height.max(other.height);
         self.font_spacing = self.font_spacing.max(other.font_spacing);
         self.line_spacing = self.line_spacing.or(other.line_spacing);
     }
+
     /// Get the spacing between two text lines
     fn spacing(&self, other: &TextLine) -> u16 {
         if let Some(ls) = self.line_spacing {
@@ -315,6 +339,7 @@ impl PageRenderer {
             spans,
         }
     }
+
     /// Check page and line justification ordering
     fn check_justification(&self) -> Result<()> {
         let mut tr = Rectangle::new(0, 0, 0, 0);
@@ -339,14 +364,17 @@ impl PageRenderer {
         }
         Ok(())
     }
+
     /// Get the page-on time (deciseconds)
     pub fn page_on_time_ds(&self) -> u16 {
         self.state.page_on_time_ds.into()
     }
+
     /// Get the page-off time (deciseconds)
     pub fn page_off_time_ds(&self) -> u16 {
         self.state.page_off_time_ds.into()
     }
+
     /// Render a blank page.
     pub fn render_blank(&self) -> Raster<Rgb8> {
         let rs = &self.state;
@@ -355,6 +383,7 @@ impl PageRenderer {
         let clr = rs.background_rgb();
         Raster::with_color(w.into(), h.into(), clr)
     }
+
     /// Render the page.
     pub fn render_page(
         &self,
@@ -395,6 +424,7 @@ impl PageRenderer {
         }
         Ok(page)
     }
+
     /// Render a color rectangle
     fn render_rect(
         &self,
@@ -421,6 +451,7 @@ impl PageRenderer {
         }
         Err(SyntaxError::UnsupportedTagValue(v.into()))
     }
+
     /// Get the X position of a text span.
     fn span_x(&self, s: &TextSpan, fonts: &FontCache) -> Result<u16> {
         match s.state.just_line {
@@ -430,12 +461,14 @@ impl PageRenderer {
             _ => unreachable!(),
         }
     }
+
     /// Get the X position of a left-justified text span.
     fn span_x_left(&self, span: &TextSpan, fonts: &FontCache) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let (before, _) = self.offset_horiz(span, fonts)?;
         Ok(left + before)
     }
+
     /// Get the X position of a center-justified text span.
     fn span_x_center(&self, span: &TextSpan, fonts: &FontCache) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
@@ -447,6 +480,7 @@ impl PageRenderer {
         // Truncate to character-width boundary
         Ok((x / cw) * cw)
     }
+
     /// Get the X position of a right-justified span
     fn span_x_right(&self, span: &TextSpan, fonts: &FontCache) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
@@ -454,6 +488,7 @@ impl PageRenderer {
         let (_, after) = self.offset_horiz(span, fonts)?;
         Ok(left + w - after)
     }
+
     /// Calculate horizontal offsets of a span.
     ///
     /// Returns a tuple of (before, after) widths of matching spans.
@@ -492,6 +527,7 @@ impl PageRenderer {
             Err(SyntaxError::TextTooBig)
         }
     }
+
     /// Get the Y position of a text span.
     fn span_y(&self, s: &TextSpan, fonts: &FontCache) -> Result<u16> {
         let b = self.baseline(s, fonts)?;
@@ -499,6 +535,7 @@ impl PageRenderer {
         debug_assert!(b >= h);
         Ok(b - h)
     }
+
     /// Get the baseline of a text span.
     fn baseline(&self, s: &TextSpan, fonts: &FontCache) -> Result<u16> {
         match s.state.just_page {
@@ -508,12 +545,14 @@ impl PageRenderer {
             _ => unreachable!(),
         }
     }
+
     /// Get the baseline of a top-justified span
     fn baseline_top(&self, span: &TextSpan, fonts: &FontCache) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let (above, _) = self.offset_vert(span, fonts)?;
         Ok(top + above)
     }
+
     /// Get the baseline of a middle-justified span
     fn baseline_middle(
         &self,
@@ -529,6 +568,7 @@ impl PageRenderer {
         // Truncate to line-height boundary
         Ok((y / ch) * ch)
     }
+
     /// Get the baseline of a bottom-justified span
     fn baseline_bottom(
         &self,
@@ -540,6 +580,7 @@ impl PageRenderer {
         let (_, below) = self.offset_vert(span, fonts)?;
         Ok(top + h - below)
     }
+
     /// Calculate vertical offset of a span.
     ///
     /// Returns a tuple of (above, below) heights of matching lines.
@@ -611,6 +652,7 @@ impl<'a> PageSplitter<'a> {
             line_blank,
         }
     }
+
     /// Make the next page.
     fn make_page(&mut self) -> Result<PageRenderer> {
         self.more_pages = false;
@@ -625,6 +667,7 @@ impl<'a> PageSplitter<'a> {
         page.check_justification()?;
         Ok(page)
     }
+
     /// Get the current page state.
     fn page_state(&self) -> State {
         let mut rs = self.state.clone();
@@ -633,6 +676,7 @@ impl<'a> PageSplitter<'a> {
         rs.line_spacing = self.default_state.line_spacing;
         rs
     }
+
     /// Update the render state with one MULTI value.
     ///
     /// * `v` MULTI value.

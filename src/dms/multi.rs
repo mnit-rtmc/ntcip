@@ -282,6 +282,7 @@ impl ColorClassic {
             ColorClassic::Amber => (0xFF, 0xD0, 0x00),
         }
     }
+
     /// Maybe convert a u8 into a ColorClassic
     pub fn from_u8(v: u8) -> Option<Self> {
         match v {
@@ -350,6 +351,7 @@ impl ColorCtx {
             bg_current,
         }
     }
+
     /// Set the foreground color
     pub fn set_foreground(
         &mut self,
@@ -365,10 +367,12 @@ impl ColorCtx {
         };
         Ok(())
     }
+
     /// Get the foreground BGR color
     pub fn foreground(&self) -> Color {
         self.fg_current
     }
+
     /// Get the foreground RGB color
     pub fn foreground_rgb(&self) -> (u8, u8, u8) {
         match self.rgb(self.foreground()) {
@@ -376,6 +380,7 @@ impl ColorCtx {
             None => self.fg_default,
         }
     }
+
     /// Set the background color
     pub fn set_background(
         &mut self,
@@ -391,10 +396,12 @@ impl ColorCtx {
         };
         Ok(())
     }
+
     /// Get the background color
     pub fn background(&self) -> Color {
         self.bg_current
     }
+
     /// Get the background RGB color
     pub fn background_rgb(&self) -> (u8, u8, u8) {
         match self.rgb(self.background()) {
@@ -402,6 +409,7 @@ impl ColorCtx {
             None => self.bg_default,
         }
     }
+
     /// Get RGB for the specified color.
     pub fn rgb(&self, c: Color) -> Option<(u8, u8, u8)> {
         match (self.color_scheme, c) {
@@ -418,6 +426,7 @@ impl ColorCtx {
             _ => None,
         }
     }
+
     /// Get RGB for a monochrome 1-bit color.
     fn rgb_monochrome_1(&self, v: u8) -> Option<(u8, u8, u8)> {
         match v {
@@ -426,6 +435,7 @@ impl ColorCtx {
             _ => None,
         }
     }
+
     /// Get RGB for a monochrome 8-bit color.
     fn rgb_monochrome_8(&self, v: u8) -> Option<(u8, u8, u8)> {
         let bg = self.bg_default;
@@ -435,6 +445,7 @@ impl ColorCtx {
         let b = ColorCtx::lerp(bg.2, fg.2, v);
         Some((r, g, b))
     }
+
     /// Get RGB for a classic color.
     fn rgb_classic(v: u8) -> Option<(u8, u8, u8)> {
         match ColorClassic::from_u8(v) {
@@ -442,6 +453,7 @@ impl ColorCtx {
             None => None,
         }
     }
+
     /// Interpolate between two color components
     fn lerp(bg: u8, fg: u8, v: u8) -> u8 {
         let d = bg.max(fg) - bg.min(fg);
@@ -463,6 +475,7 @@ impl Rectangle {
     pub fn new(x: u16, y: u16, w: u16, h: u16) -> Self {
         Rectangle { x, y, w, h }
     }
+
     /// Create a rectangle matching another width and/or height
     pub fn match_width_height(&self, other: &Self) -> Self {
         let w = if self.w > 0 {
@@ -477,6 +490,7 @@ impl Rectangle {
         };
         Rectangle::new(self.x, self.y, w, h)
     }
+
     /// Check if a rectangle contains another rectangle
     pub fn contains(&self, other: &Self) -> bool {
         other.x >= self.x

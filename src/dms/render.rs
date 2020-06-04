@@ -10,7 +10,7 @@ use crate::dms::multi::{
 };
 use crate::dms::{Font, FontCache, GraphicCache, Result};
 use log::debug;
-use pix::{rgb::Rgb8, Raster};
+use pix::{rgb::SRgb8, Raster};
 use std::convert::TryFrom;
 
 /// Page render state
@@ -183,15 +183,15 @@ impl State {
     }
 
     /// Get the background RGB color.
-    fn background_rgb(&self) -> Rgb8 {
+    fn background_rgb(&self) -> SRgb8 {
         let (r, g, b) = self.color_ctx.background_rgb();
-        Rgb8::new(r, g, b)
+        SRgb8::new(r, g, b)
     }
 
     /// Get the foreground RGB color.
-    fn foreground_rgb(&self) -> Rgb8 {
+    fn foreground_rgb(&self) -> SRgb8 {
         let (r, g, b) = self.color_ctx.foreground_rgb();
-        Rgb8::new(r, g, b)
+        SRgb8::new(r, g, b)
     }
 
     /// Check if states match for text spans
@@ -283,7 +283,7 @@ impl<'a> TextSpan {
     /// Render the text span
     fn render_text(
         &self,
-        page: &mut Raster<Rgb8>,
+        page: &mut Raster<SRgb8>,
         font: &Font,
         x: i32,
         y: i32,
@@ -375,7 +375,7 @@ impl PageRenderer {
     }
 
     /// Render a blank page.
-    pub fn render_blank(&self) -> Raster<Rgb8> {
+    pub fn render_blank(&self) -> Raster<SRgb8> {
         let rs = &self.state;
         let w = rs.text_rectangle.w;
         let h = rs.text_rectangle.h;
@@ -388,7 +388,7 @@ impl PageRenderer {
         &self,
         fonts: &FontCache,
         graphics: &GraphicCache,
-    ) -> Result<Raster<Rgb8>> {
+    ) -> Result<Raster<SRgb8>> {
         let rs = &self.state;
         let width = rs.text_rectangle.w.into();
         let height = rs.text_rectangle.h.into();
@@ -399,7 +399,7 @@ impl PageRenderer {
             match v {
                 Value::ColorRectangle(rect, _) => {
                     let (r, g, b) = ctx.foreground_rgb();
-                    let clr = Rgb8::new(r, g, b);
+                    let clr = SRgb8::new(r, g, b);
                     self.render_rect(&mut page, *rect, clr, v)?;
                 }
                 Value::Graphic(gn, None) => {
@@ -427,9 +427,9 @@ impl PageRenderer {
     /// Render a color rectangle
     fn render_rect(
         &self,
-        page: &mut Raster<Rgb8>,
+        page: &mut Raster<SRgb8>,
         r: Rectangle,
-        clr: Rgb8,
+        clr: SRgb8,
         v: &Value,
     ) -> Result<()> {
         debug_assert!(r.x > 0);

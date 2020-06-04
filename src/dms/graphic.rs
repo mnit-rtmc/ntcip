@@ -7,7 +7,7 @@
 use crate::dms::multi::{Color, ColorCtx, ColorScheme, SyntaxError};
 use crate::dms::Result;
 use log::debug;
-use pix::{rgb::Rgb8, Raster};
+use pix::{rgb::SRgb8, Raster};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
@@ -39,7 +39,7 @@ pub struct GraphicCache {
 }
 
 /// Function to lookup a pixel from a graphic buffer
-type PixFn = dyn Fn(&Graphic, i32, i32, &ColorCtx, &[u8]) -> Option<Rgb8>;
+type PixFn = dyn Fn(&Graphic, i32, i32, &ColorCtx, &[u8]) -> Option<SRgb8>;
 
 impl Graphic {
     /// Get the number
@@ -75,7 +75,7 @@ impl Graphic {
     /// Render graphic onto a Raster
     pub fn render_graphic(
         &self,
-        page: &mut Raster<Rgb8>,
+        page: &mut Raster<SRgb8>,
         x: i32,
         y: i32,
         ctx: &ColorCtx,
@@ -121,7 +121,7 @@ impl Graphic {
         y: i32,
         ctx: &ColorCtx,
         buf: &[u8],
-    ) -> Option<Rgb8> {
+    ) -> Option<SRgb8> {
         let offset = y * i32::from(self.width) + x;
         let by = offset as usize / 8;
         let bi = 7 - (offset & 7);
@@ -131,11 +131,11 @@ impl Graphic {
             (true, Some(1)) => None,
             (false, _) => {
                 let (red, green, blue) = ctx.rgb(ctx.background())?;
-                Some(Rgb8::new(red, green, blue))
+                Some(SRgb8::new(red, green, blue))
             }
             (true, _) => {
                 let (red, green, blue) = ctx.rgb(ctx.foreground())?;
-                Some(Rgb8::new(red, green, blue))
+                Some(SRgb8::new(red, green, blue))
             }
         }
     }
@@ -147,14 +147,14 @@ impl Graphic {
         y: i32,
         ctx: &ColorCtx,
         buf: &[u8],
-    ) -> Option<Rgb8> {
+    ) -> Option<SRgb8> {
         let offset = y * i32::from(self.width) + x;
         let v: u8 = buf[offset as usize];
         if self.transparent_color == Some(v.into()) {
             return None;
         }
         match ctx.rgb(Color::Legacy(v)) {
-            Some((red, green, blue)) => Some(Rgb8::new(red, green, blue)),
+            Some((red, green, blue)) => Some(SRgb8::new(red, green, blue)),
             None => {
                 debug!("pixel_8 -- Bad color {}", v);
                 None
@@ -169,7 +169,7 @@ impl Graphic {
         y: i32,
         _ctx: &ColorCtx,
         buf: &[u8],
-    ) -> Option<Rgb8> {
+    ) -> Option<SRgb8> {
         let offset = 3 * (y * i32::from(self.width) + x) as usize;
         let red = buf[offset];
         let green = buf[offset + 1];
@@ -181,7 +181,7 @@ impl Graphic {
                 return None;
             }
         }
-        Some(Rgb8::new(red, green, blue))
+        Some(SRgb8::new(red, green, blue))
     }
 }
 

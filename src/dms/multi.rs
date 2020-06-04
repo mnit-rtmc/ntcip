@@ -1279,6 +1279,7 @@ pub fn normalize(ms: &str) -> String {
 #[cfg(test)]
 mod test {
     use super::*;
+
     #[test]
     fn color_component() {
         assert_eq!(ColorCtx::lerp(0, 255, 0), 0);
@@ -1291,6 +1292,7 @@ mod test {
         assert_eq!(ColorCtx::lerp(128, 255, 128), 191);
         assert_eq!(ColorCtx::lerp(128, 255, 255), 255);
     }
+
     #[test]
     fn color_mono_1() {
         let mut ctx = ColorCtx::new(
@@ -1319,6 +1321,7 @@ mod test {
         assert_eq!(ctx.set_foreground(None, &v), Ok(()));
         assert_eq!(ctx.foreground_rgb(), (0xFF, 0xD0, 0x00));
     }
+
     #[test]
     fn color_mono_8() {
         let mut ctx = ColorCtx::new(
@@ -1339,6 +1342,7 @@ mod test {
         assert_eq!(ctx.set_foreground(None, &v), Ok(()));
         assert_eq!(ctx.foreground_rgb(), (0xFF, 0xFF, 0xFF));
     }
+
     #[test]
     fn color_classic() {
         let mut ctx = ColorCtx::new(
@@ -1364,6 +1368,7 @@ mod test {
         assert_eq!(ctx.set_foreground(None, &v), Ok(()));
         assert_eq!(ctx.foreground_rgb(), (0xFF, 0xFF, 0xFF));
     }
+
     #[test]
     fn color_24() {
         let mut ctx = ColorCtx::new(
@@ -1396,31 +1401,37 @@ mod test {
         assert_eq!(m.next(), Some(Ok(Value::Text(v.into()))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_text() {
         single_text("THIS IS A TEST");
     }
+
     #[test]
     fn parse_lower() {
         single_text("this is lower case");
     }
+
     #[test]
     fn parse_bracket() {
         let mut m = Parser::new("[[a]]b[[[[c]][[]]]]d");
         assert_eq!(m.next(), Some(Ok(Value::Text("[a]b[[c][]]d".into()))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_bracket2() {
         let mut m = Parser::new("[[[[[[[[");
         assert_eq!(m.next(), Some(Ok(Value::Text("[[[[".into()))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn norm_cb() {
         assert_eq!(normalize("[cb1][CB255]"), "[cb1][cb255]");
         assert_eq!(normalize("[cb][cb256]"), "[cb]");
     }
+
     #[test]
     fn parse_cb1() {
         let mut m = Parser::new("[cb0][CB1][cB255][cb256][cb]");
@@ -1443,6 +1454,7 @@ mod test {
         assert_eq!(m.next(), Some(Ok(Value::ColorBackground(None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cb2() {
         let mut m = Parser::new("[cbX][cb0,0,0]");
@@ -1456,6 +1468,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn norm_pb() {
         assert_eq!(normalize("[pb0][PB255]"), "[pb0][pb255]");
@@ -1466,6 +1479,7 @@ mod test {
         );
         assert_eq!(normalize("[pb256,0,0][PBx]"), "");
     }
+
     #[test]
     fn parse_pb1() {
         let mut m = Parser::new("[pb0][PB1][pB255][pb256][pb]");
@@ -1488,6 +1502,7 @@ mod test {
         assert_eq!(m.next(), Some(Ok(Value::PageBackground(None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pb2() {
         let mut m = Parser::new("[pb0,0]");
@@ -1497,6 +1512,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pb3() {
         let mut m = Parser::new("[pb50,150,200]");
@@ -1506,6 +1522,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pb4() {
         let mut m = Parser::new("[pb0,0,255,0]");
@@ -1515,6 +1532,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pb5() {
         let mut m = Parser::new("[pb0,0.5,255]");
@@ -1524,6 +1542,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn norm_cf() {
         assert_eq!(normalize("[cf0][CF255]"), "[cf0][cf255]");
@@ -1534,6 +1553,7 @@ mod test {
         );
         assert_eq!(normalize("[cf256,0,0][CFx]"), "");
     }
+
     #[test]
     fn parse_cf1() {
         let mut m = Parser::new("[cf0][CF1][cF255][cf256][cf]");
@@ -1556,6 +1576,7 @@ mod test {
         assert_eq!(m.next(), Some(Ok(Value::ColorForeground(None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cf2() {
         let mut m = Parser::new("[cf0,0]");
@@ -1565,6 +1586,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cf3() {
         let mut m = Parser::new("[cf255,0,208][CF0,a,0]");
@@ -1578,6 +1600,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cf4() {
         let mut m = Parser::new("[cf0,0,255,0]");
@@ -1587,6 +1610,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cf5() {
         let mut m = Parser::new("[cf0,0.5,255]");
@@ -1596,6 +1620,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cr() {
         let mut m = Parser::new("[cr1,1,10,10,0]");
@@ -1608,6 +1633,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cr2() {
         let mut m = Parser::new("[CR1,0,10,10,0]");
@@ -1619,6 +1645,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cr3() {
         let mut m = Parser::new("[cR1,1,100,100,0,1]");
@@ -1630,6 +1657,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cr4() {
         let mut m = Parser::new("[Cr5,7,100,80,100,150,200]");
@@ -1642,6 +1670,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cr5() {
         let mut m = Parser::new("[cr1,1,100,100,0,1,2,3]");
@@ -1653,6 +1682,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_cr6() {
         let mut m = Parser::new("[cr100,200,1000,2000,255,208,0]");
@@ -1665,6 +1695,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_f() {
         let mut m = Parser::new("[F]");
@@ -1674,18 +1705,21 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_f1() {
         let mut m = Parser::new("[f1]");
         assert_eq!(m.next(), Some(Ok(Value::Field(1, None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_f2() {
         let mut m = Parser::new("[f99]");
         assert_eq!(m.next(), Some(Ok(Value::Field(99, None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_f3() {
         let mut m = Parser::new("[f100]");
@@ -1695,12 +1729,14 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_f4() {
         let mut m = Parser::new("[F4,1]");
         assert_eq!(m.next(), Some(Ok(Value::Field(4, Some(1)))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fl() {
         let mut m = Parser::new("[flto]");
@@ -1710,6 +1746,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fl2() {
         let mut m = Parser::new("[FLOT]");
@@ -1719,6 +1756,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fl3() {
         let mut m = Parser::new("[Flt10o5]");
@@ -1728,6 +1766,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fl4() {
         let mut m = Parser::new("[fLo0t99]");
@@ -1737,6 +1776,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fl5() {
         let mut m = Parser::new("[flt10o5x]");
@@ -1746,6 +1786,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fl6() {
         let mut m = Parser::new("[flt10o100]");
@@ -1755,6 +1796,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fl7() {
         let mut m = Parser::new("[flt10o10o10]");
@@ -1764,12 +1806,14 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fle() {
         let mut m = Parser::new("[/fl]");
         assert_eq!(m.next(), Some(Ok(Value::FlashEnd())));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fle1() {
         let mut m = Parser::new("[/fl1]");
@@ -1779,30 +1823,35 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fo() {
         let mut m = Parser::new("[fo]");
         assert_eq!(m.next(), Some(Ok(Value::Font(None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fo1() {
         let mut m = Parser::new("[fo1]");
         assert_eq!(m.next(), Some(Ok(Value::Font(Some((1, None))))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fo2() {
         let mut m = Parser::new("[fO2,0000]");
         assert_eq!(m.next(), Some(Ok(Value::Font(Some((2, Some(0)))))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fo3() {
         let mut m = Parser::new("[Fo3,FFFF]");
         assert_eq!(m.next(), Some(Ok(Value::Font(Some((3, Some(0xFFFF)))))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fo4() {
         let mut m = Parser::new("[FO4,FFFFF]");
@@ -1812,6 +1861,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fo5() {
         let mut m = Parser::new("[fo5,xxxx]");
@@ -1821,6 +1871,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fo6() {
         let mut m = Parser::new("[fo6,0000,0]");
@@ -1830,12 +1881,14 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fo7() {
         let mut m = Parser::new("[Fo7,abcd]");
         assert_eq!(m.next(), Some(Ok(Value::Font(Some((7, Some(0xabcd)))))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_fo8() {
         let mut m = Parser::new("[fo0]");
@@ -1845,6 +1898,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_g() {
         let mut m = Parser::new("[G]");
@@ -1854,18 +1908,21 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_g1() {
         let mut m = Parser::new("[g1]");
         assert_eq!(m.next(), Some(Ok(Value::Graphic(1, None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_g2() {
         let mut m = Parser::new("[g2,1,1]");
         assert_eq!(m.next(), Some(Ok(Value::Graphic(2, Some((1, 1, None))))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_g3() {
         let mut m = Parser::new("[g3,1]");
@@ -1875,6 +1932,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_g4() {
         let mut m = Parser::new("[g4,1,1,0123]");
@@ -1884,6 +1942,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_g5() {
         let mut m = Parser::new("[g5,1,0,0123]");
@@ -1893,6 +1952,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_g6() {
         let mut m = Parser::new("[g6,300,300,12345]");
@@ -1904,6 +1964,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_g7() {
         let mut m = Parser::new("[g7,30,30,1245,]");
@@ -1915,6 +1976,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_g8() {
         let mut m = Parser::new("[G8,50,50,Beef]");
@@ -1924,6 +1986,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_hc() {
         let mut m = Parser::new("[hc]");
@@ -1933,18 +1996,21 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_hc1() {
         let mut m = Parser::new("[HC1]");
         assert_eq!(m.next(), Some(Ok(Value::HexadecimalCharacter(0x0001))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_hc2() {
         let mut m = Parser::new("[hcFFFF]");
         assert_eq!(m.next(), Some(Ok(Value::HexadecimalCharacter(0xFFFF))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_hc3() {
         let mut m = Parser::new("[hc1FFFF]");
@@ -1954,6 +2020,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_hc4() {
         let mut m = Parser::new("[hcXXxx]");
@@ -1963,18 +2030,21 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_hc5() {
         let mut m = Parser::new("[hc7f]");
         assert_eq!(m.next(), Some(Ok(Value::HexadecimalCharacter(0x7F))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_jl() {
         let mut m = Parser::new("[jl]");
         assert_eq!(m.next(), Some(Ok(Value::JustificationLine(None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_jl0() {
         let mut m = Parser::new("[JL0]");
@@ -1984,6 +2054,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_jl15() {
         let mut m = Parser::new("[jL1][Jl2][JL3][jl4][JL5]");
@@ -2011,12 +2082,14 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_jp() {
         let mut m = Parser::new("[jp]");
         assert_eq!(m.next(), Some(Ok(Value::JustificationPage(None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_jp0() {
         let mut m = Parser::new("[JP0]");
@@ -2026,6 +2099,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_jp14() {
         let mut m = Parser::new("[jP1][Jp2][JP3][jp4]");
@@ -2051,12 +2125,14 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_ms() {
         let mut m = Parser::new("[ms0]");
         assert_eq!(m.next(), Some(Ok(Value::ManufacturerSpecific(0, None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_ms1() {
         let mut m = Parser::new("[Ms1,Test]");
@@ -2066,6 +2142,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_ms2() {
         let mut m = Parser::new("[Ms999,RANDOM junk]");
@@ -2078,6 +2155,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_ms3() {
         let mut m = Parser::new("[Ms9x9]");
@@ -2087,12 +2165,14 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mse() {
         let mut m = Parser::new("[/ms0]");
         assert_eq!(m.next(), Some(Ok(Value::ManufacturerSpecificEnd(0, None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mse1() {
         let mut m = Parser::new("[/Ms1,Test]");
@@ -2102,6 +2182,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mse2() {
         let mut m = Parser::new("[/Ms999,RANDOM junk]");
@@ -2114,6 +2195,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mse3() {
         let mut m = Parser::new("[/Ms9x9]");
@@ -2123,6 +2205,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv() {
         let mut m = Parser::new("[mv]");
@@ -2132,6 +2215,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv1() {
         let mut m = Parser::new("[mvc]");
@@ -2141,6 +2225,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv2() {
         let mut m = Parser::new("[mvcl]");
@@ -2150,6 +2235,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv3() {
         let mut m = Parser::new("[mvcl100]");
@@ -2159,6 +2245,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv4() {
         let mut m = Parser::new("[mvcl100,1]");
@@ -2168,6 +2255,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv5() {
         let mut m = Parser::new("[mvcl100,1,10]");
@@ -2177,6 +2265,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv6() {
         let mut m = Parser::new("[mvcl100,1,10,Text]");
@@ -2193,6 +2282,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv7() {
         let mut m = Parser::new("[mvcr150,2,5,*MOVING*]");
@@ -2209,6 +2299,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv8() {
         let mut m = Parser::new("[mvll75,3,4,Linear]");
@@ -2225,6 +2316,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv9() {
         let mut m = Parser::new("[mvlr1000,4,5,right]");
@@ -2241,6 +2333,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv10() {
         let mut m = Parser::new("[mvl2l100,5,1,left]");
@@ -2257,6 +2350,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv11() {
         let mut m = Parser::new("[mvl4x100,5,1,left]");
@@ -2268,6 +2362,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_mv12() {
         let mut m = Parser::new("[mvl4r100,5,300,left]");
@@ -2279,30 +2374,35 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pt() {
         let mut m = Parser::new("[pt]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(None, None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pt1() {
         let mut m = Parser::new("[pt10]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(Some(10), None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pt2() {
         let mut m = Parser::new("[pt10o]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(Some(10), None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pt3() {
         let mut m = Parser::new("[pt10o2]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(Some(10), Some(2)))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pt4() {
         let mut m = Parser::new("[pt10o2o]");
@@ -2312,18 +2412,21 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pt5() {
         let mut m = Parser::new("[pt255O255]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(Some(255), Some(255)))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pt6() {
         let mut m = Parser::new("[PTO]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(None, None))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pt7() {
         let mut m = Parser::new("[pt256o256]");
@@ -2333,6 +2436,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_pt8() {
         let mut m = Parser::new("[pt%%%]");
@@ -2342,6 +2446,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_sc() {
         let mut m = Parser::new("[sc]");
@@ -2351,18 +2456,21 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_sc1() {
         let mut m = Parser::new("[SC1]");
         assert_eq!(m.next(), Some(Ok(Value::SpacingCharacter(1))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_sc2() {
         let mut m = Parser::new("[Sc99]");
         assert_eq!(m.next(), Some(Ok(Value::SpacingCharacter(99))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_sc3() {
         let mut m = Parser::new("[sc100]");
@@ -2372,6 +2480,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_sc4() {
         let mut m = Parser::new("[sc2,1]");
@@ -2381,12 +2490,14 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_sce() {
         let mut m = Parser::new("[/sc]");
         assert_eq!(m.next(), Some(Ok(Value::SpacingCharacterEnd())));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_sce1() {
         let mut m = Parser::new("[/sc1]");
@@ -2396,6 +2507,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tr() {
         let mut m = Parser::new("[tr1,1,10,10]");
@@ -2405,6 +2517,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tr2() {
         let mut m = Parser::new("[TR1,0,10,10]");
@@ -2414,6 +2527,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tr3() {
         let mut m = Parser::new("[tR1,1,100,100,1]");
@@ -2425,6 +2539,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tr4() {
         let mut m = Parser::new("[Tr5,7,100,80]");
@@ -2434,6 +2549,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tr5() {
         let mut m = Parser::new("[tr1,1,,100]");
@@ -2443,6 +2559,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tr6() {
         let mut m = Parser::new("[tr1,1,0,0]");
@@ -2452,6 +2569,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_new_line() {
         let mut m = Parser::new("[nl][NL0][Nl1][nL9][nl10]");
@@ -2465,6 +2583,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_multi() {
         let mut m = Parser::new("[[TEST[nl]TEST 2[np]TEST 3XX[NL]TEST 4]]");
@@ -2477,12 +2596,14 @@ mod test {
         assert_eq!(m.next(), Some(Ok(Value::Text("TEST 4]".into()))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_control_char() {
         let mut m = Parser::new("\n");
         assert_eq!(m.next(), Some(Err(SyntaxError::CharacterNotDefined('\n'))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_rustacean() {
         let mut m = Parser::new("🦀🦀");
@@ -2490,6 +2611,7 @@ mod test {
         assert_eq!(m.next(), Some(Err(SyntaxError::CharacterNotDefined('🦀'))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tag() {
         let mut m = Parser::new("[x[x]");
@@ -2503,12 +2625,14 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tag2() {
         let mut m = Parser::new("]");
         assert_eq!(m.next(), Some(Err(SyntaxError::UnsupportedTag("".into()))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tag3() {
         let mut m = Parser::new("[nl");
@@ -2518,12 +2642,14 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tag4() {
         let mut m = Parser::new("[");
         assert_eq!(m.next(), Some(Err(SyntaxError::UnsupportedTag("".into()))));
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tag5() {
         let mut m = Parser::new("[x]");
@@ -2533,6 +2659,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tag6() {
         let mut m = Parser::new("bad]");
@@ -2542,6 +2669,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tag7() {
         let mut m = Parser::new("[ttS123][vsa][slow45,10][feedL123][tz1,2,3]");
@@ -2567,6 +2695,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn parse_tag8() {
         let mut m = Parser::new("[pa1,LOW,CLOSED][loca,b,c,d]");
@@ -2580,6 +2709,7 @@ mod test {
         );
         assert_eq!(m.next(), None);
     }
+
     #[test]
     fn norm() {
         assert_eq!(normalize("01234567890"), "01234567890");
@@ -2597,6 +2727,7 @@ mod test {
         assert_eq!(normalize("[[NOT TAG]]"), "[[NOT TAG]]");
         assert_eq!(normalize("\t\n\rTAIL"), "TAIL");
     }
+
     #[test]
     fn norm_2() {
         assert_eq!(normalize("ABC[NL]DEF"), "ABC[nl]DEF");
@@ -2625,6 +2756,7 @@ mod test {
         assert_eq!(normalize("[tr1,1,0,0]"), "[tr1,1,0,0]");
         assert_eq!(normalize("[pb0,128,255]"), "[pb0,128,255]");
     }
+
     #[test]
     fn norm_3() {
         assert_eq!(normalize("["), "");

@@ -823,6 +823,7 @@ impl<'a> Iterator for PageSplitter<'a> {
 mod test {
     use super::*;
     use crate::dms::multi::{ColorClassic, ColorCtx, ColorScheme};
+
     fn make_full_matrix() -> State {
         State::new(
             ColorCtx::new(
@@ -841,6 +842,7 @@ mod test {
             None,
         )
     }
+
     #[test]
     fn page_count() {
         let rs = make_full_matrix();
@@ -867,6 +869,7 @@ mod test {
         .collect();
         assert_eq!(pages.len(), 1);
     }
+
     #[test]
     fn page_full_matrix() {
         let rs = make_full_matrix();
@@ -912,6 +915,7 @@ mod test {
         assert_eq!(rs.font_num, 3);
         assert_eq!(rs.font_version_id, Some(0x1234));
     }
+
     fn make_char_matrix() -> State {
         State::new(
             ColorCtx::new(
@@ -930,6 +934,7 @@ mod test {
             None,
         )
     }
+
     #[test]
     fn page_char_matrix() {
         let rs = make_char_matrix();

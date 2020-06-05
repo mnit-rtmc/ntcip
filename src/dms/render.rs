@@ -761,15 +761,12 @@ impl<'a> PageSplitter<'a> {
                     off.unwrap_or(ds.page_off_time_ds);
             }
             Value::SpacingCharacter(sc) => {
-                if rs.is_char_matrix() {
-                    return Err(SyntaxError::UnsupportedTag(v.into()));
+                if rs.is_char_matrix() && sc > 0 {
+                    return Err(SyntaxError::UnsupportedTagValue(v.into()));
                 }
                 rs.char_spacing = Some(sc);
             }
             Value::SpacingCharacterEnd() => {
-                if rs.is_char_matrix() {
-                    return Err(SyntaxError::UnsupportedTag(v.into()));
-                }
                 rs.char_spacing = None;
             }
             Value::TextRectangle(r) => {
@@ -967,6 +964,23 @@ mod test {
             assert!(true);
         } else {
             assert!(false)
+        }
+    }
+
+    #[test]
+    fn char_matrix_spacing() {
+        let rs = make_char_matrix();
+        let page = PageSplitter::new(rs.clone(), "[sc1][/sc]").next();
+        if let Some(Err(SyntaxError::UnsupportedTagValue(_))) = page {
+            assert!(true)
+        } else {
+            assert!(false)
+        }
+        let page = PageSplitter::new(rs.clone(), "[sc0][/sc]").next();
+        if let Some(Err(SyntaxError::UnsupportedTagValue(_))) = page {
+            assert!(false)
+        } else {
+            assert!(true)
         }
     }
 }

@@ -75,6 +75,8 @@ pub struct PageRenderer {
     values: Vec<(Value, ColorCtx)>,
     /// text spans
     spans: Vec<TextSpan>,
+    /// Flag indicating current line blank
+    line_blank: bool,
 }
 
 /// Page splitter (iterator)
@@ -87,8 +89,6 @@ pub struct PageSplitter<'a> {
     parser: Parser<'a>,
     /// Flag to indicate more pages
     more_pages: bool,
-    /// Flag indicating current line blank
-    line_blank: bool,
 }
 
 impl State {
@@ -336,6 +336,7 @@ impl PageRenderer {
             state,
             values,
             spans,
+            line_blank: true,
         }
     }
 
@@ -642,20 +643,17 @@ impl<'a> PageSplitter<'a> {
         let parser = Parser::new(ms);
         let state = default_state.clone();
         let more_pages = true;
-        let line_blank = true;
         PageSplitter {
             default_state,
             state,
             parser,
             more_pages,
-            line_blank,
         }
     }
 
     /// Make the next page.
     fn make_page(&mut self) -> Result<PageRenderer> {
         self.more_pages = false;
-        self.line_blank = true;
         let mut page = PageRenderer::new(self.page_state());
         while let Some(v) = self.parser.next() {
             self.update_state(v?, &mut page)?;
@@ -736,10 +734,10 @@ impl<'a> PageSplitter<'a> {
                     return Err(SyntaxError::UnsupportedTagValue(v.into()));
                 }
                 // Insert an empty text span for blank lines.
-                if self.line_blank {
+                if page.line_blank {
                     page.spans.push(TextSpan::new(rs.clone(), "".into()));
                 }
-                self.line_blank = true;
+                page.line_blank = true;
                 rs.line_spacing = ls;
                 rs.line_number += 1;
                 rs.span_number = 0;
@@ -770,7 +768,7 @@ impl<'a> PageSplitter<'a> {
                 rs.char_spacing = None;
             }
             Value::TextRectangle(r) => {
-                self.line_blank = true;
+                page.line_blank = true;
                 rs.line_number = 0;
                 rs.span_number = 0;
                 rs.update_text_rectangle(ds, r, &v)?;
@@ -778,7 +776,7 @@ impl<'a> PageSplitter<'a> {
             Value::Text(t) => {
                 page.spans.push(TextSpan::new(rs.clone(), t));
                 rs.span_number += 1;
-                self.line_blank = false;
+                page.line_blank = false;
             }
             Value::HexadecimalCharacter(hc) => {
                 match std::char::from_u32(hc.into()) {
@@ -787,7 +785,7 @@ impl<'a> PageSplitter<'a> {
                         t.push(c);
                         page.spans.push(TextSpan::new(rs.clone(), t));
                         rs.span_number += 1;
-                        self.line_blank = false;
+                        page.line_blank = false;
                     }
                     None => {
                         // Invalid code point (surrogate in D800-DFFF range)
@@ -807,7 +805,7 @@ impl<'a> PageSplitter<'a> {
 impl<'a> Iterator for PageSplitter<'a> {
     type Item = Result<PageRenderer>;
 
-    fn next(&mut self) -> Option<Result<PageRenderer>> {
+    fn next(&mut self) -> Option<Self::Item> {
         if self.more_pages {
             Some(self.make_page())
         } else {
@@ -865,6 +863,17 @@ mod test {
         )
         .collect();
         assert_eq!(pages.len(), 1);
+    }
+
+    #[test]
+    fn line_count() {
+        let rs = make_full_matrix();
+        let mut pages = PageSplitter::new(rs.clone(), "[nl][nl]LINE 3[nl]");
+        let p = pages.next().unwrap().unwrap();
+        assert_eq!(
+            p.spans.iter().map(|s| s.text.clone()).collect::<Vec<String>>(),
+            vec!["".to_string(), "".to_string(), "LINE 3".to_string()],
+        );
     }
 
     #[test]

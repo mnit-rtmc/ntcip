@@ -69,8 +69,8 @@ struct TextLine {
 /// Page renderer
 #[derive(Clone)]
 pub struct PageRenderer {
-    /// Render state at start of page
-    state: State,
+    /// Base page render state
+    base_state: State,
     /// graphic / color rect, color context
     values: Vec<(Value, ColorCtx)>,
     /// text spans
@@ -329,11 +329,11 @@ impl TextLine {
 
 impl PageRenderer {
     /// Create a new page renderer
-    fn new(state: State) -> Self {
+    fn new(base_state: State) -> Self {
         let values = vec![];
         let spans = vec![];
         PageRenderer {
-            state,
+            base_state,
             values,
             spans,
             line_blank: true,
@@ -367,17 +367,17 @@ impl PageRenderer {
 
     /// Get the page-on time (deciseconds)
     pub fn page_on_time_ds(&self) -> u16 {
-        self.state.page_on_time_ds.into()
+        self.base_state.page_on_time_ds.into()
     }
 
     /// Get the page-off time (deciseconds)
     pub fn page_off_time_ds(&self) -> u16 {
-        self.state.page_off_time_ds.into()
+        self.base_state.page_off_time_ds.into()
     }
 
     /// Render a blank page.
     pub fn render_blank(&self) -> Raster<SRgb8> {
-        let rs = &self.state;
+        let rs = &self.base_state;
         let w = rs.text_rectangle.w;
         let h = rs.text_rectangle.h;
         let clr = rs.background_rgb();
@@ -390,7 +390,7 @@ impl PageRenderer {
         fonts: &FontCache,
         graphics: &GraphicCache,
     ) -> Result<Raster<SRgb8>> {
-        let rs = &self.state;
+        let rs = &self.base_state;
         let width = rs.text_rectangle.w.into();
         let height = rs.text_rectangle.h.into();
         debug!("render_page: {}x{}", width, height);
@@ -476,7 +476,7 @@ impl PageRenderer {
         let (before, after) = self.offset_horiz(span, fonts)?;
         let offset = (w - before - after) / 2; // offset for centering
         let x = left + offset + before;
-        let cw = self.state.char_width();
+        let cw = self.base_state.char_width();
         // Truncate to character-width boundary
         Ok((x / cw) * cw)
     }
@@ -564,7 +564,7 @@ impl PageRenderer {
         let (above, below) = self.offset_vert(span, fonts)?;
         let offset = (h - above - below) / 2; // offset for centering
         let y = top + offset + above;
-        let ch = self.state.char_height();
+        let ch = self.base_state.char_height();
         // Truncate to line-height boundary
         Ok((y / ch) * ch)
     }
@@ -689,7 +689,7 @@ impl<'a> PageSplitter<'a> {
             Value::ColorBackground(c) => {
                 // This tag remains for backward compatibility with 1203v1
                 rs.color_ctx.set_background(c, &v)?;
-                page.state.color_ctx.set_background(c, &v)?;
+                page.base_state.color_ctx.set_background(c, &v)?;
             }
             Value::ColorForeground(c) => {
                 rs.color_ctx.set_foreground(c, &v)?;
@@ -749,13 +749,14 @@ impl<'a> PageSplitter<'a> {
             }
             Value::PageBackground(c) => {
                 rs.color_ctx.set_background(c, &v)?;
-                page.state.color_ctx.set_background(c, &v)?;
+                page.base_state.color_ctx.set_background(c, &v)?;
             }
             Value::PageTime(on, off) => {
                 rs.page_on_time_ds = on.unwrap_or(ds.page_on_time_ds);
                 rs.page_off_time_ds = off.unwrap_or(ds.page_off_time_ds);
-                page.state.page_on_time_ds = on.unwrap_or(ds.page_on_time_ds);
-                page.state.page_off_time_ds =
+                page.base_state.page_on_time_ds =
+                    on.unwrap_or(ds.page_on_time_ds);
+                page.base_state.page_off_time_ds =
                     off.unwrap_or(ds.page_off_time_ds);
             }
             Value::SpacingCharacter(sc) => {
@@ -871,7 +872,10 @@ mod test {
         let mut pages = PageSplitter::new(rs.clone(), "[nl][nl]LINE 3[nl]");
         let p = pages.next().unwrap().unwrap();
         assert_eq!(
-            p.spans.iter().map(|s| s.text.clone()).collect::<Vec<String>>(),
+            p.spans
+                .iter()
+                .map(|s| s.text.clone())
+                .collect::<Vec<String>>(),
             vec!["".to_string(), "".to_string(), "LINE 3".to_string()],
         );
     }
@@ -881,7 +885,7 @@ mod test {
         let rs = make_full_matrix();
         let mut pages = PageSplitter::new(rs.clone(), "");
         let p = pages.next().unwrap().unwrap();
-        let rs = p.state;
+        let rs = p.base_state;
         assert_eq!(rs.page_on_time_ds, 20);
         assert_eq!(rs.page_off_time_ds, 0);
         assert_eq!(rs.text_rectangle, Rectangle::new(1, 1, 60, 30));
@@ -899,7 +903,7 @@ mod test {
              [jp3][jl4][tr1,1,10,10][nl4][fo3,1234][sc2][np][pb][pt][cb][/sc]",
         );
         let p = pages.next().unwrap().unwrap();
-        let rs = p.state;
+        let rs = p.base_state;
         assert_eq!(rs.page_on_time_ds, 10);
         assert_eq!(rs.page_off_time_ds, 2);
         assert_eq!(rs.text_rectangle, Rectangle::new(1, 1, 60, 30));
@@ -910,7 +914,7 @@ mod test {
         assert_eq!(rs.font_num, 1);
         assert_eq!(rs.font_version_id, None);
         let p = pages.next().unwrap().unwrap();
-        let rs = p.state;
+        let rs = p.base_state;
         assert_eq!(rs.page_on_time_ds, 20);
         assert_eq!(rs.page_off_time_ds, 0);
         assert_eq!(rs.text_rectangle, Rectangle::new(1, 1, 60, 30));

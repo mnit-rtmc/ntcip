@@ -1281,6 +1281,11 @@ mod test {
     use super::*;
 
     #[test]
+    fn value_size() {
+        assert_eq!(std::mem::size_of::<Value>(), 32);
+    }
+
+    #[test]
     fn color_component() {
         assert_eq!(ColorCtx::lerp(0, 255, 0), 0);
         assert_eq!(ColorCtx::lerp(0, 255, 128), 128);

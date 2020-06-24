@@ -140,7 +140,9 @@ pub enum MovingTextDirection {
 /// Values are tags or text from a parsed MULTI.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Value {
-    /// Background color tag
+    /// Background color tag.
+    ///
+    /// This tag remains for backward compatibility with 1203v1.
     ///
     /// * Optional color (legacy only)
     ColorBackground(Option<Color>),
@@ -259,6 +261,7 @@ pub enum SyntaxError {
 }
 
 /// Parser for MULTI values.
+#[derive(Clone)]
 pub struct Parser<'a> {
     /// Remaining characters to parse
     remaining: Peekable<Chars<'a>>,
@@ -1175,8 +1178,9 @@ impl<'a> Parser<'a> {
     /// Create a new MULTI parser.
     pub fn new(m: &'a str) -> Self {
         debug!("Parser::new {}", m);
+        let remaining = m.chars().peekable();
         Parser {
-            remaining: m.chars().peekable(),
+            remaining,
             within_tag: false,
         }
     }

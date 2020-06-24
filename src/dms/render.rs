@@ -456,8 +456,7 @@ impl<'a> Renderer<'a> {
 
     /// Check for unsupported MULTI tags in a page.
     fn check_unsupported(&self) -> Result<()> {
-        let mut parser = self.parser.clone();
-        while let Some(value) = parser.next() {
+        for value in self.parser.clone() {
             let val = value?;
             match val {
                 Value::Field(_, _)
@@ -484,8 +483,7 @@ impl<'a> Renderer<'a> {
         rs.line_spacing = ds.line_spacing;
         rs.line_number = 0;
         rs.span_number = 0;
-        let mut parser = self.parser.clone();
-        while let Some(value) = parser.next() {
+        for value in self.parser.clone() {
             let val = value?;
             match val {
                 Value::ColorBackground(clr) | Value::PageBackground(clr) => {
@@ -505,8 +503,7 @@ impl<'a> Renderer<'a> {
     /// Render graphics and color rectangles.
     fn render_graphics(&mut self, raster: &mut Raster<SRgb8>) -> Result<()> {
         let mut rs = self.state.clone();
-        let mut parser = self.parser.clone();
-        while let Some(value) = parser.next() {
+        for value in self.parser.clone() {
             let val = value?;
             match val {
                 Value::ColorBackground(clr) => {
@@ -872,7 +869,7 @@ fn render_rect(
     let region = Region::new(rx, ry, rw, rh);
     if raster.intersection(region) == region {
         raster.copy_color(region, clr);
-        return Ok(());
+        Ok(())
     } else {
         Err(SyntaxError::UnsupportedTagValue(value.into()))
     }

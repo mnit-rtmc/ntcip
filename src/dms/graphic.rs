@@ -10,7 +10,7 @@ use pix::{rgb::SRgb8, Raster};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
-/// An uncompressed DMS graphic
+/// An uncompressed DMS graphic.
 #[derive(Deserialize, Serialize)]
 pub struct Graphic {
     /// Graphic number
@@ -30,7 +30,7 @@ pub struct Graphic {
     bitmap: Vec<u8>,
 }
 
-/// Cache of graphics
+/// A cache of graphics.
 #[derive(Default)]
 pub struct GraphicCache {
     /// Graphics in cache

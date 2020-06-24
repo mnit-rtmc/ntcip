@@ -4,10 +4,10 @@
 //
 //! This module is for NTCIP 1203 DMS rendering.
 use crate::dms::multi::{
-    ColorCtx, JustificationLine, JustificationPage, Parser, Rectangle,
-    SyntaxError, Value,
+    ColorClassic, ColorCtx, ColorScheme, JustificationLine, JustificationPage,
+    Parser, Rectangle, SyntaxError, Value,
 };
-use crate::dms::{Font, FontCache, GraphicCache, Result};
+use crate::dms::{Font, FontCache, Graphic, GraphicCache, Result};
 use log::debug;
 use pix::{rgb::SRgb8, Raster, Region};
 
@@ -29,7 +29,7 @@ enum PageState {
 
 /// Page render state
 #[derive(Clone)]
-pub struct State {
+struct RenderState {
     /// Color context
     color_ctx: ColorCtx,
 
@@ -54,11 +54,11 @@ pub struct State {
     /// Current line justification
     just_line: JustificationLine,
 
-    /// Current line number
-    line_number: u8,
+    /// Font number
+    font_num: u8,
 
-    /// Current text span number
-    span_number: u8,
+    /// Font version_id
+    font_version_id: Option<u16>,
 
     /// Current specified line spacing
     line_spacing: Option<u8>,
@@ -66,18 +66,18 @@ pub struct State {
     /// Current specified char spacing
     char_spacing: Option<u8>,
 
-    /// Font number
-    font_num: u8,
+    /// Current line number
+    line_number: u8,
 
-    /// Font version_id
-    font_version_id: Option<u16>,
+    /// Current text span number
+    span_number: u8,
 }
 
 /// Text span
 #[derive(Clone)]
 struct TextSpan {
     /// Render state for span
-    state: State,
+    state: RenderState,
 
     /// Text string
     text: String,
@@ -96,19 +96,59 @@ struct TextLine {
     line_spacing: Option<u16>,
 }
 
-/// MULTI renderer (iterator)
-pub struct Renderer<'a> {
+/// Builder for dynamic message sign MULTI page renderer.
+///
+/// # Example
+///
+/// ```rust
+/// use ntcip::dms::PageBuilder;
+/// use ntcip::dms::multi::{JustificationLine, JustificationPage};
+///
+/// let pages = PageBuilder::new(100, 14)
+///     .with_char_size(5, 7)
+///     .with_page_on_time_ds(20)
+///     .with_justification_page(JustificationPage::Top)
+///     .with_justification_line(JustificationLine::Left)
+///     .build("LINE 1[nl]SECOND LINE[np]SECOND PAGE");
+/// ```
+pub struct PageBuilder<'a> {
     /// Font cache
-    fonts: &'a FontCache,
+    fonts: Option<&'a FontCache>,
 
     /// Graphic cache
-    graphics: &'a GraphicCache,
+    graphics: Option<&'a GraphicCache>,
 
     /// Default rendering state
-    default_state: State,
+    default_state: RenderState,
+}
+
+/// Page renderer for MULTI on dynamic message signs.
+///
+/// # Example
+///
+/// ```rust
+/// use ntcip::dms::PageBuilder;
+/// use ntcip::dms::multi::{JustificationLine, JustificationPage};
+///
+/// let pages = PageBuilder::new(100, 14)
+///     .with_char_size(5, 7)
+///     .with_page_on_time_ds(20)
+///     .with_justification_page(JustificationPage::Top)
+///     .with_justification_line(JustificationLine::Left)
+///     .build("LINE 1[nl]SECOND LINE[np]SECOND PAGE");
+/// ```
+pub struct Pages<'a> {
+    /// Font cache
+    fonts: Option<&'a FontCache>,
+
+    /// Graphic cache
+    graphics: Option<&'a GraphicCache>,
+
+    /// Default rendering state
+    default_state: RenderState,
 
     /// Current render state
-    state: State,
+    state: RenderState,
 
     /// Page state
     page_state: PageState,
@@ -151,35 +191,28 @@ impl PageState {
     }
 }
 
-impl State {
+impl RenderState {
     /// Create a new render state.
-    pub fn new(
-        color_ctx: ColorCtx,
-        char_width: u8,
-        char_height: u8,
-        page_on_time_ds: u8,
-        page_off_time_ds: u8,
-        text_rectangle: Rectangle,
-        just_page: JustificationPage,
-        just_line: JustificationLine,
-        font_num: u8,
-        font_version_id: Option<u16>,
-    ) -> Self {
-        State {
-            color_ctx,
-            char_width,
-            char_height,
-            page_on_time_ds,
-            page_off_time_ds,
-            text_rectangle,
-            just_page,
-            just_line,
-            line_number: 0,
-            span_number: 0,
+    fn new(width: u16, height: u16) -> Self {
+        RenderState {
+            color_ctx: ColorCtx::new(
+                ColorScheme::Monochrome1Bit,
+                ColorClassic::Amber.rgb(),
+                ColorClassic::Black.rgb(),
+            ),
+            char_width: 0,
+            char_height: 0,
+            page_on_time_ds: 30,
+            page_off_time_ds: 0,
+            text_rectangle: Rectangle::new(1, 1, width, height),
+            just_page: JustificationPage::Middle,
+            just_line: JustificationLine::Center,
+            font_num: 1,
+            font_version_id: None,
             line_spacing: None,
             char_spacing: None,
-            font_num,
-            font_version_id,
+            line_number: 0,
+            span_number: 0,
         }
     }
 
@@ -214,7 +247,7 @@ impl State {
     /// Update the text rectangle.
     fn update_text_rectangle(
         &mut self,
-        default_state: &State,
+        default_state: &RenderState,
         rect: Rectangle,
         val: &Value,
     ) -> Result<()> {
@@ -267,28 +300,30 @@ impl State {
     }
 
     /// Lookup current font in cache.
-    fn font<'a>(&self, fonts: &'a FontCache) -> Result<&'a Font> {
-        debug!("State::font {}", self.font_num);
-        fonts.lookup(self.font_num, self.font_version_id)
+    fn font<'a>(&self, fonts: Option<&'a FontCache>) -> Result<&'a Font> {
+        debug!("RenderState::font {}", self.font_num);
+        fonts
+            .ok_or_else(|| SyntaxError::FontNotDefined(self.font_num))?
+            .lookup(self.font_num, self.font_version_id)
     }
 }
 
 impl<'a> TextSpan {
     /// Create a new text span.
-    fn new(state: &State, text: String) -> Self {
+    fn new(state: &RenderState, text: String) -> Self {
         let state = state.clone();
         TextSpan { state, text }
     }
 
     /// Get the width of a text span.
-    fn width(&self, fonts: &FontCache) -> Result<u16> {
+    fn width(&self, fonts: Option<&FontCache>) -> Result<u16> {
         let font = self.state.font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
         Ok(font.text_width(&self.text, Some(cs))?)
     }
 
     /// Get the char spacing.
-    fn char_spacing_fonts(&self, fonts: &FontCache) -> Result<u16> {
+    fn char_spacing_fonts(&self, fonts: Option<&FontCache>) -> Result<u16> {
         match self.state.char_spacing {
             Some(sp) => Ok(sp.into()),
             None => Ok(self.state.font(fonts)?.char_spacing().into()),
@@ -307,7 +342,7 @@ impl<'a> TextSpan {
     fn char_spacing_between(
         &self,
         prev: &TextSpan,
-        fonts: &FontCache,
+        fonts: Option<&FontCache>,
     ) -> Result<u16> {
         if let Some(c) = self.state.char_spacing {
             Ok(c.into())
@@ -322,12 +357,12 @@ impl<'a> TextSpan {
     }
 
     /// Get the height of a text span.
-    fn height(&self, fonts: &FontCache) -> Result<u16> {
+    fn height(&self, fonts: Option<&FontCache>) -> Result<u16> {
         Ok(self.state.font(fonts)?.height().into())
     }
 
     /// Get the font line spacing.
-    fn font_spacing(&self, fonts: &FontCache) -> Result<u16> {
+    fn font_spacing(&self, fonts: Option<&FontCache>) -> Result<u16> {
         Ok(self.state.font(fonts)?.line_spacing().into())
     }
 
@@ -386,23 +421,89 @@ impl TextLine {
     }
 }
 
-impl<'a> Renderer<'a> {
-    /// Create a new renderer.
-    ///
-    /// * `default_state` Default render state.
-    /// * `ms` MULTI string to parse.
-    pub fn new(
-        fonts: &'a FontCache,
-        graphics: &'a GraphicCache,
-        default_state: State,
-        ms: &'a str,
+impl<'a> PageBuilder<'a> {
+    /// Create a new dynamic message sign MULTI page builder.
+    pub fn new(width: u16, height: u16) -> Self {
+        let default_state = RenderState::new(width, height);
+        PageBuilder {
+            fonts: None,
+            graphics: None,
+            default_state,
+        }
+    }
+
+    /// Adjust the color context.
+    pub fn with_color_ctx(mut self, color_ctx: ColorCtx) -> Self {
+        self.default_state.color_ctx = color_ctx;
+        self
+    }
+
+    /// Adjust the character size.
+    pub fn with_char_size(mut self, width: u8, height: u8) -> Self {
+        self.default_state.char_width = width;
+        self.default_state.char_height = height;
+        self
+    }
+
+    /// Adjust the default page on time (deciseconds).
+    pub fn with_page_on_time_ds(mut self, page_on_time_ds: u8) -> Self {
+        self.default_state.page_on_time_ds = page_on_time_ds;
+        self
+    }
+
+    /// Adjust the default page off time (deciseconds).
+    pub fn with_page_off_time_ds(mut self, page_off_time_ds: u8) -> Self {
+        self.default_state.page_off_time_ds = page_off_time_ds;
+        self
+    }
+
+    /// Adjust the default page justification.
+    pub fn with_justification_page(
+        mut self,
+        just_page: JustificationPage,
     ) -> Self {
+        self.default_state.just_page = just_page;
+        self
+    }
+
+    /// Adjust the default line justification.
+    pub fn with_justification_line(
+        mut self,
+        just_line: JustificationLine,
+    ) -> Self {
+        self.default_state.just_line = just_line;
+        self
+    }
+
+    /// Adjust the default font number.
+    pub fn with_font_num(mut self, font_num: u8) -> Self {
+        self.default_state.font_num = font_num;
+        self
+    }
+
+    /// Set the font cache.
+    pub fn with_fonts(mut self, fonts: Option<&'a FontCache>) -> Self {
+        self.fonts = fonts;
+        self
+    }
+
+    /// Set the graphic cache.
+    pub fn with_graphics(mut self, graphics: Option<&'a GraphicCache>) -> Self {
+        self.graphics = graphics;
+        self
+    }
+
+    /// Build the page renderer.
+    ///
+    /// * `ms` MULTI string to parse.
+    pub fn build(self, ms: &'a str) -> Pages<'a> {
+        let default_state = self.default_state;
         let state = default_state.clone();
         let parser = Parser::new(ms);
         let spans = vec![];
-        Renderer {
-            fonts,
-            graphics,
+        Pages {
+            fonts: self.fonts,
+            graphics: self.graphics,
             default_state,
             state,
             page_state: PageState::On(true),
@@ -410,7 +511,9 @@ impl<'a> Renderer<'a> {
             spans,
         }
     }
+}
 
+impl<'a> Pages<'a> {
     /// Get the page-on time (deciseconds).
     fn page_on_time_ds(&self) -> u16 {
         self.state.page_on_time_ds.into()
@@ -521,11 +624,11 @@ impl<'a> Renderer<'a> {
                     render_rect(raster, rect, rgb, &val)?;
                 }
                 Value::Graphic(gn, None) => {
-                    let g = self.graphics.lookup(gn, None)?;
+                    let g = self.graphic(gn, None)?;
                     g.render_graphic(raster, 1, 1, &rs.color_ctx)?;
                 }
                 Value::Graphic(gn, Some((x, y, gid))) => {
-                    let g = self.graphics.lookup(gn, gid)?;
+                    let g = self.graphic(gn, gid)?;
                     let x = x.into();
                     let y = y.into();
                     g.render_graphic(raster, x, y, &rs.color_ctx)?;
@@ -535,6 +638,13 @@ impl<'a> Renderer<'a> {
             }
         }
         Ok(())
+    }
+
+    /// Lookup a graphic from the cache.
+    fn graphic(&self, gn: u8, gid: Option<u16>) -> Result<&'a Graphic> {
+        self.graphics
+            .ok_or_else(|| SyntaxError::GraphicNotDefined(gn))?
+            .lookup(gn, gid)
     }
 
     /// Render one text rectangle.
@@ -841,7 +951,7 @@ impl<'a> Renderer<'a> {
     }
 }
 
-impl<'a> Iterator for Renderer<'a> {
+impl<'a> Iterator for Pages<'a> {
     type Item = Result<(Raster<SRgb8>, u16)>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -891,25 +1001,20 @@ mod test {
     }
 
     fn render_full(multi: &str) -> Result<Vec<(Raster<SRgb8>, u16)>> {
-        let rs = State::new(
-            ColorCtx::new(
+        let fonts = font_cache();
+        PageBuilder::new(60, 30)
+            .with_color_ctx(ColorCtx::new(
                 ColorScheme::Color24Bit,
                 ColorClassic::White.rgb(),
                 ColorClassic::Black.rgb(),
-            ),
-            0,
-            0,
-            20,
-            0,
-            Rectangle::new(1, 1, 60, 30),
-            JustificationPage::Top,
-            JustificationLine::Left,
-            3,
-            None,
-        );
-        let fonts = font_cache();
-        let graphics = GraphicCache::default();
-        Renderer::new(&fonts, &graphics, rs, multi).collect()
+            ))
+            .with_page_on_time_ds(20)
+            .with_justification_page(JustificationPage::Top)
+            .with_justification_line(JustificationLine::Left)
+            .with_font_num(3)
+            .with_fonts(Some(&fonts))
+            .build(multi)
+            .collect()
     }
 
     #[test]
@@ -1003,25 +1108,20 @@ mod test {
     }
 
     fn render_char(multi: &str) -> Result<Vec<(Raster<SRgb8>, u16)>> {
-        let rs = State::new(
-            ColorCtx::new(
+        let fonts = font_cache();
+        PageBuilder::new(100, 21)
+            .with_color_ctx(ColorCtx::new(
                 ColorScheme::Monochrome1Bit,
                 ColorClassic::White.rgb(),
                 ColorClassic::Black.rgb(),
-            ),
-            5,
-            7,
-            20,
-            0,
-            Rectangle::new(1, 1, 100, 21),
-            JustificationPage::Top,
-            JustificationLine::Left,
-            1,
-            None,
-        );
-        let fonts = font_cache();
-        let graphics = GraphicCache::default();
-        Renderer::new(&fonts, &graphics, rs, multi).collect()
+            ))
+            .with_char_size(5, 7)
+            .with_page_on_time_ds(20)
+            .with_justification_page(JustificationPage::Top)
+            .with_justification_line(JustificationLine::Left)
+            .with_fonts(Some(&fonts))
+            .build(multi)
+            .collect()
     }
 
     #[test]

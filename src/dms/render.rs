@@ -3,7 +3,6 @@
 // Copyright (C) 2018-2020  Minnesota Department of Transportation
 //
 //! This module is for NTCIP 1203 DMS rendering.
-//!
 use crate::dms::multi::{
     ColorCtx, JustificationLine, JustificationPage, Parser, Rectangle,
     SyntaxError, Value,
@@ -18,10 +17,12 @@ const MAX_TEXT_RECTANGLES: u32 = 50;
 /// Page state
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum PageState {
-    /// Next page ON
+    /// Page ON with flag for more pages
     On(bool),
-    /// Next page OFF
+
+    /// Page OFF with flag for more pages
     Off(bool),
+
     /// All pages done
     Done,
 }
@@ -31,30 +32,43 @@ enum PageState {
 pub struct State {
     /// Color context
     color_ctx: ColorCtx,
+
     /// Character width in pixels
     char_width: u8,
+
     /// Character height in pixels
     char_height: u8,
+
     /// Page-on time in deciseconds
     page_on_time_ds: u8,
+
     /// Page-off time in deciseconds
     page_off_time_ds: u8,
+
     /// Current text rectangle
     text_rectangle: Rectangle,
+
     /// Current page justification
     just_page: JustificationPage,
+
     /// Current line justification
     just_line: JustificationLine,
+
     /// Current line number
     line_number: u8,
+
     /// Current text span number
     span_number: u8,
+
     /// Current specified line spacing
     line_spacing: Option<u8>,
+
     /// Current specified char spacing
     char_spacing: Option<u8>,
+
     /// Font number
     font_num: u8,
+
     /// Font version_id
     font_version_id: Option<u16>,
 }
@@ -62,8 +76,9 @@ pub struct State {
 /// Text span
 #[derive(Clone)]
 struct TextSpan {
-    /// Render state at start of span
+    /// Render state for span
     state: State,
+
     /// Text string
     text: String,
 }
@@ -73,8 +88,10 @@ struct TextSpan {
 struct TextLine {
     /// Height in pixels
     height: u16,
+
     /// Font spacing
     font_spacing: u16,
+
     /// Specified line spacing
     line_spacing: Option<u16>,
 }
@@ -83,16 +100,22 @@ struct TextLine {
 pub struct Renderer<'a> {
     /// Font cache
     fonts: &'a FontCache,
+
     /// Graphic cache
     graphics: &'a GraphicCache,
+
     /// Default rendering state
     default_state: State,
+
     /// Current render state
     state: State,
+
     /// Page state
     page_state: PageState,
+
     /// MULTI parser
     parser: Parser<'a>,
+
     /// Spans for current text rectangle
     spans: Vec<TextSpan>,
 }
@@ -126,7 +149,6 @@ impl PageState {
             PageState::Done => PageState::Done,
         }
     }
-
 }
 
 impl State {
@@ -232,19 +254,19 @@ impl State {
         SRgb8::new(r, g, b)
     }
 
-    /// Check if states match for text spans
+    /// Check if states match for text spans.
     fn matches_span(&self, rhs: &Self) -> bool {
         self.just_page == rhs.just_page
             && self.line_number == rhs.line_number
             && self.just_line == rhs.just_line
     }
 
-    /// Check if states match for lines
+    /// Check if states match for lines.
     fn matches_line(&self, rhs: &Self) -> bool {
         self.just_page == rhs.just_page
     }
 
-    /// Lookup current font in cache
+    /// Lookup current font in cache.
     fn font<'a>(&self, fonts: &'a FontCache) -> Result<&'a Font> {
         debug!("State::font {}", self.font_num);
         fonts.lookup(self.font_num, self.font_version_id)
@@ -252,20 +274,20 @@ impl State {
 }
 
 impl<'a> TextSpan {
-    /// Create a new text span
+    /// Create a new text span.
     fn new(state: &State, text: String) -> Self {
         let state = state.clone();
         TextSpan { state, text }
     }
 
-    /// Get the width of a text span
+    /// Get the width of a text span.
     fn width(&self, fonts: &FontCache) -> Result<u16> {
         let font = self.state.font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
         Ok(font.text_width(&self.text, Some(cs))?)
     }
 
-    /// Get the char spacing
+    /// Get the char spacing.
     fn char_spacing_fonts(&self, fonts: &FontCache) -> Result<u16> {
         match self.state.char_spacing {
             Some(sp) => Ok(sp.into()),
@@ -273,7 +295,7 @@ impl<'a> TextSpan {
         }
     }
 
-    /// Get the char spacing
+    /// Get the char spacing.
     fn char_spacing_font(&self, font: &Font) -> u8 {
         match self.state.char_spacing {
             Some(sp) => sp,
@@ -281,7 +303,7 @@ impl<'a> TextSpan {
         }
     }
 
-    /// Get the char spacing from a previous span
+    /// Get the char spacing from a previous span.
     fn char_spacing_between(
         &self,
         prev: &TextSpan,
@@ -299,17 +321,17 @@ impl<'a> TextSpan {
         }
     }
 
-    /// Get the height of a text span
+    /// Get the height of a text span.
     fn height(&self, fonts: &FontCache) -> Result<u16> {
         Ok(self.state.font(fonts)?.height().into())
     }
 
-    /// Get the font line spacing
+    /// Get the font line spacing.
     fn font_spacing(&self, fonts: &FontCache) -> Result<u16> {
         Ok(self.state.font(fonts)?.line_spacing().into())
     }
 
-    /// Get the line spacing
+    /// Get the line spacing.
     fn line_spacing(&self) -> Option<u16> {
         match self.state.line_spacing {
             Some(sp) => Some(sp.into()),
@@ -317,7 +339,7 @@ impl<'a> TextSpan {
         }
     }
 
-    /// Render the text span
+    /// Render the text span.
     fn render_text(
         &self,
         raster: &mut Raster<SRgb8>,
@@ -332,7 +354,7 @@ impl<'a> TextSpan {
 }
 
 impl TextLine {
-    /// Create a new text line
+    /// Create a new text line.
     fn new(height: u16, font_spacing: u16, line_spacing: Option<u16>) -> Self {
         TextLine {
             height,
@@ -341,14 +363,14 @@ impl TextLine {
         }
     }
 
-    /// Combine a text line with another
+    /// Combine a text line with another.
     fn combine(&mut self, rhs: &Self) {
         self.height = self.height.max(rhs.height);
         self.font_spacing = self.font_spacing.max(rhs.font_spacing);
         self.line_spacing = self.line_spacing.or(rhs.line_spacing);
     }
 
-    /// Get the spacing between two text lines
+    /// Get the spacing between two text lines.
     fn spacing(&self, rhs: &Self) -> u16 {
         if let Some(ls) = self.line_spacing {
             ls
@@ -389,12 +411,12 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    /// Get the page-on time (deciseconds)
+    /// Get the page-on time (deciseconds).
     fn page_on_time_ds(&self) -> u16 {
         self.state.page_on_time_ds.into()
     }
 
-    /// Get the page-off time (deciseconds)
+    /// Get the page-off time (deciseconds).
     fn page_off_time_ds(&self) -> u16 {
         self.state.page_off_time_ds.into()
     }
@@ -405,7 +427,7 @@ impl<'a> Renderer<'a> {
         (self.build_raster(), self.page_off_time_ds())
     }
 
-    /// Build a raster
+    /// Build a raster.
     fn build_raster(&self) -> Raster<SRgb8> {
         let width = self.state.text_rectangle.w.into();
         let height = self.state.text_rectangle.h.into();
@@ -432,7 +454,7 @@ impl<'a> Renderer<'a> {
         Ok((raster, self.page_on_time_ds()))
     }
 
-    /// Check for unsupported MULTI tags
+    /// Check for unsupported MULTI tags in a page.
     fn check_unsupported(&self) -> Result<()> {
         let mut parser = self.parser.clone();
         while let Some(value) = parser.next() {
@@ -453,7 +475,7 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
-    /// Iterate through all values in a page to update its state
+    /// Iterate through page values to update its state.
     fn update_page_state(&mut self) -> Result<()> {
         let ds = &self.default_state;
         let rs = &mut self.state;
@@ -480,7 +502,7 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
-    /// Render graphics and color rectangles
+    /// Render graphics and color rectangles.
     fn render_graphics(&mut self, raster: &mut Raster<SRgb8>) -> Result<()> {
         let mut rs = self.state.clone();
         let mut parser = self.parser.clone();
@@ -518,7 +540,7 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
-    /// Render one text rectangle
+    /// Render one text rectangle.
     fn render_text_rectangle(
         &mut self,
         raster: &mut Raster<SRgb8>,
@@ -623,7 +645,7 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
-    /// Render spans for current text rectangle
+    /// Render spans for the current text rectangle.
     fn render_text_spans(&self, raster: &mut Raster<SRgb8>) -> Result<()> {
         self.check_justification()?;
         for span in &self.spans {
@@ -635,7 +657,7 @@ impl<'a> Renderer<'a> {
         Ok(())
     }
 
-    /// Check page and line justification ordering
+    /// Check page and line justification ordering.
     fn check_justification(&self) -> Result<()> {
         let mut jp = JustificationPage::Other;
         let mut jl = JustificationLine::Other;
@@ -685,7 +707,7 @@ impl<'a> Renderer<'a> {
         Ok((x / cw) * cw)
     }
 
-    /// Get the X position of a right-justified span
+    /// Get the X position of a right-justified span.
     fn span_x_right(&self, span: &TextSpan) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let w = span.state.text_rectangle.w;
@@ -746,14 +768,14 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    /// Get the baseline of a top-justified span
+    /// Get the baseline of a top-justified span.
     fn baseline_top(&self, span: &TextSpan) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let (above, _) = self.offset_vert(span)?;
         Ok(top + above)
     }
 
-    /// Get the baseline of a middle-justified span
+    /// Get the baseline of a middle-justified span.
     fn baseline_middle(&self, span: &TextSpan) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let h = span.state.text_rectangle.h;
@@ -765,7 +787,7 @@ impl<'a> Renderer<'a> {
         Ok((y / ch) * ch)
     }
 
-    /// Get the baseline of a bottom-justified span
+    /// Get the baseline of a bottom-justified span.
     fn baseline_bottom(&self, span: &TextSpan) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let h = span.state.text_rectangle.h;
@@ -834,7 +856,7 @@ impl<'a> Iterator for Renderer<'a> {
     }
 }
 
-/// Render a color rectangle
+/// Render a color rectangle.
 fn render_rect(
     raster: &mut Raster<SRgb8>,
     rect: Rectangle,

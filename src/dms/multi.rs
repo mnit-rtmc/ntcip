@@ -2,8 +2,8 @@
 //
 // Copyright (C) 2018-2020  Minnesota Department of Transportation
 //
-//! This module is for NTCIP 1203 DMS MULTI (Markup Language for Transportation
-//! Information).
+//! MULTI (Markup Language for Transportation Information) for dynamic message
+//! signs, specified in NTCIP 1203.
 //!
 use log::{debug, warn};
 use std::fmt;
@@ -26,7 +26,7 @@ pub enum ColorClassic {
     Amber,
 }
 
-/// DMS color scheme.
+/// Color scheme for dynamic message signs.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ColorScheme {
     /// Monochrome with 1-bit values
@@ -39,9 +39,9 @@ pub enum ColorScheme {
     Color24Bit,
 }
 
-/// Color for a DMS pixel.
+/// Pixel color.
 ///
-/// Legacy colors are dependent on the ColorScheme.
+/// A legacy color depends on the sign's ColorScheme.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Color {
     /// Legacy (non-RGB) color.
@@ -69,7 +69,7 @@ pub struct ColorCtx {
     bg_current: Color,
 }
 
-/// A rectangular area of a DMS.
+/// A rectangular area of a sign.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Rectangle {
     /// Left edge (starting from 1).
@@ -146,49 +146,62 @@ pub enum Value {
     ///
     /// * Optional color (legacy only)
     ColorBackground(Option<Color>),
+
     /// Foreground color tag
     ///
     /// * Optional color
     ColorForeground(Option<Color>),
+
     /// Color rectangle tag
     ///
     /// * Dimensions to fill color
     /// * Rectangle color
     ColorRectangle(Rectangle, Color),
+
     /// Field tag
     ///
     /// * Field ID
     /// * Field width
     Field(u8, Option<u8>),
+
     /// Flash start tag
     ///
     /// * FlashOrder
     /// * Optional flash On or Off time
     /// * Optional flash Off or On time
     Flash(FlashOrder, Option<u8>, Option<u8>),
+
     /// Flash end tag
     FlashEnd(),
+
     /// Font tag
     ///
     /// * Tuple containing font number and optional version ID (hash)
     Font(Option<(u8, Option<u16>)>),
+
     /// Graphic tag
     ///
     /// * Graphic number
     /// * Optional tuple containing X and Y position and optional version ID
     Graphic(u8, Option<(u16, u16, Option<u16>)>),
+
     /// Hexadecimal character tag
     ///
     /// * Character number (code point)
     HexadecimalCharacter(u16),
+
     /// Line justification tag
     JustificationLine(Option<JustificationLine>),
+
     /// Page justification tag
     JustificationPage(Option<JustificationPage>),
+
     /// Manufacturer specific start tag
     ManufacturerSpecific(u32, Option<String>),
+
     /// Manufacturer specific end tag
     ManufacturerSpecificEnd(u32, Option<String>),
+
     /// Moving text tag
     ///
     /// * Moving text mode
@@ -198,29 +211,37 @@ pub enum Value {
     /// * Deciseconds between time steps
     /// * Text to be moved
     MovingText(MovingTextMode, MovingTextDirection, u16, u8, u8, String),
+
     /// New line tag
     ///
     /// * Optional line spacing
     NewLine(Option<u8>),
+
     /// New page tag
     NewPage(),
+
     /// Page background color tag
     ///
     /// * Optional color
     PageBackground(Option<Color>),
+
     /// Page time tag
     ///
     /// * Optional page-on time
     /// * Optional page-off time
     PageTime(Option<u8>, Option<u8>),
+
     /// Character spacing start tag
     ///
     /// * Pixel spacing between characters
     SpacingCharacter(u8),
+
     /// Character spacing end tag
     SpacingCharacterEnd(),
+
     /// Text value
     Text(String),
+
     /// Text rectangle tag
     ///
     /// * Dimensions to restrict text

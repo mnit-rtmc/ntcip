@@ -2,8 +2,7 @@
 //
 // Copyright (C) 2018-2020  Minnesota Department of Transportation
 //
-//! This module is for NTCIP 1203 DMS bitmap fonts.
-//!
+//! Bitmap fonts are used on dynamic message signs.
 use crate::dms::multi::SyntaxError;
 use crate::dms::Result;
 use log::debug;
@@ -24,7 +23,9 @@ pub struct Character {
     bitmap: Vec<u8>,
 }
 
-/// A bitmap font
+/// A bitmap font.
+///
+/// Text can be rendered onto a raster using [render_text](#method.render_text).
 #[derive(Deserialize, Serialize)]
 pub struct Font {
     /// Font number
@@ -43,7 +44,23 @@ pub struct Font {
     version_id: u16,
 }
 
-/// Cache of fonts
+/// A cache of fonts.
+///
+/// Fonts can be deserialized from a JSON file using [serde].
+///
+/// ## Example
+///
+/// ```rust
+/// use ntcip::dms::{Font, FontCache};
+///
+/// let mut fonts = FontCache::default();
+/// let fts: Vec<Font> =
+///     serde_json::from_str(include_str!("../../test/font.json")).unwrap();
+/// for font in fts {
+///     fonts.insert(font);
+/// }
+/// ```
+/// [serde]: https://serde.rs/
 #[derive(Default)]
 pub struct FontCache {
     /// Fonts in cache
@@ -61,7 +78,7 @@ impl Character {
         self.width
     }
 
-    /// Render the character to a raster
+    /// Render the character to a raster.
     ///
     /// * `page` Raster to render on.
     /// * `x` Left position of character (0-based).
@@ -160,8 +177,8 @@ impl<'a> Font {
     ///
     /// * `page` Raster to render on.
     /// * `text` Span of text.
-    /// * `x` Left position of character (0-based).
-    /// * `y` Top position of character (0-based).
+    /// * `x` Left position of first character (0-based).
+    /// * `y` Top position of first character (0-based).
     /// * `cs` Character spacing in pixels.
     /// * `cf` Foreground color.
     pub fn render_text(

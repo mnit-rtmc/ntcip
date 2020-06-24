@@ -2,8 +2,7 @@
 //
 // Copyright (C) 2018-2020  Minnesota Department of Transportation
 //
-//! This module is for NTCIP 1203 DMS graphics.
-//!
+//! Graphics are used on dynamic message signs.
 use crate::dms::multi::{Color, ColorCtx, ColorScheme, SyntaxError};
 use crate::dms::Result;
 use log::debug;

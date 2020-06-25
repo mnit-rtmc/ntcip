@@ -1,6 +1,6 @@
 [package]
 name = "ntcip"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Douglas Lau <doug.lau@state.mn.us>"]
 description = "NTCIP: National Transportation Communications for ITS Protocol"
 license = "MIT OR Apache-2.0"
@@ -8,6 +8,7 @@ documentation = "https://docs.rs/ntcip"
 repository = "https://github.com/mnit-rtmc/ntcip"
 readme = "README.md"
 edition = "2018"
+include = ["src/**/*", "Cargo.toml", "LICENSE-*", "README.md", "CHANGELOG.md"]
 
 [dependencies]
 base64 = "0.12"
@@ -18,3 +19,4 @@ serde_derive = "1.0"
 
 [dev-dependencies]
 serde_json = "1"
+gift = "0.9.1"

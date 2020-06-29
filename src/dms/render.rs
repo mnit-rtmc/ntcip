@@ -216,14 +216,14 @@ impl RenderState {
         }
     }
 
-    /// Check if the sign is a character-matrix.
+    /// Check if the sign is character-matrix.
     fn is_char_matrix(&self) -> bool {
         self.char_width > 0
     }
 
-    /// Check if the sign is a full-matrix.
-    fn is_full_matrix(&self) -> bool {
-        self.char_width == 0 && self.char_height == 0
+    /// Check if the sign is character- or line-matrix.
+    fn is_char_or_line_matrix(&self) -> bool {
+        self.char_height > 0
     }
 
     /// Get the character width (1 for variable width).
@@ -256,20 +256,18 @@ impl RenderState {
             return Err(SyntaxError::UnsupportedTagValue(val.into()));
         }
         let cw = self.char_width();
-        if cw > 0 {
-            // Check text rectangle matches character boundaries
-            let x = rect.x - 1;
-            if x % cw != 0 || rect.w % cw != 0 {
-                return Err(SyntaxError::UnsupportedTagValue(val.into()));
-            }
+        debug_assert!(cw > 0);
+        // Check text rectangle matches character boundaries
+        let x = rect.x - 1;
+        if x % cw != 0 || rect.w % cw != 0 {
+            return Err(SyntaxError::UnsupportedTagValue(val.into()));
         }
         let lh = self.char_height();
-        if lh > 0 {
-            // Check text rectangle matches line boundaries
-            let y = rect.y - 1;
-            if y % lh != 0 || rect.h % lh != 0 {
-                return Err(SyntaxError::UnsupportedTagValue(val.into()));
-            }
+        debug_assert!(lh > 0);
+        // Check text rectangle matches line boundaries
+        let y = rect.y - 1;
+        if y % lh != 0 || rect.h % lh != 0 {
+            return Err(SyntaxError::UnsupportedTagValue(val.into()));
         }
         self.text_rectangle = rect;
         Ok(())
@@ -687,10 +685,12 @@ impl<'a> Pages<'a> {
                     rs.span_number = 0;
                 }
                 Value::NewLine(ls) => {
-                    if !rs.is_full_matrix() && ls.is_some() {
-                        return Err(SyntaxError::UnsupportedTagValue(
-                            val.into(),
-                        ));
+                    if let Some(ls) = ls {
+                        if rs.is_char_or_line_matrix() && ls > 0 {
+                            return Err(SyntaxError::UnsupportedTagValue(
+                                val.into(),
+                            ));
+                        }
                     }
                     // Insert an empty text span for blank lines.
                     if line_blank {

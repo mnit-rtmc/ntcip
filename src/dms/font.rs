@@ -102,7 +102,7 @@ impl Character {
         let mut yy = 0;
         for by in &self.bitmap {
             for bi in 0..8 {
-                if by >> (7 - bi) & 1u8 != 0u8 {
+                if by >> (7 - bi) & 1 != 0 {
                     *page.pixel_mut(x + xx, y + yy) = cf;
                 }
                 xx += 1;

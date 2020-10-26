@@ -3,7 +3,7 @@ use gift::{Encoder, Step};
 use ntcip::dms::multi::{
     ColorClassic, ColorCtx, ColorScheme, JustificationLine, JustificationPage,
 };
-use ntcip::dms::{Font, FontCache, PageBuilder, Result};
+use ntcip::dms::{Font, FontCache, Pages, Result};
 use pix::{gray::Gray8, rgb::SRgb8, Palette, Raster};
 use std::fs::File;
 use std::io::BufWriter;
@@ -20,7 +20,7 @@ fn font_cache() -> FontCache {
 
 fn render_full(multi: &str) -> Result<Vec<(Raster<SRgb8>, u16)>> {
     let fonts = font_cache();
-    PageBuilder::new(140, 28)
+    Pages::builder(140, 28)
         .with_color_ctx(ColorCtx::new(
             ColorScheme::Color24Bit,
             ColorClassic::White.rgb(),

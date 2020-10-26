@@ -101,10 +101,10 @@ struct TextLine {
 /// # Example
 ///
 /// ```rust
-/// use ntcip::dms::PageBuilder;
+/// use ntcip::dms::Pages;
 /// use ntcip::dms::multi::{JustificationLine, JustificationPage};
 ///
-/// let pages = PageBuilder::new(100, 14)
+/// let pages = Pages::builder(100, 14)
 ///     .with_char_size(5, 7)
 ///     .with_page_on_time_ds(20)
 ///     .with_justification_page(JustificationPage::Top)
@@ -127,10 +127,10 @@ pub struct PageBuilder<'a> {
 /// # Example
 ///
 /// ```rust
-/// use ntcip::dms::PageBuilder;
+/// use ntcip::dms::Pages;
 /// use ntcip::dms::multi::{JustificationLine, JustificationPage};
 ///
-/// let pages = PageBuilder::new(100, 14)
+/// let pages = Pages::builder(100, 14)
 ///     .with_char_size(5, 7)
 ///     .with_page_on_time_ds(20)
 ///     .with_justification_page(JustificationPage::Top)
@@ -421,7 +421,7 @@ impl TextLine {
 
 impl<'a> PageBuilder<'a> {
     /// Create a new dynamic message sign MULTI page builder.
-    pub fn new(width: u16, height: u16) -> Self {
+    fn new(width: u16, height: u16) -> Self {
         let default_state = RenderState::new(width, height);
         PageBuilder {
             fonts: None,
@@ -512,6 +512,11 @@ impl<'a> PageBuilder<'a> {
 }
 
 impl<'a> Pages<'a> {
+    /// Create a builder for dynamic message sign MULTI pages.
+    pub fn builder(width: u16, height: u16) -> PageBuilder<'a> {
+        PageBuilder::new(width, height)
+    }
+
     /// Get the page-on time (deciseconds).
     fn page_on_time_ds(&self) -> u16 {
         self.state.page_on_time_ds.into()
@@ -1002,7 +1007,7 @@ mod test {
 
     fn render_full(multi: &str) -> Result<Vec<(Raster<SRgb8>, u16)>> {
         let fonts = font_cache();
-        PageBuilder::new(60, 30)
+        Pages::builder(60, 30)
             .with_color_ctx(ColorCtx::new(
                 ColorScheme::Color24Bit,
                 ColorClassic::White.rgb(),
@@ -1109,7 +1114,7 @@ mod test {
 
     fn render_char(multi: &str) -> Result<Vec<(Raster<SRgb8>, u16)>> {
         let fonts = font_cache();
-        PageBuilder::new(100, 21)
+        Pages::builder(100, 21)
             .with_color_ctx(ColorCtx::new(
                 ColorScheme::Monochrome1Bit,
                 ColorClassic::White.rgb(),

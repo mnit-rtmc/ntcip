@@ -11,7 +11,7 @@ edition = "2018"
 include = ["src/**/*", "Cargo.toml", "LICENSE-*", "README.md", "CHANGELOG.md"]
 
 [dependencies]
-base64 = "0.12"
+base64 = "0.13"
 log = "0.4"
 pix = "0.13"
 serde = "1.0"

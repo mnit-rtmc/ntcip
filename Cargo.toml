@@ -1,6 +1,6 @@
 [package]
 name = "ntcip"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["Douglas Lau <doug.lau@state.mn.us>"]
 description = "NTCIP: National Transportation Communications for ITS Protocol"
 license = "MIT OR Apache-2.0"
@@ -19,4 +19,4 @@ serde_derive = "1.0"
 
 [dev-dependencies]
 serde_json = "1"
-gift = "0.9.1"
+gift = "0.10.0"

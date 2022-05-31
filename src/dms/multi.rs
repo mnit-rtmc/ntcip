@@ -1,6 +1,6 @@
 // multi.rs
 //
-// Copyright (C) 2018-2020  Minnesota Department of Transportation
+// Copyright (C) 2018-2022  Minnesota Department of Transportation
 //
 //! MULTI (Markup Language for Transportation Information) for dynamic message
 //! signs, specified in NTCIP 1203.
@@ -472,10 +472,7 @@ impl ColorCtx {
 
     /// Get RGB for a classic color.
     fn rgb_classic(v: u8) -> Option<(u8, u8, u8)> {
-        match ColorClassic::from_u8(v) {
-            Some(c) => Some(c.rgb()),
-            None => None,
-        }
+        ColorClassic::from_u8(v).map(|c| c.rgb())
     }
 
     /// Interpolate between two color components
@@ -816,10 +813,7 @@ fn parse_color_background(tag: &str) -> Option<Value> {
 /// Parse a Page -- Background tag [pb].
 fn parse_page_background(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
-        match parse_color(tag[2..].split(',')) {
-            Some(c) => Some(Value::PageBackground(Some(c))),
-            _ => None,
-        }
+        parse_color(tag[2..].split(',')).map(|c| Value::PageBackground(Some(c)))
     } else {
         Some(Value::PageBackground(None))
     }
@@ -828,10 +822,8 @@ fn parse_page_background(tag: &str) -> Option<Value> {
 /// Parse a Color -- Foreground tag [cf].
 fn parse_color_foreground(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
-        match parse_color(tag[2..].split(',')) {
-            Some(c) => Some(Value::ColorForeground(Some(c))),
-            _ => None,
-        }
+        parse_color(tag[2..].split(','))
+            .map(|c| Value::ColorForeground(Some(c)))
     } else {
         Some(Value::ColorForeground(None))
     }
@@ -947,6 +939,7 @@ fn parse_xy(x: &str, y: &str) -> Result<(u16, u16), ()> {
 /// Parse a hexadecimal character tag [hc].
 fn parse_hexadecimal_character(tag: &str) -> Option<Value> {
     // Not really looking for commas -- just need an iterator
+    #[allow(clippy::suspicious_splitn)]
     let mut vs = tag[2..].splitn(1, ',');
     match parse_hexadecimal(&mut vs) {
         Ok(hc) => Some(Value::HexadecimalCharacter(hc)),
@@ -971,10 +964,8 @@ where
 /// Parse a Justification -- Line tag [jl].
 fn parse_justification_line(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
-        match JustificationLine::new(&tag[2..]) {
-            Some(jl) => Some(Value::JustificationLine(Some(jl))),
-            None => None,
-        }
+        JustificationLine::new(&tag[2..])
+            .map(|jl| Value::JustificationLine(Some(jl)))
     } else {
         Some(Value::JustificationLine(None))
     }
@@ -983,10 +974,8 @@ fn parse_justification_line(tag: &str) -> Option<Value> {
 /// Parse a Justification -- Page tag [jp].
 fn parse_justification_page(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
-        match JustificationPage::new(&tag[2..]) {
-            Some(jl) => Some(Value::JustificationPage(Some(jl))),
-            None => None,
-        }
+        JustificationPage::new(&tag[2..])
+            .map(|jl| Value::JustificationPage(Some(jl)))
     } else {
         Some(Value::JustificationPage(None))
     }
@@ -1111,6 +1100,7 @@ fn parse_page_time(tag: &str) -> Option<Value> {
 /// Parse a Spacing -- Character tag [sc].
 fn parse_spacing_character(tag: &str) -> Option<Value> {
     // Not really looking for commas -- just need an iterator
+    #[allow(clippy::suspicious_splitn)]
     let mut vs = tag[2..].splitn(1, ',');
     match parse_int(&mut vs) {
         Some(s) if s < 100 => Some(Value::SpacingCharacter(s)),
@@ -1130,10 +1120,7 @@ fn parse_spacing_character_end(tag: &str) -> Option<Value> {
 /// Parse a Text Rectangle tag [tr].
 fn parse_text_rectangle(tag: &str) -> Option<Value> {
     let mut vs = tag[2..].splitn(4, ',');
-    match parse_rectangle(&mut vs) {
-        Some(r) => Some(Value::TextRectangle(r)),
-        _ => None,
-    }
+    parse_rectangle(&mut vs).map(Value::TextRectangle)
 }
 
 /// Parse a tag (without brackets).
@@ -1208,11 +1195,7 @@ impl<'a> Parser<'a> {
 
     /// Peek at the next character.
     fn peek_char(&mut self) -> Option<char> {
-        if let Some(c) = self.remaining.peek() {
-            Some(*c)
-        } else {
-            None
-        }
+        self.remaining.peek().copied()
     }
 
     /// Get the next character.
@@ -1279,24 +1262,15 @@ impl<'a> Iterator for Parser<'a> {
     type Item = Result<Value, SyntaxError>;
 
     fn next(&mut self) -> Option<Result<Value, SyntaxError>> {
-        match self.parse_value() {
-            // turn Result/Option inside-out
-            Ok(v) => match v {
-                Some(s) => Some(Ok(s)),
-                None => None,
-            },
-            Err(e) => Some(Err(e)),
-        }
+        self.parse_value().transpose()
     }
 }
 
 /// Normalize a MULTI string.
 pub fn normalize(ms: &str) -> String {
     let mut s = String::with_capacity(ms.len());
-    for t in Parser::new(ms) {
-        if let Ok(v) = t {
-            s.push_str(&v.to_string());
-        }
+    for t in Parser::new(ms).flatten() {
+        s.push_str(&t.to_string());
     }
     s
 }

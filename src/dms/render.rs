@@ -1,6 +1,6 @@
 // render.rs
 //
-// Copyright (C) 2018-2020  Minnesota Department of Transportation
+// Copyright (C) 2018-2022  Minnesota Department of Transportation
 //
 //! This module is for NTCIP 1203 DMS rendering.
 use crate::dms::multi::{
@@ -301,7 +301,7 @@ impl RenderState {
     fn font<'a>(&self, fonts: Option<&'a FontCache>) -> Result<&'a Font> {
         debug!("RenderState::font {}", self.font_num);
         fonts
-            .ok_or_else(|| SyntaxError::FontNotDefined(self.font_num))?
+            .ok_or(SyntaxError::FontNotDefined(self.font_num))?
             .lookup(self.font_num, self.font_version_id)
     }
 }
@@ -317,7 +317,7 @@ impl<'a> TextSpan {
     fn width(&self, fonts: Option<&FontCache>) -> Result<u16> {
         let font = self.state.font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
-        Ok(font.text_width(&self.text, Some(cs))?)
+        font.text_width(&self.text, Some(cs))
     }
 
     /// Get the char spacing.
@@ -366,10 +366,7 @@ impl<'a> TextSpan {
 
     /// Get the line spacing.
     fn line_spacing(&self) -> Option<u16> {
-        match self.state.line_spacing {
-            Some(sp) => Some(sp.into()),
-            None => None,
-        }
+        self.state.line_spacing.map(|sp| sp.into())
     }
 
     /// Render the text span.
@@ -382,7 +379,7 @@ impl<'a> TextSpan {
     ) -> Result<()> {
         let cs = self.char_spacing_font(font).into();
         let cf = self.state.foreground_rgb();
-        Ok(font.render_text(raster, &self.text, x, y, cs, cf)?)
+        font.render_text(raster, &self.text, x, y, cs, cf)
     }
 }
 
@@ -646,7 +643,7 @@ impl<'a> Pages<'a> {
     /// Lookup a graphic from the cache.
     fn graphic(&self, gn: u8, gid: Option<u16>) -> Result<&'a Graphic> {
         self.graphics
-            .ok_or_else(|| SyntaxError::GraphicNotDefined(gn))?
+            .ok_or(SyntaxError::GraphicNotDefined(gn))?
             .lookup(gn, gid)
     }
 
@@ -661,7 +658,7 @@ impl<'a> Pages<'a> {
         let mut line_blank = true;
         self.page_state = PageState::done(page_off);
         self.spans.clear();
-        while let Some(value) = self.parser.next() {
+        for value in self.parser.by_ref() {
             let val = value?;
             match val {
                 Value::ColorForeground(clr) => {
@@ -699,7 +696,7 @@ impl<'a> Pages<'a> {
                     }
                     // Insert an empty text span for blank lines.
                     if line_blank {
-                        self.spans.push(TextSpan::new(&rs, "".into()));
+                        self.spans.push(TextSpan::new(rs, "".into()));
                     }
                     line_blank = true;
                     rs.line_spacing = ls;
@@ -729,7 +726,7 @@ impl<'a> Pages<'a> {
                     break;
                 }
                 Value::Text(t) => {
-                    self.spans.push(TextSpan::new(&rs, t));
+                    self.spans.push(TextSpan::new(rs, t));
                     rs.span_number += 1;
                     line_blank = false;
                 }
@@ -738,7 +735,7 @@ impl<'a> Pages<'a> {
                         Some(c) => {
                             let mut t = String::new();
                             t.push(c);
-                            self.spans.push(TextSpan::new(&rs, t));
+                            self.spans.push(TextSpan::new(rs, t));
                             rs.span_number += 1;
                             line_blank = false;
                         }
@@ -764,7 +761,7 @@ impl<'a> Pages<'a> {
             let x = self.span_x(span)?.into();
             let y = self.span_y(span)?.into();
             let font = span.state.font(self.fonts)?;
-            span.render_text(raster, &font, x, y)?;
+            span.render_text(raster, font, x, y)?;
         }
         Ok(())
     }

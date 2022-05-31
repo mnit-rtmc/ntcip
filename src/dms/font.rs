@@ -1,6 +1,6 @@
 // font.rs
 //
-// Copyright (C) 2018-2020  Minnesota Department of Transportation
+// Copyright (C) 2018-2022  Minnesota Department of Transportation
 //
 //! Bitmap fonts are used on dynamic message signs.
 use crate::dms::multi::SyntaxError;
@@ -222,11 +222,7 @@ impl FontCache {
     }
 
     /// Lookup a font by number
-    pub fn lookup<'a>(
-        &'a self,
-        fnum: u8,
-        version_id: Option<u16>,
-    ) -> Result<&'a Font> {
+    pub fn lookup(&self, fnum: u8, version_id: Option<u16>) -> Result<&Font> {
         match (self.fonts.get(&fnum), version_id) {
             (Some(f), Some(vid)) => {
                 // FIXME: calculate version_id

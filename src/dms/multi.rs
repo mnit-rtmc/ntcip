@@ -668,6 +668,23 @@ impl From<&Value> for String {
     }
 }
 
+impl Value {
+    /// Check if a `Value` is "blank".
+    fn is_blank(&self) -> bool {
+        match self {
+            Value::ColorRectangle(_, _) => false,
+            Value::Field(_, _) => false,
+            Value::Graphic(_, _) => false,
+            Value::HexadecimalCharacter(_) => false,
+            Value::ManufacturerSpecific(_, _) => false,
+            Value::ManufacturerSpecificEnd(_, _) => false,
+            Value::MovingText(_, _, _, _, _, _) => false,
+            Value::Text(txt) => txt.trim() == "",
+            _ => true,
+        }
+    }
+}
+
 impl fmt::Display for SyntaxError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "syntaxError: {:?}", self)
@@ -1269,6 +1286,21 @@ pub fn normalize(ms: &str) -> String {
         s.push_str(&t.to_string());
     }
     s
+}
+
+/// Check if a MULTI string is a "blank" message.
+pub fn is_blank(ms: &str) -> bool {
+    for val in Parser::new(ms) {
+        match val {
+            Ok(value) => {
+                if !value.is_blank() {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+    }
+    true
 }
 
 #[cfg(test)]
@@ -2768,5 +2800,32 @@ mod test {
         assert_eq!(normalize("bad[ [nl] tag"), "bad tag");
         assert_eq!(normalize("bad ]tag [nl]"), "tag [nl]");
         assert_eq!(normalize("[ttS123]"), "");
+    }
+
+    #[test]
+    fn blank() {
+        assert!(is_blank(""));
+        assert!(is_blank(" "));
+        assert!(is_blank("[nl]"));
+        assert!(is_blank("[np]"));
+        assert!(is_blank("[pt1o1]"));
+        assert!(is_blank("[jp2]"));
+        assert!(is_blank("[jl3]"));
+        assert!(is_blank("[fo2]"));
+        assert!(is_blank("[sc2]"));
+        assert!(is_blank("[tr1,1,20,20]"));
+        assert!(is_blank("[pb0,1,2]"));
+    }
+
+    #[test]
+    fn not_blank() {
+        assert!(!is_blank("A"));
+        assert!(!is_blank("[cr255,0,0]"));
+        assert!(!is_blank("[f1]"));
+        assert!(!is_blank("[g1]"));
+        assert!(!is_blank("[hc41]"));
+        assert!(!is_blank("[ms1]"));
+        assert!(!is_blank("[/ms1]"));
+        assert!(!is_blank("[mvcl100,1,10,Text]"));
     }
 }

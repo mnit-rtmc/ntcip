@@ -938,9 +938,7 @@ fn parse_xy(x: &str, y: &str) -> Result<(u16, u16), ()> {
 
 /// Parse a hexadecimal character tag [hc].
 fn parse_hexadecimal_character(tag: &str) -> Option<Value> {
-    // Not really looking for commas -- just need an iterator
-    #[allow(clippy::suspicious_splitn)]
-    let mut vs = tag[2..].splitn(1, ',');
+    let mut vs = std::iter::once(&tag[2..]);
     match parse_hexadecimal(&mut vs) {
         Ok(hc) => Some(Value::HexadecimalCharacter(hc)),
         Err(_) => None,
@@ -1099,9 +1097,7 @@ fn parse_page_time(tag: &str) -> Option<Value> {
 
 /// Parse a Spacing -- Character tag [sc].
 fn parse_spacing_character(tag: &str) -> Option<Value> {
-    // Not really looking for commas -- just need an iterator
-    #[allow(clippy::suspicious_splitn)]
-    let mut vs = tag[2..].splitn(1, ',');
+    let mut vs = std::iter::once(&tag[2..]);
     match parse_int(&mut vs) {
         Some(s) if s < 100 => Some(Value::SpacingCharacter(s)),
         _ => None,

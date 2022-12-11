@@ -306,7 +306,7 @@ impl RenderState {
     }
 }
 
-impl<'a> TextSpan {
+impl TextSpan {
     /// Create a new text span.
     fn new(state: &RenderState, text: String) -> Self {
         let state = state.clone();

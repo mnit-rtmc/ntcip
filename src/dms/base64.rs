@@ -1,6 +1,6 @@
 // base64.rs
 //
-// Copyright (C) 2019  Minnesota Department of Transportation
+// Copyright (C) 2019-2022  Minnesota Department of Transportation
 //
 //! Helper module to allow serde base64 fields to be used with
 //! `#[serde(with = "super::base64")]`
@@ -20,5 +20,5 @@ where
     D: Deserializer<'de>,
 {
     let s = <String>::deserialize(deserializer)?;
-    base64::decode(&s).map_err(de::Error::custom)
+    base64::decode(s).map_err(de::Error::custom)
 }

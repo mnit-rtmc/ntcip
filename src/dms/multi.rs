@@ -1,6 +1,6 @@
 // multi.rs
 //
-// Copyright (C) 2018-2022  Minnesota Department of Transportation
+// Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
 //! MULTI (Markup Language for Transportation Information) for dynamic message
 //! signs, specified in NTCIP 1203.
@@ -346,8 +346,8 @@ impl From<&str> for ColorScheme {
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Color::Legacy(v) => write!(f, "{}", v),
-            Color::RGB(r, g, b) => write!(f, "{},{},{}", r, g, b),
+            Color::Legacy(v) => write!(f, "{v}"),
+            Color::RGB(r, g, b) => write!(f, "{r},{g},{b}"),
         }
     }
 }
@@ -564,7 +564,7 @@ impl fmt::Display for MovingTextMode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             MovingTextMode::Circular => write!(f, "c"),
-            MovingTextMode::Linear(x) => write!(f, "l{}", x),
+            MovingTextMode::Linear(x) => write!(f, "l{x}"),
         }
     }
 }
@@ -582,89 +582,89 @@ impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Value::ColorBackground(None) => write!(f, "[cb]"),
-            Value::ColorBackground(Some(c)) => write!(f, "[cb{}]", c),
+            Value::ColorBackground(Some(c)) => write!(f, "[cb{c}]"),
             Value::ColorForeground(None) => write!(f, "[cf]"),
-            Value::ColorForeground(Some(c)) => write!(f, "[cf{}]", c),
-            Value::ColorRectangle(r, c) => write!(f, "[cr{},{}", r, c),
-            Value::Field(i, Some(w)) => write!(f, "[f{},{}]", i, w),
-            Value::Field(i, None) => write!(f, "[f{}]", i),
+            Value::ColorForeground(Some(c)) => write!(f, "[cf{c}]"),
+            Value::ColorRectangle(r, c) => write!(f, "[cr{r},{c}"),
+            Value::Field(i, Some(w)) => write!(f, "[f{i},{w}]"),
+            Value::Field(i, None) => write!(f, "[f{i}]"),
             Value::Flash(FlashOrder::OnOff, Some(a), Some(b)) => {
-                write!(f, "[flt{}o{}]", a, b)
+                write!(f, "[flt{a}o{b}]")
             }
             Value::Flash(FlashOrder::OnOff, Some(a), None) => {
-                write!(f, "[flt{}o]", a)
+                write!(f, "[flt{a}o]")
             }
             Value::Flash(FlashOrder::OnOff, None, Some(b)) => {
-                write!(f, "[flto{}]", b)
+                write!(f, "[flto{b}]")
             }
             Value::Flash(FlashOrder::OnOff, None, None) => write!(f, "[flto]"),
             Value::Flash(FlashOrder::OffOn, Some(a), Some(b)) => {
-                write!(f, "[flo{}t{}]", a, b)
+                write!(f, "[flo{a}t{b}]")
             }
             Value::Flash(FlashOrder::OffOn, Some(a), None) => {
-                write!(f, "[flo{}t]", a)
+                write!(f, "[flo{a}t]")
             }
             Value::Flash(FlashOrder::OffOn, None, Some(b)) => {
-                write!(f, "[flot{}]", b)
+                write!(f, "[flot{b}]")
             }
             Value::Flash(FlashOrder::OffOn, None, None) => write!(f, "[flot]"),
             Value::FlashEnd() => write!(f, "[/fl]"),
             Value::Font(None) => write!(f, "[fo]"),
-            Value::Font(Some((num, None))) => write!(f, "[fo{}]", num),
+            Value::Font(Some((num, None))) => write!(f, "[fo{num}]"),
             Value::Font(Some((num, Some(c)))) => {
-                write!(f, "[fo{},{:04x}]", num, c)
+                write!(f, "[fo{num},{c:04x}]")
             }
-            Value::Graphic(num, None) => write!(f, "[g{}]", num),
+            Value::Graphic(num, None) => write!(f, "[g{num}]"),
             Value::Graphic(num, Some((x, y, None))) => {
-                write!(f, "[g{},{},{}]", num, x, y)
+                write!(f, "[g{num},{x},{y}]")
             }
             Value::Graphic(num, Some((x, y, Some(c)))) => {
-                write!(f, "[g{},{},{},{:04x}]", num, x, y, c)
+                write!(f, "[g{num},{x},{y},{c:04x}]")
             }
-            Value::HexadecimalCharacter(c) => write!(f, "[hc{}]", c),
-            Value::JustificationLine(Some(j)) => write!(f, "[jl{}]", j),
+            Value::HexadecimalCharacter(c) => write!(f, "[hc{c}]"),
+            Value::JustificationLine(Some(j)) => write!(f, "[jl{j}]"),
             Value::JustificationLine(None) => write!(f, "[jl]"),
-            Value::JustificationPage(Some(j)) => write!(f, "[jp{}]", j),
+            Value::JustificationPage(Some(j)) => write!(f, "[jp{j}]"),
             Value::JustificationPage(None) => write!(f, "[jp]"),
             Value::ManufacturerSpecific(i, Some(s)) => {
-                write!(f, "[ms{},{}]", i, s)
+                write!(f, "[ms{i},{s}]")
             }
-            Value::ManufacturerSpecific(i, None) => write!(f, "[ms{}]", i),
+            Value::ManufacturerSpecific(i, None) => write!(f, "[ms{i}]"),
             Value::ManufacturerSpecificEnd(i, Some(s)) => {
-                write!(f, "[/ms{},{}]", i, s)
+                write!(f, "[/ms{i},{s}]")
             }
-            Value::ManufacturerSpecificEnd(i, None) => write!(f, "[/ms{}]", i),
+            Value::ManufacturerSpecificEnd(i, None) => write!(f, "[/ms{i}]"),
             Value::MovingText(mode, dir, width, s, r, text) => {
-                write!(f, "[mv{}{}{},{},{},{}]", mode, dir, width, s, r, text)
+                write!(f, "[mv{mode}{dir}{width},{s},{r},{text}]")
             }
-            Value::NewLine(Some(x)) => write!(f, "[nl{}]", x),
+            Value::NewLine(Some(x)) => write!(f, "[nl{x}]"),
             Value::NewLine(None) => write!(f, "[nl]"),
             Value::NewPage() => write!(f, "[np]"),
-            Value::PageBackground(Some(c)) => write!(f, "[pb{}]", c),
+            Value::PageBackground(Some(c)) => write!(f, "[pb{c}]"),
             Value::PageBackground(None) => write!(f, "[pb]"),
-            Value::PageTime(Some(x), Some(y)) => write!(f, "[pt{}o{}]", x, y),
-            Value::PageTime(Some(x), None) => write!(f, "[pt{}o]", x),
-            Value::PageTime(None, Some(y)) => write!(f, "[pto{}]", y),
+            Value::PageTime(Some(x), Some(y)) => write!(f, "[pt{x}o{y}]"),
+            Value::PageTime(Some(x), None) => write!(f, "[pt{x}o]"),
+            Value::PageTime(None, Some(y)) => write!(f, "[pto{y}]"),
             Value::PageTime(None, None) => write!(f, "[pto]"),
-            Value::SpacingCharacter(s) => write!(f, "[sc{}]", s),
+            Value::SpacingCharacter(s) => write!(f, "[sc{s}]"),
             Value::SpacingCharacterEnd() => write!(f, "[/sc]"),
             Value::Text(t) => {
                 write!(f, "{}", t.replace('[', "[[").replace(']', "]]"))
             }
-            Value::TextRectangle(r) => write!(f, "[tr{}]", r),
+            Value::TextRectangle(r) => write!(f, "[tr{r}]"),
         }
     }
 }
 
 impl From<Value> for String {
     fn from(v: Value) -> String {
-        format!("{}", v)
+        format!("{v}")
     }
 }
 
 impl From<&Value> for String {
     fn from(v: &Value) -> Self {
-        format!("{}", v)
+        format!("{v}")
     }
 }
 
@@ -687,7 +687,7 @@ impl Value {
 
 impl fmt::Display for SyntaxError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "syntaxError: {:?}", self)
+        write!(f, "syntaxError: {self:?}")
     }
 }
 

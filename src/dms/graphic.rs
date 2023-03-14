@@ -1,6 +1,6 @@
 // graphic.rs
 //
-// Copyright (C) 2018-2022  Minnesota Department of Transportation
+// Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
 //! Graphics are used on dynamic message signs.
 use crate::dms::multi::{Color, ColorCtx, ColorScheme, SyntaxError};
@@ -25,7 +25,7 @@ pub struct Graphic {
     color_scheme: String,
     /// Transparent color (RGB)
     transparent_color: Option<i32>,
-    /// Bitmap data (by rows)
+    /// Bitmap data (BGR)
     #[serde(with = "super::base64")]
     bitmap: Vec<u8>,
 }
@@ -170,9 +170,10 @@ impl Graphic {
         buf: &[u8],
     ) -> Option<SRgb8> {
         let offset = 3 * (y * i32::from(self.width) + x) as usize;
-        let red = buf[offset];
+        // BGR order for dmsGraphicBitmapTable with 24-bit color
+        let blue = buf[offset];
         let green = buf[offset + 1];
-        let blue = buf[offset + 2];
+        let red = buf[offset + 2];
         if let Some(tc) = self.transparent_color {
             let rgb =
                 ((red as i32) << 16) + ((green as i32) << 8) + blue as i32;

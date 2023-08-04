@@ -654,7 +654,7 @@ impl<'a> Pages<'a> {
     ) -> Result<()> {
         let page_off = self.page_off_time_ds() > 0;
         let ds = &self.default_state;
-        let mut rs = &mut self.state;
+        let rs = &mut self.state;
         let mut line_blank = true;
         self.page_state = PageState::done(page_off);
         self.spans.clear();

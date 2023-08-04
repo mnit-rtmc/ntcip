@@ -1,12 +1,13 @@
 // font.rs
 //
-// Copyright (C) 2018-2022  Minnesota Department of Transportation
+// Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
 //! Bitmap fonts are used on dynamic message signs.
 use crate::dms::multi::SyntaxError;
 use crate::dms::Result;
 use log::debug;
 use pix::{rgb::SRgb8, Raster};
+use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// A character for a bitmap [font].

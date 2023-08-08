@@ -3,10 +3,16 @@
 // Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
 //! Graphics are used on dynamic message signs.
-use crate::dms::multi::{Color, ColorCtx, ColorScheme, SyntaxError};
+use crate::dms::multi::{
+    Color, ColorClassic, ColorCtx, ColorScheme, SyntaxError,
+};
 use crate::dms::Result;
 use log::debug;
-use pix::{rgb::SRgb8, Raster};
+use pix::{
+    el::Pixel,
+    rgb::{SRgb8, SRgba8},
+    Raster,
+};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -70,6 +76,27 @@ impl Graphic {
     /// Get the transparent color
     pub fn transparent_color(&self) -> Option<i32> {
         self.transparent_color
+    }
+
+    /// Convert graphic to a raster
+    pub fn to_raster(&self) -> Raster<SRgba8> {
+        let ctx = ColorCtx::new(
+            ColorScheme::Color24Bit,
+            ColorClassic::Amber.rgb(),
+            ColorClassic::Black.rgb(),
+        );
+        let width = self.width.into();
+        let height = self.height.into();
+        let mut raster = Raster::with_clear(self.width(), self.height());
+        let pix_fn = self.pixel_fn();
+        for y in 0..height {
+            for x in 0..width {
+                if let Some(clr) = pix_fn(self, x, y, &ctx, &self.bitmap) {
+                    *raster.pixel_mut(x, y) = clr.convert();
+                }
+            }
+        }
+        raster
     }
 
     /// Render graphic onto a Raster

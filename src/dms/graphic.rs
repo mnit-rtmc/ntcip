@@ -13,69 +13,64 @@ use pix::{
     rgb::{SRgb8, SRgba8},
     Raster,
 };
-use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::convert::TryFrom;
 
-/// An uncompressed DMS graphic.
-#[derive(Deserialize, Serialize)]
+/// Graphic image
+#[derive(Clone)]
 pub struct Graphic {
     /// Graphic number
-    number: u8,
+    pub number: u8,
     /// Name (max 64 characters)
-    name: String,
+    pub name: String,
     /// Height in pixels
-    height: u8,
+    pub height: u8,
     /// Width in pixels
-    width: u16,
-    /// Color scheme, or dmsGraphicType from NTCIP 1203
-    color_scheme: String,
-    /// Transparent color (RGB)
-    transparent_color: Option<i32>,
-    /// Bitmap data (BGR)
-    #[serde(with = "super::base64")]
-    bitmap: Vec<u8>,
+    pub width: u16,
+    /// Graphic type (color scheme)
+    pub gtype: ColorScheme,
+    /// Transparent color
+    pub transparent_color: Option<Color>,
+    /// Bitmap data (uncompressed BGR)
+    pub bitmap: Vec<u8>,
 }
 
-/// A cache of graphics.
-#[derive(Default)]
-pub struct GraphicCache {
-    /// Graphics in cache
-    graphics: HashMap<u8, Graphic>,
+/// A table of graphics
+#[derive(Clone, Default)]
+pub struct GraphicTable {
+    /// Graphics in table
+    graphics: Vec<Graphic>,
 }
-
-/// Function to lookup a pixel from a graphic buffer
-type PixFn = dyn Fn(&Graphic, i32, i32, &ColorCtx, &[u8]) -> Option<SRgb8>;
 
 impl Graphic {
-    /// Get the number
-    pub fn number(&self) -> u8 {
-        self.number
+    // Check if bitmap length is valid
+    fn is_bitmap_valid(&self) -> bool {
+        let pix = usize::from(self.height) * usize::from(self.width);
+        let len = match self.gtype {
+            ColorScheme::Monochrome1Bit => (pix + 7) / 8,
+            ColorScheme::Color24Bit => pix * 3,
+            _ => pix,
+        };
+        len == self.bitmap.len()
     }
 
-    /// Get the name
-    pub fn name(&self) -> &str {
-        &self.name
+    // Check if transparent color type is valid
+    fn is_transparent_color_valid(&self) -> bool {
+        match (self.gtype, self.transparent_color) {
+            (_, None) => true,
+            (ColorScheme::Monochrome1Bit, Some(Color::Legacy(_))) => true,
+            (ColorScheme::Monochrome8Bit, Some(Color::Legacy(_))) => true,
+            (ColorScheme::ColorClassic, Some(Color::Legacy(_))) => true,
+            (ColorScheme::Color24Bit, Some(Color::Rgb(_, _, _))) => true,
+            _ => false,
+        }
     }
 
-    /// Get the height in pixels
-    pub fn height(&self) -> u32 {
-        self.height.into()
-    }
-
-    /// Get the width in pixels
-    pub fn width(&self) -> u32 {
-        self.width.into()
-    }
-
-    /// Get the color scheme
-    pub fn color_scheme(&self) -> &str {
-        &self.color_scheme
-    }
-
-    /// Get the transparent color
-    pub fn transparent_color(&self) -> Option<i32> {
-        self.transparent_color
+    /// Check if graphic is valid
+    fn is_valid(&self) -> bool {
+        self.number > 0 &&
+            self.height > 0 &&
+            self.width > 0 &&
+            self.is_bitmap_valid() &&
+            self.is_transparent_color_valid()
     }
 
     /// Convert graphic to a raster
@@ -87,11 +82,11 @@ impl Graphic {
         );
         let width = self.width.into();
         let height = self.height.into();
-        let mut raster = Raster::with_clear(self.width(), self.height());
-        let pix_fn = self.pixel_fn();
+        let mut raster =
+            Raster::with_clear(self.width.into(), self.height.into());
         for y in 0..height {
             for x in 0..width {
-                if let Some(clr) = pix_fn(self, x, y, &ctx, &self.bitmap) {
+                if let Some(clr) = self.pixel_fn(x, y, &ctx) {
                     *raster.pixel_mut(x, y) = clr.convert();
                 }
             }
@@ -100,7 +95,7 @@ impl Graphic {
     }
 
     /// Render graphic onto a Raster
-    pub fn render_graphic(
+    pub(crate) fn render_graphic(
         &self,
         page: &mut Raster<SRgb8>,
         x: i32,
@@ -119,10 +114,9 @@ impl Graphic {
             // There is no GraphicTooBig syntax error
             return Err(SyntaxError::Other("Graphic too big"));
         }
-        let pix_fn = self.pixel_fn();
         for yy in 0..h {
             for xx in 0..w {
-                if let Some(clr) = pix_fn(self, xx, yy, ctx, &self.bitmap) {
+                if let Some(clr) = self.pixel_fn(xx, yy, ctx) {
                     *page.pixel_mut(x + xx, y + yy) = clr;
                 }
             }
@@ -130,32 +124,26 @@ impl Graphic {
         Ok(())
     }
 
-    /// Get pixel lookup function for the color scheme
-    fn pixel_fn(&self) -> &PixFn {
-        match self.color_scheme[..].into() {
-            ColorScheme::Monochrome1Bit => &Graphic::pixel_1,
+    /// Get one pixel of a graphic
+    fn pixel_fn(&self, x: i32, y: i32, ctx: &ColorCtx) -> Option<SRgb8> {
+        match self.gtype {
+            ColorScheme::Monochrome1Bit => self.pixel_1(x, y, ctx),
             ColorScheme::Monochrome8Bit | ColorScheme::ColorClassic => {
-                &Graphic::pixel_8
+                self.pixel_8(x, y, ctx)
             }
-            ColorScheme::Color24Bit => &Graphic::pixel_24,
+            ColorScheme::Color24Bit => self.pixel_24(x, y),
         }
     }
 
     /// Get one pixel of a monochrome 1-bit graphic
-    fn pixel_1(
-        &self,
-        x: i32,
-        y: i32,
-        ctx: &ColorCtx,
-        buf: &[u8],
-    ) -> Option<SRgb8> {
+    fn pixel_1(&self, x: i32, y: i32, ctx: &ColorCtx) -> Option<SRgb8> {
         let offset = y * i32::from(self.width) + x;
         let by = offset as usize / 8;
         let bi = 7 - (offset & 7);
-        let lit = ((buf[by] >> bi) & 1) != 0;
+        let lit = ((self.bitmap[by] >> bi) & 1) != 0;
         match (lit, self.transparent_color) {
-            (false, Some(0)) => None,
-            (true, Some(1)) => None,
+            (false, Some(Color::Legacy(0))) => None,
+            (true, Some(Color::Legacy(1))) => None,
             (false, _) => {
                 let (red, green, blue) = ctx.rgb(ctx.background())?;
                 Some(SRgb8::new(red, green, blue))
@@ -168,17 +156,13 @@ impl Graphic {
     }
 
     /// Get one pixel of an 8-bit (monochrome or classic) color graphic
-    fn pixel_8(
-        &self,
-        x: i32,
-        y: i32,
-        ctx: &ColorCtx,
-        buf: &[u8],
-    ) -> Option<SRgb8> {
+    fn pixel_8(&self, x: i32, y: i32, ctx: &ColorCtx) -> Option<SRgb8> {
         let offset = y * i32::from(self.width) + x;
-        let v: u8 = buf[offset as usize];
-        if self.transparent_color == Some(v.into()) {
-            return None;
+        let v = self.bitmap[offset as usize];
+        if let Some(Color::Legacy(c)) = self.transparent_color {
+            if v == c {
+                return None;
+            }
         }
         match ctx.rgb(Color::Legacy(v)) {
             Some((red, green, blue)) => Some(SRgb8::new(red, green, blue)),
@@ -190,22 +174,14 @@ impl Graphic {
     }
 
     /// Get one pixel of a 24-bit color graphic
-    fn pixel_24(
-        &self,
-        x: i32,
-        y: i32,
-        _ctx: &ColorCtx,
-        buf: &[u8],
-    ) -> Option<SRgb8> {
+    fn pixel_24(&self, x: i32, y: i32) -> Option<SRgb8> {
         let offset = 3 * (y * i32::from(self.width) + x) as usize;
         // BGR order for dmsGraphicBitmapTable with 24-bit color
-        let blue = buf[offset];
-        let green = buf[offset + 1];
-        let red = buf[offset + 2];
-        if let Some(tc) = self.transparent_color {
-            let rgb =
-                ((red as i32) << 16) + ((green as i32) << 8) + blue as i32;
-            if rgb == tc {
+        let blue = self.bitmap[offset];
+        let green = self.bitmap[offset + 1];
+        let red = self.bitmap[offset + 2];
+        if let Some(Color::Rgb(r, g, b)) = self.transparent_color {
+            if red == r && green == g && blue == b {
                 return None;
             }
         }
@@ -213,10 +189,22 @@ impl Graphic {
     }
 }
 
-impl GraphicCache {
-    /// Insert a graphiu into the cache
-    pub fn insert(&mut self, graphic: Graphic) {
-        self.graphics.insert(graphic.number(), graphic);
+impl GraphicTable {
+    /// Push a graphic into the table
+    pub fn push(&mut self, graphic: Graphic) -> Result<()> {
+        if !graphic.is_valid() {
+            return Err(SyntaxError::Other("Invalid graphic"));
+        }
+        if self.graphics.iter().any(|g| g.number == graphic.number) {
+            return Err(SyntaxError::Other("Duplicate graphic number"));
+        }
+        self.graphics.push(graphic);
+        Ok(())
+    }
+
+    /// Sort by graphic number
+    pub fn sort(&mut self) {
+        self.graphics.sort_by(|a, b| a.number.cmp(&b.number))
     }
 
     /// Lookup a graphic by number
@@ -225,10 +213,11 @@ impl GraphicCache {
         gnum: u8,
         version_id: Option<u16>,
     ) -> Result<&Graphic> {
-        match (self.graphics.get(&gnum), version_id) {
+        let graphic = self.graphics.iter().find(|g| g.number == gnum);
+        match (graphic, version_id) {
+            (Some(g), None) => Ok(g),
             // FIXME: calculate and check version_id
             (Some(g), Some(_vid)) => Ok(g),
-            (Some(g), None) => Ok(g),
             (None, _) => Err(SyntaxError::GraphicNotDefined(gnum)),
         }
     }

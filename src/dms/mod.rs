@@ -1,17 +1,16 @@
 // ntcip::dms
 //
-// Copyright (C) 2019-2020  Minnesota Department of Transportation
+// Copyright (C) 2019-2023  Minnesota Department of Transportation
 //
-//! Dynamic message signs specified by NTCIP 1203.
-mod base64;
-mod font;
-mod graphic;
+//! Dynamic message signs; NTCIP 1203
+pub mod config;
+pub mod font;
+pub mod graphic;
 pub mod multi;
 mod render;
+mod sign;
 
 /// Result type
 pub type Result<T> = std::result::Result<T, multi::SyntaxError>;
 
-pub use font::{Character, Font, FontCache};
-pub use graphic::{Graphic, GraphicCache};
-pub use render::{PageBuilder, Pages};
+pub use sign::{Dms, DmsBuilder};

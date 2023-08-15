@@ -2,9 +2,7 @@
 //
 // Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
-//! MULTI (Markup Language for Transportation Information) for dynamic message
-//! signs, specified in NTCIP 1203.
-//!
+//! MarkUp Language for Transportation Information
 use log::{debug, warn};
 use std::fmt;
 use std::iter::Peekable;
@@ -26,7 +24,7 @@ pub enum ColorClassic {
     Amber,
 }
 
-/// Color scheme for dynamic message signs.
+/// Color scheme for dynamic message signs
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ColorScheme {
     /// Monochrome with 1-bit values
@@ -35,28 +33,22 @@ pub enum ColorScheme {
     Monochrome8Bit,
     /// Classic color
     ColorClassic,
-    /// 24-bit Color (BGR)
+    /// 24-bit color
     Color24Bit,
 }
 
-/// Pixel color.
-///
-/// A legacy color depends on the sign's ColorScheme.
+/// Color value
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Color {
-    /// Legacy (non-RGB) color.
-    ///
-    /// * `0-1` is valid for `ColorScheme::Monochrome1Bit`.
-    /// * `0-255` is valid for `ColorScheme::Monochrome8Bit`.
-    /// * `0-9` is valid for `ColorScheme::ColorClassic`.
+    /// Color for `Monochrome1Bit`, `Monochrome8Bit`, or `ColorClassic`
     Legacy(u8),
-    /// 24-bit RGB (red, green, blue) color.
-    RGB(u8, u8, u8),
+    /// Color for `Color24Bit`
+    Rgb(u8, u8, u8),
 }
 
 /// A color context combines a scheme with foreground and background colors
 #[derive(Clone)]
-pub struct ColorCtx {
+pub(crate) struct ColorCtx {
     /// Color scheme
     color_scheme: ColorScheme,
     /// Default foreground RGB color
@@ -69,9 +61,9 @@ pub struct ColorCtx {
     bg_current: Color,
 }
 
-/// A rectangular area of a sign.
+/// A rectangular area of a sign
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Rectangle {
+pub(crate) struct Rectangle {
     /// Left edge (starting from 1).
     pub x: u16,
     /// Top edge (starting from 1).
@@ -82,10 +74,11 @@ pub struct Rectangle {
     pub h: u16,
 }
 
-/// Horizontal justification within a line.
+/// Horizontal justification within a line
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum JustificationLine {
     /// Other line justification; deprecated in v2
+    #[deprecated]
     Other = 1,
     /// Left line justification
     Left,
@@ -97,10 +90,11 @@ pub enum JustificationLine {
     Full,
 }
 
-/// Vertical justification within a page.
+/// Vertical justification within a page
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum JustificationPage {
     /// Other page justification; deprecated in v2
+    #[deprecated]
     Other = 1,
     /// Top page justification
     Top,
@@ -110,7 +104,7 @@ pub enum JustificationPage {
     Bottom,
 }
 
-/// Order of flashing messages.
+/// Order of flashing messages
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FlashOrder {
     /// Flash on, then off
@@ -119,7 +113,7 @@ pub enum FlashOrder {
     OffOn,
 }
 
-/// Mode for moving text.
+/// Mode for moving text
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MovingTextMode {
     /// Text wraps around, appearing circular
@@ -128,7 +122,7 @@ pub enum MovingTextMode {
     Linear(u8),
 }
 
-/// Direction for moving text.
+/// Direction for moving text
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MovingTextDirection {
     /// Left-moving text
@@ -137,9 +131,9 @@ pub enum MovingTextDirection {
     Right,
 }
 
-/// Values are tags or text from a parsed MULTI.
+/// Values are tags or text from a parsed MULTI
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Value {
+pub(crate) enum Value {
     /// Background color tag.
     ///
     /// This tag remains for backward compatibility with 1203v1.
@@ -248,7 +242,7 @@ pub enum Value {
     TextRectangle(Rectangle),
 }
 
-/// Syntax errors from parsing MULTI.
+/// Syntax errors from parsing MULTI
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SyntaxError {
     /// An unspecified error
@@ -281,9 +275,9 @@ pub enum SyntaxError {
     GraphicNotDefined(u8),
 }
 
-/// Parser for MULTI values.
+/// Parser for MULTI values
 #[derive(Clone)]
-pub struct Parser<'a> {
+pub(crate) struct Parser<'a> {
     /// Remaining characters to parse
     remaining: Peekable<Chars<'a>>,
     /// Currently parsing a tag
@@ -291,7 +285,7 @@ pub struct Parser<'a> {
 }
 
 impl ColorClassic {
-    /// Get RGB triplet for a classic color.
+    /// Get RGB triplet for a classic color
     pub fn rgb(self) -> (u8, u8, u8) {
         match self {
             ColorClassic::Black => (0x00, 0x00, 0x00),
@@ -327,6 +321,12 @@ impl ColorClassic {
     }
 }
 
+impl From<ColorClassic> for u8 {
+    fn from(c: ColorClassic) -> u8 {
+        c as u8
+    }
+}
+
 impl From<&str> for ColorScheme {
     /// Create a color scheme from a string
     fn from(s: &str) -> Self {
@@ -347,14 +347,14 @@ impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Color::Legacy(v) => write!(f, "{v}"),
-            Color::RGB(r, g, b) => write!(f, "{r},{g},{b}"),
+            Color::Rgb(r, g, b) => write!(f, "{r},{g},{b}"),
         }
     }
 }
 
 impl From<(u8, u8, u8)> for Color {
     fn from(rgb: (u8, u8, u8)) -> Self {
-        Color::RGB(rgb.0, rgb.1, rgb.2)
+        Color::Rgb(rgb.0, rgb.1, rgb.2)
     }
 }
 
@@ -446,7 +446,7 @@ impl ColorCtx {
             }
             (ColorScheme::Monochrome8Bit, _) => None,
             (_, Color::Legacy(v)) => ColorCtx::rgb_classic(v),
-            (ColorScheme::Color24Bit, Color::RGB(r, g, b)) => Some((r, g, b)),
+            (ColorScheme::Color24Bit, Color::Rgb(r, g, b)) => Some((r, g, b)),
             _ => None,
         }
     }
@@ -530,6 +530,7 @@ impl fmt::Display for JustificationLine {
 impl JustificationLine {
     /// Create a line justification.
     pub fn new(v: &str) -> Option<Self> {
+        #[allow(deprecated)]
         match v {
             "1" => Some(JustificationLine::Other),
             "2" => Some(JustificationLine::Left),
@@ -550,6 +551,7 @@ impl fmt::Display for JustificationPage {
 impl JustificationPage {
     /// Create a page justification.
     pub fn new(v: &str) -> Option<Self> {
+        #[allow(deprecated)]
         match v {
             "1" => Some(JustificationPage::Other),
             "2" => Some(JustificationPage::Top),
@@ -669,7 +671,7 @@ impl From<&Value> for String {
 }
 
 impl Value {
-    /// Check if a `Value` is "blank".
+    /// Check if a `Value` is "blank"
     fn is_blank(&self) -> bool {
         match self {
             Value::ColorRectangle(_, _) => false,
@@ -693,7 +695,7 @@ impl fmt::Display for SyntaxError {
 
 impl std::error::Error for SyntaxError {}
 
-/// Parse a color from a tag.
+/// Parse a color from a tag
 ///
 /// * `v` Iterator of color parameters.
 fn parse_color<'a, I>(v: I) -> Option<Color>
@@ -701,13 +703,13 @@ where
     I: Iterator<Item = &'a str>,
 {
     match v.map(|i| i.parse::<u8>()).collect::<Vec<_>>().as_slice() {
-        [Ok(r), Ok(g), Ok(b)] => Some(Color::RGB(*r, *g, *b)),
+        [Ok(r), Ok(g), Ok(b)] => Some(Color::Rgb(*r, *g, *b)),
         [Ok(n)] => Some(Color::Legacy(*n)),
         _ => None,
     }
 }
 
-/// Parse a rectangle from a tag.
+/// Parse a rectangle from a tag
 ///
 /// * `v` Iterator of rectangle parameters.
 fn parse_rectangle<'a, I>(v: &mut I) -> Option<Rectangle>
@@ -728,7 +730,7 @@ where
     None
 }
 
-/// Parse an integer value.
+/// Parse an integer value
 fn parse_int<'a, I, T>(v: &mut I) -> Option<T>
 where
     I: Iterator<Item = &'a str>,
@@ -742,7 +744,7 @@ where
     None
 }
 
-/// Parse an optional value.
+/// Parse an optional value
 fn parse_optional<'a, I, T>(v: &mut I) -> Result<Option<T>, ()>
 where
     I: Iterator<Item = &'a str>,
@@ -762,7 +764,7 @@ where
     }
 }
 
-/// Parse an optional value ranging from 0 to 99.
+/// Parse an optional value ranging from 0 to 99
 fn parse_optional_99<'a, I>(v: &mut I) -> Result<Option<u8>, ()>
 where
     I: Iterator<Item = &'a str>,
@@ -781,7 +783,7 @@ where
     Ok(None)
 }
 
-/// Parse a nonzero value.
+/// Parse a nonzero value
 fn parse_nonzero<'a, I, T>(v: &mut I) -> Option<T>
 where
     I: Iterator<Item = &'a str>,
@@ -798,7 +800,7 @@ where
     None
 }
 
-/// Parse a version ID value.
+/// Parse a version ID value
 fn parse_version_id<'a, I>(v: &mut I) -> Result<Option<u16>, ()>
 where
     I: Iterator<Item = &'a str>,
@@ -813,7 +815,7 @@ where
     }
 }
 
-/// Parse a Color -- Background tag (cb).
+/// Parse a Color -- Background tag (cb)
 fn parse_color_background(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
         // 1203 specifies a numeric value between 0 and 999,
@@ -827,7 +829,7 @@ fn parse_color_background(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Page -- Background tag [pb].
+/// Parse a Page -- Background tag [pb]
 fn parse_page_background(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
         parse_color(tag[2..].split(',')).map(|c| Value::PageBackground(Some(c)))
@@ -836,7 +838,7 @@ fn parse_page_background(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Color -- Foreground tag [cf].
+/// Parse a Color -- Foreground tag [cf]
 fn parse_color_foreground(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
         parse_color(tag[2..].split(','))
@@ -846,7 +848,7 @@ fn parse_color_foreground(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Color Rectangle tag [cr].
+/// Parse a Color Rectangle tag [cr]
 fn parse_color_rectangle(tag: &str) -> Option<Value> {
     let mut vs = tag[2..].splitn(7, ',');
     match (parse_rectangle(&mut vs), parse_color(vs)) {
@@ -855,7 +857,7 @@ fn parse_color_rectangle(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Field tag [f].
+/// Parse a Field tag [f]
 fn parse_field(tag: &str) -> Option<Value> {
     let mut vs = tag[1..].splitn(2, ',');
     match (parse_int(&mut vs), parse_optional(&mut vs)) {
@@ -864,7 +866,7 @@ fn parse_field(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Flash time tag [fl].
+/// Parse a Flash time tag [fl]
 fn parse_flash_time(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
         let v = &tag[2..];
@@ -878,7 +880,7 @@ fn parse_flash_time(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a flash on -> off tag fragment.
+/// Parse a flash on -> off tag fragment
 fn parse_flash_on(v: &str) -> Option<Value> {
     let mut vs = v.splitn(2, 'o');
     let t = parse_optional_99(&mut vs).ok()?;
@@ -886,7 +888,7 @@ fn parse_flash_on(v: &str) -> Option<Value> {
     Some(Value::Flash(FlashOrder::OnOff, t, o))
 }
 
-/// Parse a flash off -> on tag fragment.
+/// Parse a flash off -> on tag fragment
 fn parse_flash_off(v: &str) -> Option<Value> {
     let mut vs = v.splitn(2, 't');
     let o = parse_optional_99(&mut vs).ok()?;
@@ -894,7 +896,7 @@ fn parse_flash_off(v: &str) -> Option<Value> {
     Some(Value::Flash(FlashOrder::OffOn, o, t))
 }
 
-/// Parse a flash end tag [/fl].
+/// Parse a flash end tag [/fl]
 fn parse_flash_end(tag: &str) -> Option<Value> {
     if tag.len() == 3 {
         Some(Value::FlashEnd())
@@ -931,7 +933,7 @@ fn parse_graphic(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a pont value.
+/// Parse a point value
 fn parse_point<'a, I>(v: &mut I) -> Result<Option<(u16, u16)>, ()>
 where
     I: Iterator<Item = &'a str>,
@@ -943,7 +945,7 @@ where
     }
 }
 
-/// Parse an x/y pair.
+/// Parse an x/y pair
 fn parse_xy(x: &str, y: &str) -> Result<(u16, u16), ()> {
     if let (Ok(x), Ok(y)) = (x.parse(), y.parse()) {
         if x > 0 && y > 0 {
@@ -953,7 +955,7 @@ fn parse_xy(x: &str, y: &str) -> Result<(u16, u16), ()> {
     Err(())
 }
 
-/// Parse a hexadecimal character tag [hc].
+/// Parse a hexadecimal character tag [hc]
 fn parse_hexadecimal_character(tag: &str) -> Option<Value> {
     let mut vs = std::iter::once(&tag[2..]);
     match parse_hexadecimal(&mut vs) {
@@ -962,7 +964,7 @@ fn parse_hexadecimal_character(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a hexadecimal value.
+/// Parse a hexadecimal value
 fn parse_hexadecimal<'a, I>(v: &mut I) -> Result<u16, ()>
 where
     I: Iterator<Item = &'a str>,
@@ -976,7 +978,7 @@ where
     Err(())
 }
 
-/// Parse a Justification -- Line tag [jl].
+/// Parse a Justification -- Line tag [jl]
 fn parse_justification_line(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
         JustificationLine::new(&tag[2..])
@@ -986,7 +988,7 @@ fn parse_justification_line(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Justification -- Page tag [jp].
+/// Parse a Justification -- Page tag [jp]
 fn parse_justification_page(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
         JustificationPage::new(&tag[2..])
@@ -996,7 +998,7 @@ fn parse_justification_page(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Manufacturer Specific tag [ms].
+/// Parse a Manufacturer Specific tag [ms]
 fn parse_manufacturer_specific(tag: &str) -> Option<Value> {
     let mut vs = tag[2..].splitn(2, ',');
     match (parse_int(&mut vs), vs.next()) {
@@ -1008,7 +1010,7 @@ fn parse_manufacturer_specific(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Manufacturer Specific end tag [/ms].
+/// Parse a Manufacturer Specific end tag [/ms]
 fn parse_manufacturer_specific_end(tag: &str) -> Option<Value> {
     let mut vs = tag[3..].splitn(2, ',');
     match (parse_int(&mut vs), vs.next()) {
@@ -1020,7 +1022,7 @@ fn parse_manufacturer_specific_end(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Moving text tag [mv].
+/// Parse a Moving text tag [mv]
 fn parse_moving_text(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
         let t = &tag[3..];
@@ -1034,7 +1036,7 @@ fn parse_moving_text(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a moving text linear fragment.
+/// Parse a moving text linear fragment
 fn parse_moving_text_linear(tag: &str) -> Option<Value> {
     if !tag.is_empty() {
         let t = &tag[1..];
@@ -1048,7 +1050,7 @@ fn parse_moving_text_linear(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a moving text mode fragment.
+/// Parse a moving text mode fragment
 fn parse_moving_text_mode(tag: &str, mode: MovingTextMode) -> Option<Value> {
     if !tag.is_empty() {
         let dir = parse_moving_text_dir(tag.chars().next());
@@ -1082,7 +1084,7 @@ fn parse_moving_text_dir(d: Option<char>) -> Option<MovingTextDirection> {
     }
 }
 
-/// Parse a New Line tag [nl].
+/// Parse a New Line tag [nl]
 fn parse_new_line(tag: &str) -> Option<Value> {
     // 1203 only specifies a single digit parameter for "nl" tag (0-9)
     match tag.len() {
@@ -1095,7 +1097,7 @@ fn parse_new_line(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a New Page tag [np].
+/// Parse a New Page tag [np]
 fn parse_new_page(tag: &str) -> Option<Value> {
     match tag.len() {
         2 => Some(Value::NewPage()),
@@ -1103,7 +1105,7 @@ fn parse_new_page(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Page Time tag [pt].
+/// Parse a Page Time tag [pt]
 fn parse_page_time(tag: &str) -> Option<Value> {
     let mut vs = tag[2..].splitn(2, 'o');
     match (parse_optional(&mut vs), parse_optional(&mut vs)) {
@@ -1112,7 +1114,7 @@ fn parse_page_time(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Spacing -- Character tag [sc].
+/// Parse a Spacing -- Character tag [sc]
 fn parse_spacing_character(tag: &str) -> Option<Value> {
     let mut vs = std::iter::once(&tag[2..]);
     match parse_int(&mut vs) {
@@ -1121,7 +1123,7 @@ fn parse_spacing_character(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Spacing -- Character end tag [/sc].
+/// Parse a Spacing -- Character end tag [/sc]
 fn parse_spacing_character_end(tag: &str) -> Option<Value> {
     if tag.len() == 3 {
         Some(Value::SpacingCharacterEnd())
@@ -1130,13 +1132,13 @@ fn parse_spacing_character_end(tag: &str) -> Option<Value> {
     }
 }
 
-/// Parse a Text Rectangle tag [tr].
+/// Parse a Text Rectangle tag [tr]
 fn parse_text_rectangle(tag: &str) -> Option<Value> {
     let mut vs = tag[2..].splitn(4, ',');
     parse_rectangle(&mut vs).map(Value::TextRectangle)
 }
 
-/// Parse a tag (without brackets).
+/// Parse a tag (without brackets)
 fn parse_tag(tag: &str) -> Result<Option<Value>, SyntaxError> {
     let tl = &tag.to_ascii_lowercase();
     let t = tl.as_str();
@@ -1196,7 +1198,7 @@ fn parse_tag(tag: &str) -> Result<Option<Value>, SyntaxError> {
 }
 
 impl<'a> Parser<'a> {
-    /// Create a new MULTI parser.
+    /// Create a new MULTI parser
     pub fn new(m: &'a str) -> Self {
         debug!("Parser::new {}", m);
         let remaining = m.chars().peekable();
@@ -1206,12 +1208,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Peek at the next character.
+    /// Peek at the next character
     fn peek_char(&mut self) -> Option<char> {
         self.remaining.peek().copied()
     }
 
-    /// Get the next character.
+    /// Get the next character
     fn next_char(&mut self) -> Result<Option<char>, SyntaxError> {
         if let Some(c) = self.remaining.next() {
             // NTCIP 1203 mentions Extended ASCII (codepage 437) -- don't do it!
@@ -1224,7 +1226,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse a tag starting at the current position.
+    /// Parse a tag starting at the current position
     fn parse_tag(&mut self) -> Result<Option<Value>, SyntaxError> {
         let mut s = String::new();
         while let Some(c) = self.next_char()? {
@@ -1237,7 +1239,7 @@ impl<'a> Parser<'a> {
         Err(SyntaxError::UnsupportedTag(s))
     }
 
-    /// Parse a value at the current position.
+    /// Parse a value at the current position
     fn parse_value(&mut self) -> Result<Option<Value>, SyntaxError> {
         if self.within_tag {
             self.within_tag = false;
@@ -1279,7 +1281,7 @@ impl<'a> Iterator for Parser<'a> {
     }
 }
 
-/// Normalize a MULTI string.
+/// Normalize a MULTI string
 pub fn normalize(ms: &str) -> String {
     let mut s = String::with_capacity(ms.len());
     for t in Parser::new(ms).flatten() {
@@ -1288,7 +1290,7 @@ pub fn normalize(ms: &str) -> String {
     s
 }
 
-/// Check if a MULTI string is a "blank" message.
+/// Check if a MULTI string is a "blank" message
 pub fn is_blank(ms: &str) -> bool {
     for val in Parser::new(ms) {
         match val {
@@ -1339,9 +1341,9 @@ mod test {
             ctx.set_foreground(Some(Color::Legacy(2)), &v),
             Err(SyntaxError::UnsupportedTagValue("[cf2]".into()))
         );
-        let v = Value::ColorForeground(Some(Color::RGB(0, 0, 0)));
+        let v = Value::ColorForeground(Some(Color::Rgb(0, 0, 0)));
         assert_eq!(
-            ctx.set_foreground(Some(Color::RGB(0, 0, 0)), &v),
+            ctx.set_foreground(Some(Color::Rgb(0, 0, 0)), &v),
             Err(SyntaxError::UnsupportedTagValue("[cf0,0,0]".into()))
         );
         let v = Value::ColorForeground(Some(Color::Legacy(0)));
@@ -1366,9 +1368,9 @@ mod test {
         let v = Value::ColorForeground(Some(Color::Legacy(128)));
         assert_eq!(ctx.set_foreground(Some(Color::Legacy(128)), &v), Ok(()));
         assert_eq!(ctx.foreground_rgb(), (0x80, 0x80, 0x80));
-        let v = Value::ColorForeground(Some(Color::RGB(128, 128, 128)));
+        let v = Value::ColorForeground(Some(Color::Rgb(128, 128, 128)));
         assert_eq!(
-            ctx.set_foreground(Some(Color::RGB(128, 128, 128)), &v),
+            ctx.set_foreground(Some(Color::Rgb(128, 128, 128)), &v),
             Err(SyntaxError::UnsupportedTagValue("[cf128,128,128]".into()))
         );
         assert_eq!(ctx.set_foreground(None, &v), Ok(()));
@@ -1392,9 +1394,9 @@ mod test {
         let v = Value::ColorForeground(Some(Color::Legacy(5)));
         assert_eq!(ctx.set_foreground(Some(Color::Legacy(5)), &v), Ok(()));
         assert_eq!(ctx.foreground_rgb(), (0x00, 0x00, 0xFF));
-        let v = Value::PageBackground(Some(Color::RGB(255, 0, 255)));
+        let v = Value::PageBackground(Some(Color::Rgb(255, 0, 255)));
         assert_eq!(
-            ctx.set_background(Some(Color::RGB(255, 0, 255)), &v),
+            ctx.set_background(Some(Color::Rgb(255, 0, 255)), &v),
             Err(SyntaxError::UnsupportedTagValue("[pb255,0,255]".into()))
         );
         assert_eq!(ctx.set_foreground(None, &v), Ok(()));
@@ -1418,9 +1420,9 @@ mod test {
         let v = Value::ColorForeground(Some(Color::Legacy(6)));
         assert_eq!(ctx.set_foreground(Some(Color::Legacy(6)), &v), Ok(()));
         assert_eq!(ctx.foreground_rgb(), (0xFF, 0x00, 0xFF));
-        let v = Value::PageBackground(Some(Color::RGB(121, 0, 212)));
+        let v = Value::PageBackground(Some(Color::Rgb(121, 0, 212)));
         assert_eq!(
-            ctx.set_background(Some(Color::RGB(121, 0, 212)), &v),
+            ctx.set_background(Some(Color::Rgb(121, 0, 212)), &v),
             Ok(())
         );
         assert_eq!(ctx.background_rgb(), (0x79, 0x00, 0xD4));
@@ -1550,7 +1552,7 @@ mod test {
         let mut m = Parser::new("[pb50,150,200]");
         assert_eq!(
             m.next(),
-            Some(Ok(Value::PageBackground(Some(Color::RGB(50, 150, 200)))))
+            Some(Ok(Value::PageBackground(Some(Color::Rgb(50, 150, 200)))))
         );
         assert_eq!(m.next(), None);
     }
@@ -1624,7 +1626,7 @@ mod test {
         let mut m = Parser::new("[cf255,0,208][CF0,a,0]");
         assert_eq!(
             m.next(),
-            Some(Ok(Value::ColorForeground(Some(Color::RGB(255, 0, 208)))))
+            Some(Ok(Value::ColorForeground(Some(Color::Rgb(255, 0, 208)))))
         );
         assert_eq!(
             m.next(),
@@ -1697,7 +1699,7 @@ mod test {
             m.next(),
             Some(Ok(Value::ColorRectangle(
                 Rectangle::new(5, 7, 100, 80),
-                Color::RGB(100, 150, 200)
+                Color::Rgb(100, 150, 200)
             )))
         );
         assert_eq!(m.next(), None);
@@ -1722,7 +1724,7 @@ mod test {
             m.next(),
             Some(Ok(Value::ColorRectangle(
                 Rectangle::new(100, 200, 1000, 2000),
-                Color::RGB(255, 208, 0)
+                Color::Rgb(255, 208, 0)
             )))
         );
         assert_eq!(m.next(), None);

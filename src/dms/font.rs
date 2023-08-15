@@ -7,79 +7,48 @@ use crate::dms::multi::SyntaxError;
 use crate::dms::Result;
 use log::debug;
 use pix::{rgb::SRgb8, Raster};
-use serde_derive::{Deserialize, Serialize};
-use std::collections::HashMap;
 
-/// A character for a bitmap [font].
+/// A character for a bitmap [font]
 ///
 /// [font]: struct.Font.html
-#[derive(Deserialize, Serialize)]
-pub struct Character {
+#[derive(Clone)]
+pub struct CharacterEntry {
     /// Character number (code point)
-    number: u16,
+    pub number: u16,
     /// Width in pixels
-    width: u8,
+    pub width: u8,
     /// Bitmap data (by rows)
-    #[serde(with = "super::base64")]
-    bitmap: Vec<u8>,
+    pub bitmap: Vec<u8>,
 }
 
-/// A bitmap font.
-///
-/// Text can be rendered onto a raster using [render_text](#method.render_text).
-#[derive(Deserialize, Serialize)]
+/// A bitmap font
+#[derive(Clone)]
 pub struct Font {
     /// Font number
-    number: u8,
+    pub number: u8,
     /// Name (max 64 characters)
-    name: String,
+    pub name: String,
     /// Height in pixels
-    height: u8,
+    pub height: u8,
     /// Default pixel spacing between characters
-    char_spacing: u8,
+    pub char_spacing: u8,
     /// Default pixel spacing between lines
-    line_spacing: u8,
+    pub line_spacing: u8,
     /// Characters in font
-    characters: Vec<Character>,
+    pub characters: Vec<CharacterEntry>,
     /// Version ID hash
-    version_id: u16,
+    pub version_id: u16,
 }
 
-/// A cache of fonts.
-///
-/// Fonts can be deserialized from a JSON file using [serde].
-///
-/// ## Example
-///
-/// ```rust
-/// use ntcip::dms::{Font, FontCache};
-///
-/// let mut fonts = FontCache::default();
-/// let fts: Vec<Font> =
-///     serde_json::from_str(include_str!("../../test/font.json")).unwrap();
-/// for font in fts {
-///     fonts.insert(font);
-/// }
-/// ```
-/// [serde]: https://serde.rs/
-#[derive(Default)]
-pub struct FontCache {
-    /// Fonts in cache
-    fonts: HashMap<u8, Font>,
+/// A table of fonts
+#[derive(Clone, Default)]
+pub struct FontTable {
+    /// Fonts in table
+    fonts: Vec<Font>,
 }
 
-impl Character {
-    /// Get number (code point)
-    pub fn number(&self) -> u16 {
-        self.number
-    }
-
-    /// Get width in pixels
-    pub fn width(&self) -> u8 {
-        self.width
-    }
-
-    /// Render the character to a raster.
+impl CharacterEntry {
+    /// Render the character to a raster
     ///
     /// * `page` Raster to render on.
     /// * `x` Left position of character (0-based).
@@ -119,34 +88,9 @@ impl Character {
     }
 }
 
-impl<'a> Font {
-    /// Get font number
-    pub fn number(&self) -> u8 {
-        self.number
-    }
-
-    /// Get font name
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// Get font height
-    pub fn height(&self) -> u8 {
-        self.height
-    }
-
-    /// Get default pixel spacing between characters
-    pub fn char_spacing(&self) -> u8 {
-        self.char_spacing
-    }
-
-    /// Get default pixel spacing between lines
-    pub fn line_spacing(&self) -> u8 {
-        self.line_spacing
-    }
-
+impl Font {
     /// Get a character
-    pub fn character(&'a self, ch: char) -> Result<&'a Character> {
+    pub fn character(&self, ch: char) -> Result<&CharacterEntry> {
         let code_point = u32::from(ch);
         if code_point <= u32::from(std::u16::MAX) {
             let n = code_point as u16;
@@ -157,11 +101,15 @@ impl<'a> Font {
         Err(SyntaxError::CharacterNotDefined(ch))
     }
 
-    /// Calculate the width of a span of text.
+    /// Calculate the width of a span of text
     ///
     /// * `text` Span of text.
     /// * `cs` Character spacing in pixels.
-    pub fn text_width(&self, text: &str, cs: Option<u16>) -> Result<u16> {
+    pub(crate) fn text_width(
+        &self,
+        text: &str,
+        cs: Option<u16>,
+    ) -> Result<u16> {
         let mut width = 0;
         let cs = cs.unwrap_or_else(|| u16::from(self.char_spacing));
         for ch in text.chars() {
@@ -169,12 +117,12 @@ impl<'a> Font {
             if width > 0 {
                 width += cs;
             }
-            width += u16::from(c.width());
+            width += u16::from(c.width);
         }
         Ok(width)
     }
 
-    /// Render a span of text.
+    /// Render a span of text
     ///
     /// * `page` Raster to render on.
     /// * `text` Span of text.
@@ -182,7 +130,7 @@ impl<'a> Font {
     /// * `y` Top position of first character (0-based).
     /// * `cs` Character spacing in pixels.
     /// * `cf` Foreground color.
-    pub fn render_text(
+    pub(crate) fn render_text(
         &self,
         page: &mut Raster<SRgb8>,
         text: &str,
@@ -191,11 +139,10 @@ impl<'a> Font {
         cs: i32,
         cf: SRgb8,
     ) -> Result<()> {
-        let height = i32::from(self.height());
+        let height = i32::from(self.height);
         debug!(
             "render_text: font number {}, name {}",
-            self.number(),
-            self.name()
+            self.number, self.name
         );
         debug!("render_text: {} @ {},{} height: {}", text, x, y, height);
         let mut xx = 0;
@@ -205,7 +152,7 @@ impl<'a> Font {
                 xx += cs;
             }
             c.render_char(page, x + xx, y, height, cf);
-            xx += i32::from(c.width());
+            xx += i32::from(c.width);
         }
         Ok(())
     }
@@ -216,15 +163,23 @@ impl<'a> Font {
     }
 }
 
-impl FontCache {
-    /// Insert a font into the cache
-    pub fn insert(&mut self, font: Font) {
-        self.fonts.insert(font.number(), font);
+impl FontTable {
+    /// Push a font into the table
+    pub fn push(&mut self, font: Font) -> Result<()> {
+        // FIXME: check font is valid
+        self.fonts.push(font);
+        Ok(())
+    }
+
+    /// Sort by font number
+    pub fn sort(&mut self) {
+        self.fonts.sort_by(|a, b| a.number.cmp(&b.number))
     }
 
     /// Lookup a font by number
     pub fn lookup(&self, fnum: u8, version_id: Option<u16>) -> Result<&Font> {
-        match (self.fonts.get(&fnum), version_id) {
+        let font = self.fonts.iter().find(|f| f.number == fnum);
+        match (font, version_id) {
             (Some(f), Some(vid)) => {
                 // FIXME: calculate version_id
                 if vid == f.version_id {
@@ -240,6 +195,6 @@ impl FontCache {
 
     /// Lookup a font by name
     pub fn lookup_name<'a>(&'a self, name: &str) -> Option<&'a Font> {
-        self.fonts.values().find(|f| f.name() == name)
+        self.fonts.iter().find(|f| f.name == name)
     }
 }

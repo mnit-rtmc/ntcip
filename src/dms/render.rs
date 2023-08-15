@@ -1,13 +1,15 @@
 // render.rs
 //
-// Copyright (C) 2018-2022  Minnesota Department of Transportation
+// Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
 //! This module is for NTCIP 1203 DMS rendering.
+use crate::dms::font::{Font, FontTable};
+use crate::dms::graphic::{Graphic, GraphicTable};
 use crate::dms::multi::{
     ColorClassic, ColorCtx, ColorScheme, JustificationLine, JustificationPage,
     Parser, Rectangle, SyntaxError, Value,
 };
-use crate::dms::{Font, FontCache, Graphic, GraphicCache, Result};
+use crate::dms::Result;
 use log::debug;
 use pix::{rgb::SRgb8, Raster, Region};
 
@@ -113,10 +115,10 @@ struct TextLine {
 /// ```
 pub struct PageBuilder<'a> {
     /// Font cache
-    fonts: Option<&'a FontCache>,
+    fonts: Option<&'a FontTable>,
 
     /// Graphic cache
-    graphics: Option<&'a GraphicCache>,
+    graphics: Option<&'a GraphicTable>,
 
     /// Default rendering state
     default_state: RenderState,
@@ -139,10 +141,10 @@ pub struct PageBuilder<'a> {
 /// ```
 pub struct Pages<'a> {
     /// Font cache
-    fonts: Option<&'a FontCache>,
+    fonts: Option<&'a FontTable>,
 
     /// Graphic cache
-    graphics: Option<&'a GraphicCache>,
+    graphics: Option<&'a GraphicTable>,
 
     /// Default rendering state
     default_state: RenderState,
@@ -298,7 +300,7 @@ impl RenderState {
     }
 
     /// Lookup current font in cache.
-    fn font<'a>(&self, fonts: Option<&'a FontCache>) -> Result<&'a Font> {
+    fn font<'a>(&self, fonts: Option<&'a FontTable>) -> Result<&'a Font> {
         debug!("RenderState::font {}", self.font_num);
         fonts
             .ok_or(SyntaxError::FontNotDefined(self.font_num))?
@@ -314,17 +316,17 @@ impl TextSpan {
     }
 
     /// Get the width of a text span.
-    fn width(&self, fonts: Option<&FontCache>) -> Result<u16> {
+    fn width(&self, fonts: Option<&FontTable>) -> Result<u16> {
         let font = self.state.font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
         font.text_width(&self.text, Some(cs))
     }
 
     /// Get the char spacing.
-    fn char_spacing_fonts(&self, fonts: Option<&FontCache>) -> Result<u16> {
+    fn char_spacing_fonts(&self, fonts: Option<&FontTable>) -> Result<u16> {
         match self.state.char_spacing {
             Some(sp) => Ok(sp.into()),
-            None => Ok(self.state.font(fonts)?.char_spacing().into()),
+            None => Ok(self.state.font(fonts)?.char_spacing.into()),
         }
     }
 
@@ -332,7 +334,7 @@ impl TextSpan {
     fn char_spacing_font(&self, font: &Font) -> u8 {
         match self.state.char_spacing {
             Some(sp) => sp,
-            None => font.char_spacing(),
+            None => font.char_spacing,
         }
     }
 
@@ -340,7 +342,7 @@ impl TextSpan {
     fn char_spacing_between(
         &self,
         prev: &TextSpan,
-        fonts: Option<&FontCache>,
+        fonts: Option<&FontTable>,
     ) -> Result<u16> {
         if let Some(c) = self.state.char_spacing {
             Ok(c.into())
@@ -355,13 +357,13 @@ impl TextSpan {
     }
 
     /// Get the height of a text span.
-    fn height(&self, fonts: Option<&FontCache>) -> Result<u16> {
-        Ok(self.state.font(fonts)?.height().into())
+    fn height(&self, fonts: Option<&FontTable>) -> Result<u16> {
+        Ok(self.state.font(fonts)?.height.into())
     }
 
     /// Get the font line spacing.
-    fn font_spacing(&self, fonts: Option<&FontCache>) -> Result<u16> {
-        Ok(self.state.font(fonts)?.line_spacing().into())
+    fn font_spacing(&self, fonts: Option<&FontTable>) -> Result<u16> {
+        Ok(self.state.font(fonts)?.line_spacing.into())
     }
 
     /// Get the line spacing.
@@ -428,7 +430,7 @@ impl<'a> PageBuilder<'a> {
     }
 
     /// Adjust the color context.
-    pub fn with_color_ctx(mut self, color_ctx: ColorCtx) -> Self {
+    pub(crate) fn with_color_ctx(mut self, color_ctx: ColorCtx) -> Self {
         self.default_state.color_ctx = color_ctx;
         self
     }
@@ -477,14 +479,14 @@ impl<'a> PageBuilder<'a> {
     }
 
     /// Set the font cache.
-    pub fn with_fonts(mut self, fonts: Option<&'a FontCache>) -> Self {
-        self.fonts = fonts;
+    pub fn with_fonts(mut self, fonts: &'a FontTable) -> Self {
+        self.fonts = Some(fonts);
         self
     }
 
     /// Set the graphic cache.
-    pub fn with_graphics(mut self, graphics: Option<&'a GraphicCache>) -> Self {
-        self.graphics = graphics;
+    pub fn with_graphics(mut self, graphics: &'a GraphicTable) -> Self {
+        self.graphics = Some(graphics);
         self
     }
 
@@ -668,6 +670,7 @@ impl<'a> Pages<'a> {
                     rs.font_num = f.map_or(ds.font_num, |t| t.0);
                     rs.font_version_id = f.map_or(ds.font_version_id, |t| t.1);
                 }
+                #[allow(deprecated)]
                 Value::JustificationLine(Some(JustificationLine::Other)) => {
                     return Err(SyntaxError::UnsupportedTagValue(val.into()));
                 }
@@ -678,6 +681,7 @@ impl<'a> Pages<'a> {
                     rs.just_line = jl.unwrap_or(ds.just_line);
                     rs.span_number = 0;
                 }
+                #[allow(deprecated)]
                 Value::JustificationPage(Some(JustificationPage::Other)) => {
                     return Err(SyntaxError::UnsupportedTagValue(val.into()));
                 }
@@ -768,7 +772,9 @@ impl<'a> Pages<'a> {
 
     /// Check page and line justification ordering.
     fn check_justification(&self) -> Result<()> {
+        #[allow(deprecated)]
         let mut jp = JustificationPage::Other;
+        #[allow(deprecated)]
         let mut jl = JustificationLine::Other;
         let mut ln = 0;
         for span in &self.spans {
@@ -992,18 +998,14 @@ mod test {
     use super::*;
     use crate::dms::multi::{ColorClassic, ColorCtx, ColorScheme};
 
-    fn font_cache() -> FontCache {
-        let mut fonts = FontCache::default();
-        let fts: Vec<Font> =
-            serde_json::from_str(include_str!("../../test/font.json")).unwrap();
-        for font in fts {
-            fonts.insert(font);
-        }
+    fn font_table() -> FontTable {
+        let mut fonts = FontTable::default();
+        // FIXME
         fonts
     }
 
     fn render_full(multi: &str) -> Result<Vec<(Raster<SRgb8>, u16)>> {
-        let fonts = font_cache();
+        let fonts = font_table();
         Pages::builder(60, 30)
             .with_color_ctx(ColorCtx::new(
                 ColorScheme::Color24Bit,
@@ -1014,7 +1016,7 @@ mod test {
             .with_justification_page(JustificationPage::Top)
             .with_justification_line(JustificationLine::Left)
             .with_font_num(3)
-            .with_fonts(Some(&fonts))
+            .with_fonts(&fonts)
             .build(multi)
             .collect()
     }
@@ -1110,7 +1112,7 @@ mod test {
     }
 
     fn render_char(multi: &str) -> Result<Vec<(Raster<SRgb8>, u16)>> {
-        let fonts = font_cache();
+        let fonts = font_table();
         Pages::builder(100, 21)
             .with_color_ctx(ColorCtx::new(
                 ColorScheme::Monochrome1Bit,
@@ -1121,7 +1123,7 @@ mod test {
             .with_page_on_time_ds(20)
             .with_justification_page(JustificationPage::Top)
             .with_justification_line(JustificationLine::Left)
-            .with_fonts(Some(&fonts))
+            .with_fonts(&fonts)
             .build(multi)
             .collect()
     }

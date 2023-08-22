@@ -16,6 +16,15 @@ use pix::{rgb::SRgb8, Raster, Region};
 /// Maximum number of text rectangles per page
 const MAX_TEXT_RECTANGLES: u32 = 50;
 
+/// Rendered DMS page
+pub struct Page {
+    /// Page raster
+    pub raster: Raster<SRgb8>,
+
+    /// Page duration (1/10 s)
+    pub duration_ds: u16,
+}
+
 /// Page state
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum PageState {
@@ -527,9 +536,12 @@ impl<'a> Pages<'a> {
     }
 
     /// Render an OFF page.
-    fn render_off_page(&mut self) -> (Raster<SRgb8>, u16) {
+    fn render_off_page(&mut self) -> Page {
         self.page_state = self.page_state.next_state();
-        (self.build_raster(), self.page_off_time_ds())
+        Page {
+            raster: self.build_raster(),
+            duration_ds: self.page_off_time_ds(),
+        }
     }
 
     /// Build a raster.
@@ -541,7 +553,7 @@ impl<'a> Pages<'a> {
     }
 
     /// Render an ON page.
-    fn render_on_page(&mut self) -> Result<(Raster<SRgb8>, u16)> {
+    fn render_on_page(&mut self) -> Result<Page> {
         self.check_unsupported()?;
         self.update_page_state()?;
         let mut raster = self.build_raster();
@@ -556,7 +568,10 @@ impl<'a> Pages<'a> {
                 return Err(SyntaxError::Other("Too many text rectangles"));
             }
         }
-        Ok((raster, self.page_on_time_ds()))
+        Ok(Page {
+            raster,
+            duration_ds: self.page_on_time_ds(),
+        })
     }
 
     /// Check for unsupported MULTI tags in a page.
@@ -960,7 +975,7 @@ impl<'a> Pages<'a> {
 }
 
 impl<'a> Iterator for Pages<'a> {
-    type Item = Result<(Raster<SRgb8>, u16)>;
+    type Item = Result<Page>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.page_state {

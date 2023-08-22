@@ -8,6 +8,9 @@ use crate::dms::Result;
 use log::debug;
 use pix::{rgb::SRgb8, Raster};
 
+/// Font reader for .ifnt format
+pub mod ifnt;
+
 /// A character for a bitmap [font]
 ///
 /// [font]: struct.Font.html

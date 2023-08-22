@@ -2100,6 +2100,7 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn parse_jl15() {
         let mut m = Parser::new("[jL1][Jl2][JL3][jl4][JL5]");
         assert_eq!(
@@ -2145,6 +2146,7 @@ mod test {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn parse_jp14() {
         let mut m = Parser::new("[jP1][Jp2][JP3][jp4]");
         assert_eq!(

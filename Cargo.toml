@@ -12,6 +12,4 @@ include = ["src/**/*", "Cargo.toml", "LICENSE-*", "README.md"]
 [dependencies]
 log = "0.4"
 pix = "0.13"
-
-[dev-dependencies]
-gift = "0.10.0"
+thiserror = "1"

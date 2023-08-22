@@ -108,20 +108,6 @@ struct TextLine {
 }
 
 /// Builder for dynamic message sign MULTI page renderer.
-///
-/// # Example
-///
-/// ```rust
-/// use ntcip::dms::Pages;
-/// use ntcip::dms::multi::{JustificationLine, JustificationPage};
-///
-/// let pages = Pages::builder(100, 14)
-///     .with_char_size(5, 7)
-///     .with_page_on_time_ds(20)
-///     .with_justification_page(JustificationPage::Top)
-///     .with_justification_line(JustificationLine::Left)
-///     .build("LINE 1[nl]SECOND LINE[np]SECOND PAGE");
-/// ```
 pub struct PageBuilder<'a> {
     /// Font cache
     fonts: Option<&'a FontTable>,
@@ -134,20 +120,6 @@ pub struct PageBuilder<'a> {
 }
 
 /// Page renderer for MULTI on dynamic message signs.
-///
-/// # Example
-///
-/// ```rust
-/// use ntcip::dms::Pages;
-/// use ntcip::dms::multi::{JustificationLine, JustificationPage};
-///
-/// let pages = Pages::builder(100, 14)
-///     .with_char_size(5, 7)
-///     .with_page_on_time_ds(20)
-///     .with_justification_page(JustificationPage::Top)
-///     .with_justification_line(JustificationLine::Left)
-///     .build("LINE 1[nl]SECOND LINE[np]SECOND PAGE");
-/// ```
 pub struct Pages<'a> {
     /// Font cache
     fonts: Option<&'a FontTable>,
@@ -1011,15 +983,21 @@ fn render_rect(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::dms::font::ifnt;
     use crate::dms::multi::{ColorClassic, ColorCtx, ColorScheme};
 
     fn font_table() -> FontTable {
         let mut fonts = FontTable::default();
-        // FIXME
+        let buf = include_bytes!("../../test/07_char.ifnt");
+        fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
+        let buf = include_bytes!("../../test/07_line.ifnt");
+        fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
+        let buf = include_bytes!("../../test/08_full.ifnt");
+        fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
         fonts
     }
 
-    fn render_full(multi: &str) -> Result<Vec<(Raster<SRgb8>, u16)>> {
+    fn render_full(multi: &str) -> Result<Vec<Page>> {
         let fonts = font_table();
         Pages::builder(60, 30)
             .with_color_ctx(ColorCtx::new(
@@ -1057,11 +1035,11 @@ mod test {
 
     #[test]
     fn page_times() {
-        assert_eq!(render_full("").unwrap()[0].1, 20);
-        assert_eq!(render_full("[pt25o10]").unwrap()[0].1, 25);
-        assert_eq!(render_full("[pt20o10]").unwrap()[1].1, 10);
-        assert_eq!(render_full("[pt30o5][np]").unwrap()[2].1, 30);
-        assert_eq!(render_full("[pto15][np]").unwrap()[3].1, 15);
+        assert_eq!(render_full("").unwrap()[0].duration_ds, 20);
+        assert_eq!(render_full("[pt25o10]").unwrap()[0].duration_ds, 25);
+        assert_eq!(render_full("[pt20o10]").unwrap()[1].duration_ds, 10);
+        assert_eq!(render_full("[pt30o5][np]").unwrap()[2].duration_ds, 30);
+        assert_eq!(render_full("[pto15][np]").unwrap()[3].duration_ds, 15);
     }
 
     fn justify_dot(multi: &str, i: usize) {
@@ -1069,7 +1047,7 @@ mod test {
         raster.pixels_mut()[i] = SRgb8::new(255, 255, 255);
         let pages = render_full(multi).unwrap();
         assert_eq!(pages.len(), 1);
-        let page = &pages[0].0;
+        let page = &pages[0].raster;
         for (i, (p0, p1)) in
             page.pixels().iter().zip(raster.pixels()).enumerate()
         {
@@ -1126,7 +1104,7 @@ mod test {
         justify_dot("[tr2,2,10,10].", 481);
     }
 
-    fn render_char(multi: &str) -> Result<Vec<(Raster<SRgb8>, u16)>> {
+    fn render_char(multi: &str) -> Result<Vec<Page>> {
         let fonts = font_table();
         Pages::builder(100, 21)
             .with_color_ctx(ColorCtx::new(

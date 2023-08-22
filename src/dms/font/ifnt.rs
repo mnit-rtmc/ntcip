@@ -116,19 +116,19 @@ fn parse_kv<'a>(line: &'a str, key: &'static str) -> Result<&'a str> {
 }
 
 /// Parse a string value from an .ifnt file
-fn parse_string<'a>(line: &'a str, key: &'static str) -> Result<String> {
+fn parse_string(line: &str, key: &'static str) -> Result<String> {
     Ok(parse_kv(line, key)?.to_string())
 }
 
 /// Parse a u8 value from an .ifnt file
-fn parse_u8<'a>(line: &'a str, key: &'static str) -> Result<u8> {
+fn parse_u8(line: &str, key: &'static str) -> Result<u8> {
     Ok(parse_kv(line, key)?.parse()?)
 }
 
 /// Parse a codepoint from an .ifnt file
 fn parse_cp(line: &str) -> Result<u16> {
     let value = parse_kv(line, "codepoint")?;
-    if let Some((val, ch)) = value.split_once(" ") {
+    if let Some((val, ch)) = value.split_once(' ') {
         let cp = val.parse()?;
         if ch.len() == 1 && ch.chars().next() == char::from_u32(u32::from(cp)) {
             return Ok(cp);

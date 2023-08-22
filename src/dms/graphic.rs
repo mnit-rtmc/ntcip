@@ -54,14 +54,14 @@ impl Graphic {
 
     // Check if transparent color type is valid
     fn is_transparent_color_valid(&self) -> bool {
-        match (self.gtype, self.transparent_color) {
-            (_, None) => true,
-            (ColorScheme::Monochrome1Bit, Some(Color::Legacy(_))) => true,
-            (ColorScheme::Monochrome8Bit, Some(Color::Legacy(_))) => true,
-            (ColorScheme::ColorClassic, Some(Color::Legacy(_))) => true,
-            (ColorScheme::Color24Bit, Some(Color::Rgb(_, _, _))) => true,
-            _ => false,
-        }
+        matches!(
+            (self.gtype, self.transparent_color),
+            (_, None)
+                | (ColorScheme::Monochrome1Bit, Some(Color::Legacy(_)))
+                | (ColorScheme::Monochrome8Bit, Some(Color::Legacy(_)))
+                | (ColorScheme::ColorClassic, Some(Color::Legacy(_)))
+                | (ColorScheme::Color24Bit, Some(Color::Rgb(_, _, _)))
+        )
     }
 
     /// Check if graphic is valid

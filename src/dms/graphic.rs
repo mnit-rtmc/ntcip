@@ -65,12 +65,12 @@ impl Graphic {
     }
 
     /// Check if graphic is valid
-    fn is_valid(&self) -> bool {
-        self.number > 0 &&
-            self.height > 0 &&
-            self.width > 0 &&
-            self.is_bitmap_valid() &&
-            self.is_transparent_color_valid()
+    pub fn is_valid(&self) -> bool {
+        self.number > 0
+            && self.height > 0
+            && self.width > 0
+            && self.is_bitmap_valid()
+            && self.is_transparent_color_valid()
     }
 
     /// Convert graphic to a raster

@@ -11,7 +11,7 @@ use pix::{rgb::SRgb8, Raster};
 /// A character for a bitmap [font]
 ///
 /// [font]: struct.Font.html
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct CharacterEntry {
     /// Character number (code point)
     pub number: u16,
@@ -22,7 +22,7 @@ pub struct CharacterEntry {
 }
 
 /// A bitmap font
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Font {
     /// Font number
     pub number: u8,
@@ -64,10 +64,7 @@ impl CharacterEntry {
         cf: SRgb8,
     ) {
         let width = i32::from(self.width);
-        debug!(
-            "render_char: {} @ {},{} width: {}",
-            self.number, x, y, width
-        );
+        debug!("render_char: {} @ {x},{y} width: {width}", self.number);
         let mut xx = 0;
         let mut yy = 0;
         for by in &self.bitmap {
@@ -91,9 +88,7 @@ impl CharacterEntry {
 impl Font {
     /// Get a character
     pub fn character(&self, ch: char) -> Result<&CharacterEntry> {
-        let code_point = u32::from(ch);
-        if code_point <= u32::from(std::u16::MAX) {
-            let n = code_point as u16;
+        if let Ok(n) = u16::try_from(u32::from(ch)) {
             if let Some(c) = self.characters.iter().find(|c| c.number == n) {
                 return Ok(c);
             }
@@ -144,7 +139,7 @@ impl Font {
             "render_text: font number {}, name {}",
             self.number, self.name
         );
-        debug!("render_text: {} @ {},{} height: {}", text, x, y, height);
+        debug!("render_text: {text} @ {x},{y} height: {height}");
         let mut xx = 0;
         for ch in text.chars() {
             let c = self.character(ch)?;
@@ -166,7 +161,8 @@ impl Font {
 impl FontTable {
     /// Push a font into the table
     pub fn push(&mut self, font: Font) -> Result<()> {
-        // FIXME: check font is valid
+        // FIXME: check font is valid (no duplicate numbers, etc)
+        // FIXME: calculate version ID
         self.fonts.push(font);
         Ok(())
     }
@@ -181,7 +177,6 @@ impl FontTable {
         let font = self.fonts.iter().find(|f| f.number == fnum);
         match (font, version_id) {
             (Some(f), Some(vid)) => {
-                // FIXME: calculate version_id
                 if vid == f.version_id {
                     Ok(f)
                 } else {

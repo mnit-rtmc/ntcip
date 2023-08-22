@@ -358,6 +358,16 @@ impl From<(u8, u8, u8)> for Color {
     }
 }
 
+impl Color {
+    /// Get RGB triplet for a color
+    pub fn rgb(self) -> (u8, u8, u8) {
+        match self {
+            Color::Legacy(v) => ColorCtx::rgb_classic(v).unwrap_or_default(),
+            Color::Rgb(r, g, b) => (r, g, b),
+        }
+    }
+}
+
 impl ColorCtx {
     /// Create a new color context
     pub fn new(

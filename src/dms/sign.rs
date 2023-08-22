@@ -5,9 +5,7 @@
 use crate::dms::config::{MultiCfg, SignCfg, VmsCfg};
 use crate::dms::font::FontTable;
 use crate::dms::graphic::GraphicTable;
-use crate::dms::multi::{
-    ColorClassic, ColorCtx, ColorScheme, JustificationLine, JustificationPage,
-};
+use crate::dms::multi::{ColorCtx, ColorScheme};
 use crate::dms::render::Pages;
 use crate::dms::Result;
 use pix::{rgb::SRgb8, Raster};
@@ -82,6 +80,17 @@ impl Dms {
         DmsBuilder::default()
     }
 
+    /// Convert back into builder
+    pub fn into_builder(self) -> DmsBuilder {
+        DmsBuilder {
+            sign_cfg: self.sign_cfg,
+            vms_cfg: self.vms_cfg,
+            font_definition: self.font_definition,
+            multi_cfg: self.multi_cfg,
+            graphic_definition: self.graphic_definition,
+        }
+    }
+
     /// Get font definition
     pub fn font_definition(&self) -> &FontTable {
         &self.font_definition
@@ -98,7 +107,7 @@ impl Dms {
     }
 
     /// Get the face width (mm)
-    fn face_width_mm(&self) -> f32 {
+    pub fn face_width_mm(&self) -> f32 {
         self.sign_cfg.sign_width as f32
     }
 
@@ -157,10 +166,10 @@ impl Dms {
     }
 
     /// Get the X-position of a pixel on the sign (from 0 to 1)
-    pub fn pixel_x(&self, x: i32) -> f32 {
+    pub fn pixel_x(&self, x: i32, shift: f32) -> f32 {
         let border = self.border_horiz_mm();
         let offset = self.char_offset_mm(x);
-        let x = x as f32 + 0.5; // shift to center of pixel
+        let x = x as f32 + shift; // shift to center of pixel
         let pos = border + offset + x * self.pitch_horiz_mm();
         pos / self.face_width_mm()
     }
@@ -193,13 +202,13 @@ impl Dms {
     }
 
     /// Get the face height (mm)
-    fn face_height_mm(&self) -> f32 {
+    pub fn face_height_mm(&self) -> f32 {
         self.sign_cfg.sign_height as f32
     }
 
     /// Get the height of the sign (pixels)
     fn pixel_height(&self) -> u16 {
-        self.vms_cfg.sign_width_pixels
+        self.vms_cfg.sign_height_pixels
     }
 
     /// Get the vertical border (mm)
@@ -252,10 +261,10 @@ impl Dms {
     }
 
     /// Get the Y-position of a pixel on the sign (from 0 to 1)
-    pub fn pixel_y(&self, y: i32) -> f32 {
+    pub fn pixel_y(&self, y: i32, shift: f32) -> f32 {
         let border = self.border_vert_mm();
         let offset = self.line_offset_mm(y);
-        let y = y as f32 + 0.5; // shift to center of pixel
+        let y = y as f32 + shift; // shift to center of pixel
         let pos = border + offset + y * self.pitch_vert_mm();
         pos / self.face_height_mm()
     }
@@ -306,7 +315,7 @@ impl Dms {
     fn foreground_default_rgb(&self) -> (u8, u8, u8) {
         match self.color_scheme() {
             ColorScheme::ColorClassic | ColorScheme::Color24Bit => {
-                ColorClassic::Amber.rgb()
+                self.multi_cfg.default_foreground_rgb.rgb()
             }
             _ => {
                 let mono = &self.vms_cfg.monochrome_color;
@@ -319,7 +328,7 @@ impl Dms {
     fn background_default_rgb(&self) -> (u8, u8, u8) {
         match self.color_scheme() {
             ColorScheme::ColorClassic | ColorScheme::Color24Bit => {
-                ColorClassic::Black.rgb()
+                self.multi_cfg.default_background_rgb.rgb()
             }
             _ => {
                 let mono = &self.vms_cfg.monochrome_color;
@@ -345,10 +354,10 @@ impl Dms {
         Pages::builder(width, height)
             .with_color_ctx(color_ctx)
             .with_char_size(char_width, char_height)
-            .with_page_on_time_ds(28)
-            .with_page_off_time_ds(0)
-            .with_justification_page(JustificationPage::Top)
-            .with_justification_line(JustificationLine::Center)
+            .with_page_on_time_ds(self.multi_cfg.default_page_on_time)
+            .with_page_off_time_ds(self.multi_cfg.default_page_off_time)
+            .with_justification_page(self.multi_cfg.default_justification_page)
+            .with_justification_line(self.multi_cfg.default_justification_line)
             .with_font_num(font_num)
             .with_fonts(&self.font_definition)
             .with_graphics(&self.graphic_definition)

@@ -2,7 +2,7 @@
 //
 // Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
-//! Graphics are used on dynamic message signs.
+//! Graphic image support
 use crate::dms::multi::{
     Color, ColorClassic, ColorCtx, ColorScheme, SyntaxError,
 };

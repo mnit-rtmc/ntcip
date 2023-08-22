@@ -2,16 +2,16 @@
 //
 // Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
-//! Bitmap fonts are used on dynamic message signs.
+//! Font support for dynamic message signs
 use crate::dms::multi::SyntaxError;
 use crate::dms::Result;
 use log::debug;
 use pix::{rgb::SRgb8, Raster};
 
-/// Font reader for .ifnt format
+/// Read/write .ifnt format
 pub mod ifnt;
 
-/// A character for a bitmap [font]
+/// Character for a bitmap [font]
 ///
 /// [font]: struct.Font.html
 #[derive(Clone, Default)]
@@ -24,7 +24,7 @@ pub struct CharacterEntry {
     pub bitmap: Vec<u8>,
 }
 
-/// A bitmap font
+/// Bitmap font
 #[derive(Clone, Default)]
 pub struct Font {
     /// Font number
@@ -43,7 +43,7 @@ pub struct Font {
     pub version_id: u16,
 }
 
-/// A table of fonts
+/// Table of fonts
 ///
 /// This represents the `fontDefinition` of a Dms.
 #[derive(Clone, Default)]
@@ -59,6 +59,14 @@ impl CharacterEntry {
             let bits = usize::from(self.width) * usize::from(height);
             self.bitmap.len() == (bits + 7) / 8
         }
+    }
+
+    /// Check if a pixel is lit
+    pub fn is_pixel_lit(&self, row: usize, col: usize) -> bool {
+        let pos = row * usize::from(self.width) + col;
+        let off = pos / 8;
+        let bit = 7 - (pos & 0b111);
+        (self.bitmap[off] >> bit) & 1 != 0
     }
 
     /// Render the character to a raster
@@ -116,6 +124,21 @@ impl Font {
             && self.height > 0
             && self.characters.iter().all(|c| c.is_valid(self.height))
             && self.are_char_numbers_unique()
+    }
+
+    /// Get width (if fixed-width), or 0
+    pub fn width(&self) -> u8 {
+        let width = self
+            .characters
+            .iter()
+            .next()
+            .map(|c| c.width)
+            .unwrap_or_default();
+        if self.characters.iter().all(|c| c.width == width) {
+            width
+        } else {
+            0
+        }
     }
 
     /// Get a character

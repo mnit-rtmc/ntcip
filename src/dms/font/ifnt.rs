@@ -3,7 +3,7 @@
 // Copyright (C) 2023  Minnesota Department of Transportation
 //
 use super::{CharacterEntry, Font};
-use std::io::{BufRead, BufReader, Lines, Read};
+use std::io::{BufRead, BufReader, Lines, Read, Write};
 
 /// Font error
 #[derive(Debug, thiserror::Error)]
@@ -177,4 +177,32 @@ impl From<Bitmap> for Vec<u8> {
         }
         bytes
     }
+}
+
+/// Write a font to an .ifnt file
+pub fn write<W: Write>(mut writer: W, font: &Font) -> Result<()> {
+    writeln!(writer, "name: {}", font.name)?;
+    writeln!(writer, "font_number: {}", font.number)?;
+    writeln!(writer, "height: {}", font.height)?;
+    writeln!(writer, "width: {}", font.width())?;
+    writeln!(writer, "char_spacing: {}", font.char_spacing)?;
+    writeln!(writer, "line_spacing: {}", font.line_spacing)?;
+    for character in &font.characters {
+        let cp = u32::from(character.number);
+        if let Some(ch) = char::from_u32(cp) {
+            writeln!(writer)?;
+            writeln!(writer, "codepoint: {cp} {ch}")?;
+            for row in 0..usize::from(font.height) {
+                for col in 0..usize::from(character.width) {
+                    if character.is_pixel_lit(row, col) {
+                        write!(writer, "X")?;
+                    } else {
+                        write!(writer, ".")?;
+                    }
+                }
+                writeln!(writer)?;
+            }
+        }
+    }
+    Ok(())
 }

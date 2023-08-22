@@ -19,7 +19,7 @@ pub struct DmsBuilder {
     graphic_definition: GraphicTable,
 }
 
-/// Dynamic Message Sign
+/// Dynamic message sign
 ///
 /// This is the root node of the 1203 Message Information Base (MIB)
 #[derive(Clone)]
@@ -124,7 +124,7 @@ impl Dms {
 
     /// Get the horizontal border (mm)
     ///
-    /// Sanity checked in case vendor supplied stupid values.
+    /// Sanity checked in case values are stupid.
     fn border_horiz_mm(&self) -> f32 {
         let pix = self.pixel_width() + self.gap_char_count();
         let min_width = (pix as f32) * self.pitch_horiz_mm();
@@ -150,7 +150,7 @@ impl Dms {
 
     /// Get the horizontal pitch (mm)
     ///
-    /// Sanity checked in case vendor supplied stupid values.
+    /// Sanity checked in case values are stupid.
     fn pitch_horiz_mm(&self) -> f32 {
         let pitch = self.pitch_horiz() as f32;
         let pix = self.pixel_width() + self.gap_char_count();
@@ -219,7 +219,7 @@ impl Dms {
 
     /// Get the vertical border (mm)
     ///
-    /// Sanity checked in case vendor supplied stupid values.
+    /// Sanity checked in case values are stupid.
     fn border_vert_mm(&self) -> f32 {
         let pix = self.pixel_height() + self.gap_line_count();
         let min_height = (pix as f32) * self.pitch_vert_mm();
@@ -245,7 +245,7 @@ impl Dms {
 
     /// Get the vertical pitch (mm)
     ///
-    /// Sanity checked in case vendor supplied stupid values.
+    /// Sanity checked in case values are stupid.
     fn pitch_vert_mm(&self) -> f32 {
         let pitch = self.pitch_vert() as f32;
         let pix = self.pixel_height() + self.gap_line_count();

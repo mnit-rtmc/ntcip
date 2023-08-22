@@ -50,6 +50,14 @@ pub struct FontTable {
 }
 
 impl CharacterEntry {
+    /// Check if character is valid
+    fn is_valid(&self, height: u8) -> bool {
+        self.number > 0 && {
+            let bits = usize::from(self.width) * usize::from(height);
+            self.bitmap.len() == (bits + 7) / 8
+        }
+    }
+
     /// Render the character to a raster
     ///
     /// * `page` Raster to render on.
@@ -88,6 +96,25 @@ impl CharacterEntry {
 }
 
 impl Font {
+    /// Check if all character numbers are unique
+    fn are_char_numbers_unique(&self) -> bool {
+        for i in 1..self.characters.len() {
+            let num = self.characters[i - 1].number;
+            if self.characters[i..].iter().any(|c| c.number == num) {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Check if font is valid
+    pub fn is_valid(&self) -> bool {
+        self.number > 0
+            && self.height > 0
+            && self.characters.iter().all(|c| c.is_valid(self.height))
+            && self.are_char_numbers_unique()
+    }
+
     /// Get a character
     pub fn character(&self, ch: char) -> Result<&CharacterEntry> {
         if let Ok(n) = u16::try_from(u32::from(ch)) {
@@ -163,7 +190,12 @@ impl Font {
 impl FontTable {
     /// Push a font into the table
     pub fn push(&mut self, font: Font) -> Result<()> {
-        // FIXME: check font is valid (no duplicate numbers, etc)
+        if !font.is_valid() {
+            return Err(SyntaxError::Other("Invalid font"));
+        }
+        if self.fonts.iter().any(|f| f.number == font.number) {
+            return Err(SyntaxError::Other("Duplicate font number"));
+        }
         // FIXME: calculate version ID
         self.fonts.push(font);
         Ok(())

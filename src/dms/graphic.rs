@@ -14,22 +14,24 @@ use pix::{
     Raster,
 };
 
-/// Graphic image
+/// Graphic image — `dmsGraphicEntry`
 #[derive(Clone)]
 pub struct Graphic {
-    /// Graphic number
+    /// Graphic number — `dmsGraphicNumber`
     pub number: u8,
-    /// Name (max 64 characters)
+    /// Name of graphic — `dmsGraphicName`
     pub name: String,
-    /// Height in pixels
+    /// Height (pixels) — `dmsGraphicHeight`
     pub height: u8,
-    /// Width in pixels
+    /// Width (pixels) — `dmsGraphicWidth`
     pub width: u16,
-    /// Graphic type (color scheme)
+    /// Graphic type — `dmsGraphicType`
     pub gtype: ColorScheme,
     /// Transparent color
+    ///
+    /// `dmsGraphicTransparentEnabled` / `dmsGraphicTransparentColor`
     pub transparent_color: Option<Color>,
-    /// Bitmap data (uncompressed BGR)
+    /// Bitmap data — `dmsGraphicBitmapTable` (uncompressed BGR)
     pub bitmap: Vec<u8>,
 }
 

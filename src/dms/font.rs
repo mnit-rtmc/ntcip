@@ -41,6 +41,8 @@ pub struct Font {
 }
 
 /// A table of fonts
+///
+/// This represents the `fontDefinition` of a Dms.
 #[derive(Clone, Default)]
 pub struct FontTable {
     /// Fonts in table

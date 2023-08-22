@@ -51,50 +51,84 @@ pub enum DmsBeaconType {
     FourBeaconStrobe,
 }
 
-/// Sign configuration
+/// Sign configuration — `dmsSignCfg`
+///
+/// Configuration common to all signs.
 #[derive(Clone)]
 pub struct SignCfg {
+    /// Access bits — `dmsSignAccess`
     pub sign_access: u8,
+    /// Sign type — `dmsSignType`
     pub sign_type: DmsSignType,
+    /// Height of sign face (mm) — `dmsSignHeight`
     pub sign_height: u16,
+    /// Width of sign face (mm) — `dmsSignWidth`
     pub sign_width: u16,
+    /// Horizontal border (mm) — `dmsHorizontalBorder`
     pub horizontal_border: u16,
+    /// Vertical border (mm) — `dmsVerticalBorder`
     pub vertical_border: u16,
+    /// Sign legend — `dmsLegend`
     pub legend: DmsLegend,
+    /// Beacon type — `dmsBeaconType`
     pub beacon_type: DmsBeaconType,
+    /// Sign technology — `dmsSignTechnology`
     pub sign_technology: u16,
 }
 
-/// VMS configuration
+/// VMS configuration — `vmsCfg`
+///
+/// Configuration for variable message signs.
 #[derive(Clone)]
 pub struct VmsCfg {
+    /// Character height in pixels — `vmsCharacterHeightPixels`
     pub char_height_pixels: u8,
+    /// Character width in pixels — `vmsCharacterWidthPixels`
     pub char_width_pixels: u8,
+    /// Sign height in pixels — `vmsSignHeightPixels`
     pub sign_height_pixels: u16,
+    /// Sign width in pixels — `vmsSignWidthPixels`
     pub sign_width_pixels: u16,
+    /// Horizontal pixel pitch (mm) — `vmsHorizontalPitch`
     pub horizontal_pitch: u8,
+    /// Vertical pixel pitch (mm) — `vmsVerticalPitch`
     pub vertical_pitch: u8,
+    /// Monochrome sign colors — `monochromeColor`
     pub monochrome_color: [u8; 6],
 }
 
-/// MULTI configuration
+/// MULTI configuration — `multiCfg`
+///
+/// Default values for MarkUp Language for Transportation Information.
 #[derive(Clone)]
 pub struct MultiCfg {
-    /// Serves as dmsDefaultBackgroundRGB and dmsDefaultBackgroundColor
+    /// Serves as `dmsDefaultBackgroundRGB` and `dmsDefaultBackgroundColor`
     pub default_background_rgb: Color,
-    /// Serves as dmsDefaultForegroundRGB and dmsDefaultForegroundColor
+    /// Serves as `dmsDefaultForegroundRGB` and `dmsDefaultForegroundColor`
     pub default_foreground_rgb: Color,
+    /// Default flash on time (1/10 s) — `defaultFlashOn`
     pub default_flash_on: u8,
+    /// Default flash off time (1/10 s) — `defaultFlashOff`
     pub default_flash_off: u8,
+    /// Default font number — `defaultFont`
     pub default_font: u8,
+    /// Default line justification — `defaultJustificationLine`
     pub default_justification_line: JustificationLine,
+    /// Default page justification — `defaultJustificationPage`
     pub default_justification_page: JustificationPage,
+    /// Default page on time (1/10 s) — `defaultPageOnTime`
     pub default_page_on_time: u8,
+    /// Default page off time (1/10 s) — `defaultPageOffTime`
     pub default_page_off_time: u8,
+    /// Default character set — `defaultCharacterSet`
     pub default_character_set: u8,
+    /// Color scheme — `dmsColorScheme`
     pub color_scheme: ColorScheme,
+    /// Supported MULTI tags — `dmsSupportedMultiTags`
     pub supported_multi_tags: [u8; 4],
+    /// Maximum number of pages — `dmsMaxNumberPages`
     pub max_number_pages: u8,
+    /// Maximum MULTI string length — `dmsMaxMultiStringLength`
     pub max_multi_string_length: u16,
 }
 

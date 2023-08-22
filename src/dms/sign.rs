@@ -21,12 +21,19 @@ pub struct DmsBuilder {
 }
 
 /// Dynamic Message Sign
+///
+/// This is the root node of the 1203 Message Information Base (MIB)
 #[derive(Clone)]
 pub struct Dms {
+    /// Configuration common to all signs — `dmsSignCfg`
     sign_cfg: SignCfg,
+    /// Configuration for variable message signs — `vmsCfg`
     vms_cfg: VmsCfg,
+    /// Font definition — `fontDefinition`
     font_definition: FontTable,
+    /// MULTI configuration — `multiCfg`
     multi_cfg: MultiCfg,
+    /// Graphic definition — `graphicDefinition`
     graphic_definition: GraphicTable,
 }
 

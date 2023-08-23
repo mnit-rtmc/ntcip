@@ -15,6 +15,8 @@ fn font_table() -> FontTable {
 fn make_dms() -> Dms {
     Dms::builder()
         .with_vms_cfg(VmsCfg {
+            char_height_pixels: 0,
+            char_width_pixels: 0,
             sign_height_pixels: 28,
             sign_width_pixels: 140,
             ..Default::default()

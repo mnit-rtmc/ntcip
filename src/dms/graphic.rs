@@ -27,8 +27,6 @@ pub struct Graphic {
     pub width: u16,
     /// Graphic type — `dmsGraphicType`
     pub gtype: ColorScheme,
-    /// Transparent color
-    ///
     /// `dmsGraphicTransparentEnabled` / `dmsGraphicTransparentColor`
     pub transparent_color: Option<Color>,
     /// Bitmap data — `dmsGraphicBitmapTable` (uncompressed BGR)

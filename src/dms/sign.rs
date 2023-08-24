@@ -171,18 +171,18 @@ impl Dms {
         }
     }
 
-    /// Get the X-position of a pixel on the sign (from 0 to 1)
-    pub fn pixel_x(&self, x: i32, shift: f32) -> f32 {
+    /// Get the X-position of a pixel on the sign
+    pub fn pixel_x(&self, x: u32, width: u32) -> f32 {
         let border = self.border_horiz_mm();
         let offset = self.char_offset_mm(x);
-        let x = x as f32 + shift; // shift to center of pixel
+        let x = x as f32 + 0.5; // shift to center of pixel
         let pos = border + offset + x * self.pitch_horiz_mm();
-        pos / self.face_width_mm()
+        width as f32 * pos / self.face_width_mm()
     }
 
     /// Get the horizontal character offset (mm)
-    fn char_offset_mm(&self, x: i32) -> f32 {
-        let cw = i32::from(self.char_width());
+    fn char_offset_mm(&self, x: u32) -> f32 {
+        let cw = u32::from(self.char_width());
         if cw > 1 {
             let char_num = (x / cw) as f32;
             char_num * self.gap_char_mm()
@@ -266,18 +266,18 @@ impl Dms {
         }
     }
 
-    /// Get the Y-position of a pixel on the sign (from 0 to 1)
-    pub fn pixel_y(&self, y: i32, shift: f32) -> f32 {
+    /// Get the Y-position of a pixel on the sign
+    pub fn pixel_y(&self, y: u32, height: u32) -> f32 {
         let border = self.border_vert_mm();
         let offset = self.line_offset_mm(y);
-        let y = y as f32 + shift; // shift to center of pixel
+        let y = y as f32 + 0.5; // shift to center of pixel
         let pos = border + offset + y * self.pitch_vert_mm();
-        pos / self.face_height_mm()
+        height as f32 * pos / self.face_height_mm()
     }
 
     /// Get the vertical line offset (mm)
-    fn line_offset_mm(&self, y: i32) -> f32 {
-        let ch = i32::from(self.char_height());
+    fn line_offset_mm(&self, y: u32) -> f32 {
+        let ch = u32::from(self.char_height());
         if ch > 1 {
             let line_num = (y / ch) as f32;
             line_num * self.gap_line_mm()

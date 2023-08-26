@@ -128,12 +128,8 @@ impl Font {
 
     /// Get width (if fixed-width), or 0
     pub fn width(&self) -> u8 {
-        let width = self
-            .characters
-            .iter()
-            .next()
-            .map(|c| c.width)
-            .unwrap_or_default();
+        let width =
+            self.characters.first().map(|c| c.width).unwrap_or_default();
         if self.characters.iter().all(|c| c.width == width) {
             width
         } else {

@@ -2,7 +2,9 @@
 //
 // Copyright (C) 2019-2023  Minnesota Department of Transportation
 //
-//! Dynamic message signs; NTCIP 1203
+//! NTCIP [1203] \(PDF\) — Dynamic message signs
+//!
+//! [1203]: https://www.ntcip.org/file/2018/11/NTCIP1203v03f.pdf
 pub mod config;
 pub mod font;
 pub mod graphic;

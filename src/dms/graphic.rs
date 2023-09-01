@@ -29,7 +29,7 @@ pub struct Graphic {
     pub gtype: ColorScheme,
     /// `dmsGraphicTransparentEnabled` / `dmsGraphicTransparentColor`
     pub transparent_color: Option<Color>,
-    /// Bitmap data — `dmsGraphicBitmapTable` (uncompressed BGR)
+    /// Bitmap data — `dmsGraphicBitmapTable`
     pub bitmap: Vec<u8>,
 }
 

@@ -75,9 +75,15 @@ impl Graphic {
 
     /// Convert graphic to a raster
     pub fn to_raster(&self) -> Raster<SRgba8> {
+        let fg = match self.gtype {
+            ColorScheme::Monochrome1Bit | ColorScheme::Monochrome8Bit => {
+                ColorClassic::White.rgb()
+            }
+            _ => ColorClassic::Amber.rgb(),
+        };
         let ctx = ColorCtx::new(
             ColorScheme::Color24Bit,
-            ColorClassic::Amber.rgb(),
+            fg,
             ColorClassic::Black.rgb(),
         );
         let width = self.width.into();

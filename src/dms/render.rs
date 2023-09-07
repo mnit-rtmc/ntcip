@@ -967,6 +967,10 @@ fn render_rect(
 ) -> Result<()> {
     debug_assert!(rect.x > 0);
     debug_assert!(rect.y > 0);
+    let width = raster.width().try_into().unwrap();
+    let height = raster.height().try_into().unwrap();
+    let full_rect = Rectangle::new(1, 1, width, height);
+    let rect = rect.match_width_height(full_rect);
     let rx = i32::from(rect.x) - 1;
     let ry = i32::from(rect.y) - 1;
     let rw = u32::from(rect.w);

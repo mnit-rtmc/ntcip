@@ -512,12 +512,12 @@ impl Rectangle {
         let w = if self.w > 0 {
             self.w
         } else {
-            1 + other.w - self.x
+            other.w.saturating_sub(self.x.saturating_sub(1))
         };
         let h = if self.h > 0 {
             self.h
         } else {
-            1 + other.h - self.y
+            other.h.saturating_sub(self.y.saturating_sub(1))
         };
         Rectangle::new(self.x, self.y, w, h)
     }

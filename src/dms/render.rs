@@ -992,11 +992,11 @@ mod test {
 
     fn font_table() -> FontTable {
         let mut fonts = FontTable::default();
-        let buf = include_bytes!("../../test/07_char.ifnt");
+        let buf = include_bytes!("../../test/F07-C.ifnt");
         fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
-        let buf = include_bytes!("../../test/07_line.ifnt");
+        let buf = include_bytes!("../../test/F07-L.ifnt");
         fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
-        let buf = include_bytes!("../../test/08_full.ifnt");
+        let buf = include_bytes!("../../test/F08.ifnt");
         fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
         fonts
     }
@@ -1012,7 +1012,7 @@ mod test {
             .with_page_on_time_ds(20)
             .with_justification_page(JustificationPage::Top)
             .with_justification_line(JustificationLine::Left)
-            .with_font_num(3)
+            .with_font_num(8)
             .with_fonts(&fonts)
             .build(multi)
             .collect()
@@ -1029,7 +1029,7 @@ mod test {
         assert_eq!(render_full("[pto1]1[np]2").unwrap().len(), 4);
         assert_eq!(render_full("[pto1][np]").unwrap().len(), 4);
         let pages = render_full(
-            "[fo3][jl2][cf255,255,255]RAMP A[jl4][cf255,255,0]FULL[nl]\
+            "[fo8][jl2][cf255,255,255]RAMP A[jl4][cf255,255,0]FULL[nl]\
              [jl2][cf255,255,255]RAMP B[jl4][cf255,255,0]FULL[nl]\
              [jl2][cf255,255,255]RAMP C[jl4][cf255,255,0]FULL",
         )

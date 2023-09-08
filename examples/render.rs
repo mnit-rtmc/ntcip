@@ -7,7 +7,7 @@ use ntcip::dms::Dms;
 
 fn font_table() -> FontTable {
     let mut fonts = FontTable::default();
-    let buf = include_bytes!("../test/08_full.ifnt");
+    let buf = include_bytes!("../test/F08.ifnt");
     fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
     fonts
 }
@@ -25,7 +25,7 @@ fn make_dms() -> Dms {
         .with_multi_cfg(MultiCfg {
             default_justification_line: JustificationLine::Left,
             default_justification_page: JustificationPage::Top,
-            default_font: 3,
+            default_font: 8,
             color_scheme: ColorScheme::Color24Bit,
             ..Default::default()
         })

@@ -1315,6 +1315,19 @@ pub fn is_blank(ms: &str) -> bool {
     true
 }
 
+/// Get an iterator of text spans in a MULTI string
+pub fn text_spans(ms: &str) -> impl Iterator<Item = String> + '_ {
+    Parser::new(ms).flatten().filter_map(|v| match v {
+        Value::Text(t) => Some(t),
+        _ => None,
+    })
+}
+
+/// Join text spans in a MULTI string
+pub fn join_text(ms: &str, sep: &str) -> String {
+    text_spans(ms).collect::<Vec<_>>().join(sep)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -2841,5 +2854,17 @@ mod test {
         assert!(!is_blank("[ms1]"));
         assert!(!is_blank("[/ms1]"));
         assert!(!is_blank("[mvcl100,1,10,Text]"));
+    }
+
+    #[test]
+    fn text() {
+        assert_eq!(join_text("ABC[nl]DEF", " "), "ABC DEF");
+        assert_eq!(join_text("ABC[np]DEF", " "), "ABC DEF");
+        assert_eq!(join_text("ABC[jl4]DEF", " "), "ABC DEF");
+        assert_eq!(join_text("[fo3]ABC DEF", " "), "ABC DEF");
+        assert_eq!(join_text("[cf255,255,255]ABC", " "), "ABC");
+        assert_eq!(join_text("ABC[sc2]DEF", " "), "ABC DEF");
+        assert_eq!(join_text("DEF[tr1,1,40,20]ABC", " "), "DEF ABC");
+        assert_eq!(join_text("ABC[x]DEF", "_"), "ABC_DEF");
     }
 }

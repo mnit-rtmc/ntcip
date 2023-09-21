@@ -39,7 +39,7 @@ enum PageState {
     Done,
 }
 
-/// Page render state
+/// Rendering state
 #[derive(Clone)]
 struct RenderState {
     /// Color context
@@ -111,7 +111,7 @@ pub struct Pages<'a> {
     default_state: RenderState,
 
     /// Current render state
-    state: RenderState,
+    render_state: RenderState,
 
     /// Page state
     page_state: PageState,
@@ -325,11 +325,11 @@ impl<'a> Pages<'a> {
     /// * `ms` MULTI string to render.
     pub fn new(dms: &'a Dms, ms: &'a str) -> Self {
         let default_state = RenderState::new(dms);
-        let state = default_state.clone();
+        let render_state = default_state.clone();
         Pages {
             dms,
             default_state,
-            state,
+            render_state,
             page_state: PageState::On(true),
             parser: Parser::new(ms),
             spans: Vec::new(),
@@ -353,12 +353,12 @@ impl<'a> Pages<'a> {
 
     /// Get the page-on time (deciseconds)
     fn page_on_time_ds(&self) -> u16 {
-        self.state.page_on_time_ds.into()
+        self.render_state.page_on_time_ds.into()
     }
 
     /// Get the page-off time (deciseconds)
     fn page_off_time_ds(&self) -> u16 {
-        self.state.page_off_time_ds.into()
+        self.render_state.page_off_time_ds.into()
     }
 
     /// Render an OFF page
@@ -372,9 +372,9 @@ impl<'a> Pages<'a> {
 
     /// Build a raster
     fn build_raster(&self) -> Raster<SRgb8> {
-        let width = self.state.text_rectangle.w.into();
-        let height = self.state.text_rectangle.h.into();
-        let clr = self.state.background_rgb();
+        let width = self.render_state.text_rectangle.w.into();
+        let height = self.render_state.text_rectangle.h.into();
+        let clr = self.render_state.background_rgb();
         Raster::with_color(width, height, clr)
     }
 
@@ -423,7 +423,7 @@ impl<'a> Pages<'a> {
     /// Iterate through page values to update its state
     fn update_page_state(&mut self) -> Result<()> {
         let ds = &self.default_state;
-        let rs = &mut self.state;
+        let rs = &mut self.render_state;
         // Set these back to default values
         rs.text_rectangle = ds.text_rectangle;
         rs.line_spacing = ds.line_spacing;
@@ -448,7 +448,7 @@ impl<'a> Pages<'a> {
 
     /// Render graphics and color rectangles
     fn render_graphics(&mut self, raster: &mut Raster<SRgb8>) -> Result<()> {
-        let mut rs = self.state.clone();
+        let mut rs = self.render_state.clone();
         for value in self.parser.clone() {
             let val = value?;
             match val {
@@ -504,10 +504,10 @@ impl<'a> Pages<'a> {
             let val = value?;
             match val {
                 Value::ColorForeground(clr) => {
-                    self.state.color_ctx.set_foreground(clr, &val)?;
+                    self.render_state.color_ctx.set_foreground(clr, &val)?;
                 }
                 Value::Font(f) => {
-                    let rs = &mut self.state;
+                    let rs = &mut self.render_state;
                     rs.font_num = f.map_or(ds.font_num, |t| t.0);
                     rs.font_version_id = f.map_or(ds.font_version_id, |t| t.1);
                 }
@@ -519,7 +519,7 @@ impl<'a> Pages<'a> {
                     return Err(SyntaxError::UnsupportedTagValue(val.into()));
                 }
                 Value::JustificationLine(jl) => {
-                    let rs = &mut self.state;
+                    let rs = &mut self.render_state;
                     rs.just_line = jl.unwrap_or(ds.just_line);
                     rs.span_number = 0;
                 }
@@ -528,7 +528,7 @@ impl<'a> Pages<'a> {
                     return Err(SyntaxError::UnsupportedTagValue(val.into()));
                 }
                 Value::JustificationPage(jp) => {
-                    let rs = &mut self.state;
+                    let rs = &mut self.render_state;
                     rs.just_page = jp.unwrap_or(ds.just_page);
                     rs.line_number = 0;
                     rs.span_number = 0;
@@ -541,7 +541,7 @@ impl<'a> Pages<'a> {
                             ));
                         }
                     }
-                    let rs = &mut self.state;
+                    let rs = &mut self.render_state;
                     // Insert an empty text span for blank lines.
                     if line_blank {
                         self.spans.push(TextSpan::new(rs, "".into()));
@@ -561,16 +561,16 @@ impl<'a> Pages<'a> {
                             val.into(),
                         ));
                     }
-                    self.state.char_spacing = Some(sc);
+                    self.render_state.char_spacing = Some(sc);
                 }
                 Value::SpacingCharacterEnd() => {
-                    self.state.char_spacing = None;
+                    self.render_state.char_spacing = None;
                 }
                 Value::TextRectangle(rect) => {
                     self.page_state = PageState::On(false);
                     match self.update_text_rectangle(rect) {
                         Some(rect) => {
-                            let rs = &mut self.state;
+                            let rs = &mut self.render_state;
                             rs.text_rectangle = rect;
                             rs.line_number = 0;
                             rs.span_number = 0;
@@ -584,7 +584,7 @@ impl<'a> Pages<'a> {
                     break;
                 }
                 Value::Text(t) => {
-                    let rs = &mut self.state;
+                    let rs = &mut self.render_state;
                     self.spans.push(TextSpan::new(rs, t));
                     rs.span_number += 1;
                     line_blank = false;
@@ -593,7 +593,7 @@ impl<'a> Pages<'a> {
                     match std::char::from_u32(hc.into()) {
                         Some(c) => {
                             let t = String::from(c);
-                            let rs = &mut self.state;
+                            let rs = &mut self.render_state;
                             self.spans.push(TextSpan::new(rs, t));
                             rs.span_number += 1;
                             line_blank = false;

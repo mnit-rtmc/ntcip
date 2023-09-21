@@ -1323,7 +1323,7 @@ pub fn text_spans(ms: &str) -> impl Iterator<Item = String> + '_ {
     })
 }
 
-/// Join text spans in a MULTI string
+/// Remove MULTI tags and join text spans
 pub fn join_text(ms: &str, sep: &str) -> String {
     text_spans(ms).collect::<Vec<_>>().join(sep)
 }

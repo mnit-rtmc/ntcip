@@ -322,8 +322,8 @@ impl<'a> Pages<'a> {
     /// Create a new DMS page renderer.
     ///
     /// * `dms` Sign to render.
-    /// * `multi` MULTI string to render.
-    pub fn new(dms: &'a Dms, multi: &'a str) -> Self {
+    /// * `ms` MULTI string to render.
+    pub fn new(dms: &'a Dms, ms: &'a str) -> Self {
         let default_state = RenderState::new(dms);
         let state = default_state.clone();
         Pages {
@@ -331,7 +331,7 @@ impl<'a> Pages<'a> {
             default_state,
             state,
             page_state: PageState::On(true),
-            parser: Parser::new(multi),
+            parser: Parser::new(ms),
             spans: Vec::new(),
         }
     }
@@ -893,7 +893,7 @@ mod test {
         fonts
     }
 
-    fn render_full(multi: &str) -> Result<Vec<Page>> {
+    fn render_full(ms: &str) -> Result<Vec<Page>> {
         let dms = Dms::builder()
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 0,
@@ -912,7 +912,7 @@ mod test {
                 ..Default::default()
             })
             .build();
-        Pages::new(&dms, multi).collect()
+        Pages::new(&dms, ms).collect()
     }
 
     #[test]
@@ -943,10 +943,10 @@ mod test {
         assert_eq!(render_full("[pto15][np]").unwrap()[3].duration_ds, 15);
     }
 
-    fn justify_dot(multi: &str, i: usize) {
+    fn justify_dot(ms: &str, i: usize) {
         let mut raster = Raster::<SRgb8>::with_clear(60, 30);
         raster.pixels_mut()[i] = SRgb8::new(255, 255, 255);
-        let pages = render_full(multi).unwrap();
+        let pages = render_full(ms).unwrap();
         assert_eq!(pages.len(), 1);
         let page = &pages[0].raster;
         for (i, (p0, p1)) in
@@ -1005,7 +1005,7 @@ mod test {
         justify_dot("[tr2,2,10,10].", 481);
     }
 
-    fn render_char(multi: &str) -> Result<Vec<Page>> {
+    fn render_char(ms: &str) -> Result<Vec<Page>> {
         let dms = Dms::builder()
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 7,
@@ -1022,7 +1022,7 @@ mod test {
                 ..Default::default()
             })
             .build();
-        Pages::new(&dms, multi).collect()
+        Pages::new(&dms, ms).collect()
     }
 
     #[test]

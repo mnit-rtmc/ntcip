@@ -15,5 +15,5 @@ mod sign;
 /// Result type
 pub type Result<T> = std::result::Result<T, multi::SyntaxError>;
 
-pub use render::Page;
+pub use render::{Page, Pages};
 pub use sign::{Dms, DmsBuilder};

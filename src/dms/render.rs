@@ -102,7 +102,7 @@ struct TextLine {
     line_spacing: Option<u16>,
 }
 
-/// Page renderer for MULTI on dynamic message signs
+/// Page renderer for dynamic message signs
 pub struct Pages<'a> {
     /// Sign to render
     dms: &'a Dms,
@@ -319,10 +319,10 @@ impl TextLine {
 }
 
 impl<'a> Pages<'a> {
-    /// Create a new dynamic message sign MULTI page renderer
+    /// Create a new DMS page renderer.
     ///
     /// * `dms` Sign to render.
-    /// * `multi` MULTI string to parse.
+    /// * `multi` MULTI string to render.
     pub fn new(dms: &'a Dms, multi: &'a str) -> Self {
         let default_state = RenderState::new(dms);
         let state = default_state.clone();

@@ -3,7 +3,7 @@ mod bmp;
 use ntcip::dms::config::{MultiCfg, VmsCfg};
 use ntcip::dms::font::{ifnt, FontTable};
 use ntcip::dms::multi::{ColorScheme, JustificationLine, JustificationPage};
-use ntcip::dms::Dms;
+use ntcip::dms::{Dms, Pages};
 
 fn font_table() -> FontTable {
     let mut fonts = FontTable::default();
@@ -34,7 +34,7 @@ fn make_dms() -> Dms {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dms = make_dms();
-    let pages = dms.render_pages("[cf1]LEFT[jl3][cf2]MIDDLE[jl4][cf3]RIGHT[nl][cf4][jl2]THE[cf5][jl3]CENTER[cf6][jl4]LINE[nl][jl3][cf7]THE BOTTOM LINE[np][cf8][jp3][jl3]SECOND PAGE[np][cr1,1,20,8,255,128,128][cr121,1,20,8,128,255,128][cr1,21,20,8,128,128,255][cr121,21,20,8,128,128,128][pb32,0,64][pt40o10]PAGE 3");
+    let pages = Pages::new(&dms, "[cf1]LEFT[jl3][cf2]MIDDLE[jl4][cf3]RIGHT[nl][cf4][jl2]THE[cf5][jl3]CENTER[cf6][jl4]LINE[nl][jl3][cf7]THE BOTTOM LINE[np][cf8][jp3][jl3]SECOND PAGE[np][cr1,1,20,8,255,128,128][cr121,1,20,8,128,255,128][cr1,21,20,8,128,128,255][cr121,21,20,8,128,128,128][pb32,0,64][pt40o10]PAGE 3");
     for (i, page) in pages.enumerate() {
         let raster = page?.raster;
         bmp::write(&raster, &format!("render{i}.bmp"))?;

@@ -6,8 +6,6 @@ use crate::dms::config::{MultiCfg, SignCfg, VmsCfg};
 use crate::dms::font::FontTable;
 use crate::dms::graphic::GraphicTable;
 use crate::dms::multi::{ColorCtx, ColorScheme};
-use crate::dms::render::{Page, Pages};
-use crate::dms::Result;
 
 /// Builder for DMS
 #[derive(Clone, Default)]
@@ -344,13 +342,5 @@ impl Dms {
         let fg_default = self.foreground_default_rgb();
         let bg_default = self.background_default_rgb();
         ColorCtx::new(color_scheme, fg_default, bg_default)
-    }
-
-    /// Render to a series of pages
-    pub fn render_pages<'a>(
-        &'a self,
-        multi: &'a str,
-    ) -> impl Iterator<Item = Result<Page>> + 'a {
-        Pages::new(self, multi)
     }
 }

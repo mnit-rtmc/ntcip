@@ -4,11 +4,12 @@
 //
 //! This module is for NTCIP 1203 DMS rendering.
 use crate::dms::font::{Font, FontTable};
-use crate::dms::graphic::{Graphic, GraphicTable};
+use crate::dms::graphic::Graphic;
 use crate::dms::multi::{
-    ColorClassic, ColorCtx, ColorScheme, JustificationLine, JustificationPage,
-    Parser, Rectangle, SyntaxError, Value,
+    ColorCtx, JustificationLine, JustificationPage, Parser, Rectangle,
+    SyntaxError, Value,
 };
+use crate::dms::sign::Dms;
 use crate::dms::Result;
 use log::debug;
 use pix::{rgb::SRgb8, Raster, Region};
@@ -44,16 +45,10 @@ struct RenderState {
     /// Color context
     color_ctx: ColorCtx,
 
-    /// Character width in pixels
-    char_width: u8,
-
-    /// Character height in pixels
-    char_height: u8,
-
-    /// Page-on time in deciseconds
+    /// Current page-on time in deciseconds
     page_on_time_ds: u8,
 
-    /// Page-off time in deciseconds
+    /// Current page-off time in deciseconds
     page_off_time_ds: u8,
 
     /// Current text rectangle
@@ -107,25 +102,10 @@ struct TextLine {
     line_spacing: Option<u16>,
 }
 
-/// Builder for dynamic message sign MULTI page renderer.
-pub struct PageBuilder<'a> {
-    /// Font cache
-    fonts: Option<&'a FontTable>,
-
-    /// Graphic cache
-    graphics: Option<&'a GraphicTable>,
-
-    /// Default rendering state
-    default_state: RenderState,
-}
-
-/// Page renderer for MULTI on dynamic message signs.
+/// Page renderer for MULTI on dynamic message signs
 pub struct Pages<'a> {
-    /// Font cache
-    fonts: Option<&'a FontTable>,
-
-    /// Graphic cache
-    graphics: Option<&'a GraphicTable>,
+    /// Sign to render
+    dms: &'a Dms,
 
     /// Default rendering state
     default_state: RenderState,
@@ -175,22 +155,21 @@ impl PageState {
 }
 
 impl RenderState {
-    /// Create a new render state.
-    fn new(width: u16, height: u16) -> Self {
+    /// Create a new render state
+    fn new(dms: &Dms) -> Self {
         RenderState {
-            color_ctx: ColorCtx::new(
-                ColorScheme::Monochrome1Bit,
-                ColorClassic::Amber.rgb(),
-                ColorClassic::Black.rgb(),
+            color_ctx: dms.color_ctx(),
+            page_on_time_ds: dms.multi_cfg.default_page_on_time,
+            page_off_time_ds: dms.multi_cfg.default_page_off_time,
+            text_rectangle: Rectangle::new(
+                1,
+                1,
+                dms.vms_cfg.sign_width_pixels,
+                dms.vms_cfg.sign_height_pixels,
             ),
-            char_width: 0,
-            char_height: 0,
-            page_on_time_ds: 30,
-            page_off_time_ds: 0,
-            text_rectangle: Rectangle::new(1, 1, width, height),
-            just_page: JustificationPage::Middle,
-            just_line: JustificationLine::Center,
-            font_num: 1,
+            just_page: dms.multi_cfg.default_justification_page,
+            just_line: dms.multi_cfg.default_justification_line,
+            font_num: dms.multi_cfg.default_font,
             font_version_id: None,
             line_spacing: None,
             char_spacing: None,
@@ -199,119 +178,59 @@ impl RenderState {
         }
     }
 
-    /// Check if the sign is character-matrix.
-    fn is_char_matrix(&self) -> bool {
-        self.char_width > 0
-    }
-
-    /// Check if the sign is character- or line-matrix.
-    fn is_char_or_line_matrix(&self) -> bool {
-        self.char_height > 0
-    }
-
-    /// Get the character width (1 for variable width).
-    fn char_width(&self) -> u16 {
-        if self.is_char_matrix() {
-            self.char_width.into()
-        } else {
-            1
-        }
-    }
-
-    /// Get the character height (1 for variable height).
-    fn char_height(&self) -> u16 {
-        if self.char_height > 0 {
-            self.char_height.into()
-        } else {
-            1
-        }
-    }
-
-    /// Update the text rectangle.
-    fn update_text_rectangle(
-        &mut self,
-        default_state: &RenderState,
-        rect: Rectangle,
-        val: &Value,
-    ) -> Result<()> {
-        let rect = rect.match_width_height(default_state.text_rectangle);
-        if !default_state.text_rectangle.contains(rect) {
-            return Err(SyntaxError::UnsupportedTagValue(val.into()));
-        }
-        let cw = self.char_width();
-        debug_assert!(cw > 0);
-        // Check text rectangle matches character boundaries
-        let x = rect.x - 1;
-        if x % cw != 0 || rect.w % cw != 0 {
-            return Err(SyntaxError::UnsupportedTagValue(val.into()));
-        }
-        let lh = self.char_height();
-        debug_assert!(lh > 0);
-        // Check text rectangle matches line boundaries
-        let y = rect.y - 1;
-        if y % lh != 0 || rect.h % lh != 0 {
-            return Err(SyntaxError::UnsupportedTagValue(val.into()));
-        }
-        self.text_rectangle = rect;
-        Ok(())
-    }
-
-    /// Get the background RGB color.
+    /// Get the background RGB color
     fn background_rgb(&self) -> SRgb8 {
         let (r, g, b) = self.color_ctx.background_rgb();
         SRgb8::new(r, g, b)
     }
 
-    /// Get the foreground RGB color.
+    /// Get the foreground RGB color
     fn foreground_rgb(&self) -> SRgb8 {
         let (r, g, b) = self.color_ctx.foreground_rgb();
         SRgb8::new(r, g, b)
     }
 
-    /// Check if states match for text spans.
+    /// Check if states match for text spans
     fn matches_span(&self, rhs: &Self) -> bool {
         self.just_page == rhs.just_page
             && self.line_number == rhs.line_number
             && self.just_line == rhs.just_line
     }
 
-    /// Check if states match for lines.
+    /// Check if states match for lines
     fn matches_line(&self, rhs: &Self) -> bool {
         self.just_page == rhs.just_page
     }
 
-    /// Lookup current font in cache.
-    fn font<'a>(&self, fonts: Option<&'a FontTable>) -> Result<&'a Font> {
-        debug!("RenderState::font {}", self.font_num);
-        fonts
-            .ok_or(SyntaxError::FontNotDefined(self.font_num))?
-            .lookup(self.font_num, self.font_version_id)
+    /// Lookup current font in cache
+    fn font<'a>(&self, fonts: &'a FontTable) -> Result<&'a Font> {
+        fonts.lookup(self.font_num, self.font_version_id)
     }
 }
 
 impl TextSpan {
-    /// Create a new text span.
+    /// Create a new text span
     fn new(state: &RenderState, text: String) -> Self {
         let state = state.clone();
         TextSpan { state, text }
     }
 
-    /// Get the width of a text span.
-    fn width(&self, fonts: Option<&FontTable>) -> Result<u16> {
+    /// Get the width of a text span
+    fn width(&self, fonts: &FontTable) -> Result<u16> {
         let font = self.state.font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
         font.text_width(&self.text, Some(cs))
     }
 
-    /// Get the char spacing.
-    fn char_spacing_fonts(&self, fonts: Option<&FontTable>) -> Result<u16> {
+    /// Get the char spacing
+    fn char_spacing_fonts(&self, fonts: &FontTable) -> Result<u16> {
         match self.state.char_spacing {
             Some(sp) => Ok(sp.into()),
             None => Ok(self.state.font(fonts)?.char_spacing.into()),
         }
     }
 
-    /// Get the char spacing.
+    /// Get the char spacing
     fn char_spacing_font(&self, font: &Font) -> u8 {
         match self.state.char_spacing {
             Some(sp) => sp,
@@ -319,11 +238,11 @@ impl TextSpan {
         }
     }
 
-    /// Get the char spacing from a previous span.
+    /// Get the char spacing from a previous span
     fn char_spacing_between(
         &self,
         prev: &TextSpan,
-        fonts: Option<&FontTable>,
+        fonts: &FontTable,
     ) -> Result<u16> {
         if let Some(c) = self.state.char_spacing {
             Ok(c.into())
@@ -337,22 +256,22 @@ impl TextSpan {
         }
     }
 
-    /// Get the height of a text span.
-    fn height(&self, fonts: Option<&FontTable>) -> Result<u16> {
+    /// Get the height of a text span
+    fn height(&self, fonts: &FontTable) -> Result<u16> {
         Ok(self.state.font(fonts)?.height.into())
     }
 
-    /// Get the font line spacing.
-    fn font_spacing(&self, fonts: Option<&FontTable>) -> Result<u16> {
+    /// Get the font line spacing
+    fn font_spacing(&self, fonts: &FontTable) -> Result<u16> {
         Ok(self.state.font(fonts)?.line_spacing.into())
     }
 
-    /// Get the line spacing.
+    /// Get the line spacing
     fn line_spacing(&self) -> Option<u16> {
         self.state.line_spacing.map(|sp| sp.into())
     }
 
-    /// Render the text span.
+    /// Render the text span
     fn render_text(
         &self,
         raster: &mut Raster<SRgb8>,
@@ -399,115 +318,50 @@ impl TextLine {
     }
 }
 
-impl<'a> PageBuilder<'a> {
-    /// Create a new dynamic message sign MULTI page builder.
-    fn new(width: u16, height: u16) -> Self {
-        let default_state = RenderState::new(width, height);
-        PageBuilder {
-            fonts: None,
-            graphics: None,
-            default_state,
-        }
-    }
-
-    /// Adjust the color context.
-    pub(crate) fn with_color_ctx(mut self, color_ctx: ColorCtx) -> Self {
-        self.default_state.color_ctx = color_ctx;
-        self
-    }
-
-    /// Adjust the character size.
-    pub fn with_char_size(mut self, width: u8, height: u8) -> Self {
-        self.default_state.char_width = width;
-        self.default_state.char_height = height;
-        self
-    }
-
-    /// Adjust the default page on time (deciseconds).
-    pub fn with_page_on_time_ds(mut self, page_on_time_ds: u8) -> Self {
-        self.default_state.page_on_time_ds = page_on_time_ds;
-        self
-    }
-
-    /// Adjust the default page off time (deciseconds).
-    pub fn with_page_off_time_ds(mut self, page_off_time_ds: u8) -> Self {
-        self.default_state.page_off_time_ds = page_off_time_ds;
-        self
-    }
-
-    /// Adjust the default page justification.
-    pub fn with_justification_page(
-        mut self,
-        just_page: JustificationPage,
-    ) -> Self {
-        self.default_state.just_page = just_page;
-        self
-    }
-
-    /// Adjust the default line justification.
-    pub fn with_justification_line(
-        mut self,
-        just_line: JustificationLine,
-    ) -> Self {
-        self.default_state.just_line = just_line;
-        self
-    }
-
-    /// Adjust the default font number.
-    pub fn with_font_num(mut self, font_num: u8) -> Self {
-        self.default_state.font_num = font_num;
-        self
-    }
-
-    /// Set the font cache.
-    pub fn with_fonts(mut self, fonts: &'a FontTable) -> Self {
-        self.fonts = Some(fonts);
-        self
-    }
-
-    /// Set the graphic cache.
-    pub fn with_graphics(mut self, graphics: &'a GraphicTable) -> Self {
-        self.graphics = Some(graphics);
-        self
-    }
-
-    /// Build the page renderer.
+impl<'a> Pages<'a> {
+    /// Create a new dynamic message sign MULTI page renderer
     ///
-    /// * `ms` MULTI string to parse.
-    pub fn build(self, ms: &'a str) -> Pages<'a> {
-        let default_state = self.default_state;
+    /// * `dms` Sign to render.
+    /// * `multi` MULTI string to parse.
+    pub fn new(dms: &'a Dms, multi: &'a str) -> Self {
+        let default_state = RenderState::new(dms);
         let state = default_state.clone();
-        let parser = Parser::new(ms);
-        let spans = vec![];
         Pages {
-            fonts: self.fonts,
-            graphics: self.graphics,
+            dms,
             default_state,
             state,
             page_state: PageState::On(true),
-            parser,
-            spans,
+            parser: Parser::new(multi),
+            spans: Vec::new(),
         }
     }
-}
 
-impl<'a> Pages<'a> {
-    /// Create a builder for dynamic message sign MULTI pages.
-    pub fn builder(width: u16, height: u16) -> PageBuilder<'a> {
-        PageBuilder::new(width, height)
+    /// Get the font definition
+    fn fonts(&self) -> &FontTable {
+        self.dms.font_definition()
     }
 
-    /// Get the page-on time (deciseconds).
+    /// Get the character width (1 for variable width)
+    fn char_width(&self) -> u16 {
+        self.dms.char_width().max(1).into()
+    }
+
+    /// Get the character height (1 for variable height)
+    fn char_height(&self) -> u16 {
+        self.dms.char_height().max(1).into()
+    }
+
+    /// Get the page-on time (deciseconds)
     fn page_on_time_ds(&self) -> u16 {
         self.state.page_on_time_ds.into()
     }
 
-    /// Get the page-off time (deciseconds).
+    /// Get the page-off time (deciseconds)
     fn page_off_time_ds(&self) -> u16 {
         self.state.page_off_time_ds.into()
     }
 
-    /// Render an OFF page.
+    /// Render an OFF page
     fn render_off_page(&mut self) -> Page {
         self.page_state = self.page_state.next_state();
         Page {
@@ -516,7 +370,7 @@ impl<'a> Pages<'a> {
         }
     }
 
-    /// Build a raster.
+    /// Build a raster
     fn build_raster(&self) -> Raster<SRgb8> {
         let width = self.state.text_rectangle.w.into();
         let height = self.state.text_rectangle.h.into();
@@ -524,7 +378,7 @@ impl<'a> Pages<'a> {
         Raster::with_color(width, height, clr)
     }
 
-    /// Render an ON page.
+    /// Render an ON page
     fn render_on_page(&mut self) -> Result<Page> {
         self.check_unsupported()?;
         self.update_page_state()?;
@@ -546,7 +400,7 @@ impl<'a> Pages<'a> {
         })
     }
 
-    /// Check for unsupported MULTI tags in a page.
+    /// Check for unsupported MULTI tags in a page
     fn check_unsupported(&self) -> Result<()> {
         for value in self.parser.clone() {
             let val = value?;
@@ -566,7 +420,7 @@ impl<'a> Pages<'a> {
         Ok(())
     }
 
-    /// Iterate through page values to update its state.
+    /// Iterate through page values to update its state
     fn update_page_state(&mut self) -> Result<()> {
         let ds = &self.default_state;
         let rs = &mut self.state;
@@ -592,7 +446,7 @@ impl<'a> Pages<'a> {
         Ok(())
     }
 
-    /// Render graphics and color rectangles.
+    /// Render graphics and color rectangles
     fn render_graphics(&mut self, raster: &mut Raster<SRgb8>) -> Result<()> {
         let mut rs = self.state.clone();
         for value in self.parser.clone() {
@@ -629,21 +483,20 @@ impl<'a> Pages<'a> {
         Ok(())
     }
 
-    /// Lookup a graphic from the cache.
+    /// Lookup a graphic from the table
     fn graphic(&self, gn: u8, gid: Option<u16>) -> Result<&'a Graphic> {
-        self.graphics
-            .ok_or(SyntaxError::GraphicNotDefined(gn))?
-            .lookup(gn, gid)
+        self.dms.graphic_definition().lookup(gn, gid)
     }
 
-    /// Render one text rectangle.
+    /// Render one text rectangle
     fn render_text_rectangle(
         &mut self,
         raster: &mut Raster<SRgb8>,
     ) -> Result<()> {
+        let is_char_matrix = self.dms.char_width() > 0;
+        let is_char_or_line_matrix = self.dms.char_height() > 0;
         let page_off = self.page_off_time_ds() > 0;
         let ds = &self.default_state;
-        let rs = &mut self.state;
         let mut line_blank = true;
         self.page_state = PageState::done(page_off);
         self.spans.clear();
@@ -651,9 +504,10 @@ impl<'a> Pages<'a> {
             let val = value?;
             match val {
                 Value::ColorForeground(clr) => {
-                    rs.color_ctx.set_foreground(clr, &val)?;
+                    self.state.color_ctx.set_foreground(clr, &val)?;
                 }
                 Value::Font(f) => {
+                    let rs = &mut self.state;
                     rs.font_num = f.map_or(ds.font_num, |t| t.0);
                     rs.font_version_id = f.map_or(ds.font_version_id, |t| t.1);
                 }
@@ -665,6 +519,7 @@ impl<'a> Pages<'a> {
                     return Err(SyntaxError::UnsupportedTagValue(val.into()));
                 }
                 Value::JustificationLine(jl) => {
+                    let rs = &mut self.state;
                     rs.just_line = jl.unwrap_or(ds.just_line);
                     rs.span_number = 0;
                 }
@@ -673,18 +528,20 @@ impl<'a> Pages<'a> {
                     return Err(SyntaxError::UnsupportedTagValue(val.into()));
                 }
                 Value::JustificationPage(jp) => {
+                    let rs = &mut self.state;
                     rs.just_page = jp.unwrap_or(ds.just_page);
                     rs.line_number = 0;
                     rs.span_number = 0;
                 }
                 Value::NewLine(ls) => {
                     if let Some(ls) = ls {
-                        if rs.is_char_or_line_matrix() && ls > 0 {
+                        if is_char_or_line_matrix && ls > 0 {
                             return Err(SyntaxError::UnsupportedTagValue(
                                 val.into(),
                             ));
                         }
                     }
+                    let rs = &mut self.state;
                     // Insert an empty text span for blank lines.
                     if line_blank {
                         self.spans.push(TextSpan::new(rs, "".into()));
@@ -699,24 +556,35 @@ impl<'a> Pages<'a> {
                     break;
                 }
                 Value::SpacingCharacter(sc) => {
-                    if rs.is_char_matrix() && sc > 0 {
+                    if is_char_matrix && sc > 0 {
                         return Err(SyntaxError::UnsupportedTagValue(
                             val.into(),
                         ));
                     }
-                    rs.char_spacing = Some(sc);
+                    self.state.char_spacing = Some(sc);
                 }
                 Value::SpacingCharacterEnd() => {
-                    rs.char_spacing = None;
+                    self.state.char_spacing = None;
                 }
                 Value::TextRectangle(rect) => {
                     self.page_state = PageState::On(false);
-                    rs.line_number = 0;
-                    rs.span_number = 0;
-                    rs.update_text_rectangle(ds, rect, &val)?;
+                    match self.update_text_rectangle(rect) {
+                        Some(rect) => {
+                            let rs = &mut self.state;
+                            rs.text_rectangle = rect;
+                            rs.line_number = 0;
+                            rs.span_number = 0;
+                        }
+                        None => {
+                            return Err(SyntaxError::UnsupportedTagValue(
+                                val.into(),
+                            ))
+                        }
+                    }
                     break;
                 }
                 Value::Text(t) => {
+                    let rs = &mut self.state;
                     self.spans.push(TextSpan::new(rs, t));
                     rs.span_number += 1;
                     line_blank = false;
@@ -724,8 +592,8 @@ impl<'a> Pages<'a> {
                 Value::HexadecimalCharacter(hc) => {
                     match std::char::from_u32(hc.into()) {
                         Some(c) => {
-                            let mut t = String::new();
-                            t.push(c);
+                            let t = String::from(c);
+                            let rs = &mut self.state;
                             self.spans.push(TextSpan::new(rs, t));
                             rs.span_number += 1;
                             line_blank = false;
@@ -745,19 +613,42 @@ impl<'a> Pages<'a> {
         Ok(())
     }
 
-    /// Render spans for the current text rectangle.
+    /// Update the text rectangle
+    fn update_text_rectangle(&self, rect: Rectangle) -> Option<Rectangle> {
+        let rect = rect.match_width_height(self.default_state.text_rectangle);
+        if !self.default_state.text_rectangle.contains(rect) {
+            return None;
+        }
+        let cw = self.char_width();
+        debug_assert!(cw > 0);
+        // Check text rectangle matches character boundaries
+        let x = rect.x - 1;
+        if x % cw != 0 || rect.w % cw != 0 {
+            return None;
+        }
+        let lh = self.char_height();
+        debug_assert!(lh > 0);
+        // Check text rectangle matches line boundaries
+        let y = rect.y - 1;
+        if y % lh != 0 || rect.h % lh != 0 {
+            return None;
+        }
+        Some(rect)
+    }
+
+    /// Render spans for the current text rectangle
     fn render_text_spans(&self, raster: &mut Raster<SRgb8>) -> Result<()> {
         self.check_justification()?;
         for span in &self.spans {
             let x = self.span_x(span)?.into();
             let y = self.span_y(span)?.into();
-            let font = span.state.font(self.fonts)?;
+            let font = span.state.font(self.fonts())?;
             span.render_text(raster, font, x, y)?;
         }
         Ok(())
     }
 
-    /// Check page and line justification ordering.
+    /// Check page and line justification ordering
     fn check_justification(&self) -> Result<()> {
         #[allow(deprecated)]
         let mut jp = JustificationPage::Other;
@@ -780,7 +671,7 @@ impl<'a> Pages<'a> {
         Ok(())
     }
 
-    /// Get the X position of a text span.
+    /// Get the X position of a text span
     fn span_x(&self, span: &TextSpan) -> Result<u16> {
         match span.state.just_line {
             JustificationLine::Left => self.span_x_left(span),
@@ -790,26 +681,26 @@ impl<'a> Pages<'a> {
         }
     }
 
-    /// Get the X position of a left-justified text span.
+    /// Get the X position of a left-justified text span
     fn span_x_left(&self, span: &TextSpan) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let (before, _) = self.offset_horiz(span)?;
         Ok(left + before)
     }
 
-    /// Get the X position of a center-justified text span.
+    /// Get the X position of a center-justified text span
     fn span_x_center(&self, span: &TextSpan) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let w = span.state.text_rectangle.w;
         let (before, after) = self.offset_horiz(span)?;
         let offset = (w - before - after) / 2; // offset for centering
         let x = left + offset + before;
-        let cw = self.default_state.char_width();
+        let cw = self.char_width();
         // Truncate to character-width boundary
         Ok((x / cw) * cw)
     }
 
-    /// Get the X position of a right-justified span.
+    /// Get the X position of a right-justified span
     fn span_x_right(&self, span: &TextSpan) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
         let w = span.state.text_rectangle.w;
@@ -828,7 +719,7 @@ impl<'a> Pages<'a> {
         let mut pspan = None;
         for span in self.spans.iter().filter(|s| rs.matches_span(&s.state)) {
             if let Some(ps) = pspan {
-                let w = span.char_spacing_between(ps, self.fonts)?;
+                let w = span.char_spacing_between(ps, self.fonts())?;
                 if span.state.span_number <= rs.span_number {
                     before += w
                 } else {
@@ -836,7 +727,7 @@ impl<'a> Pages<'a> {
                 }
                 debug!("  spacing {} before {} after {}", w, before, after);
             }
-            let w = span.width(self.fonts)?;
+            let w = span.width(self.fonts())?;
             if span.state.span_number < rs.span_number {
                 before += w
             } else {
@@ -852,15 +743,15 @@ impl<'a> Pages<'a> {
         }
     }
 
-    /// Get the Y position of a text span.
+    /// Get the Y position of a text span
     fn span_y(&self, span: &TextSpan) -> Result<u16> {
         let b = self.baseline(span)?;
-        let h = span.height(self.fonts)?;
+        let h = span.height(self.fonts())?;
         debug_assert!(b >= h);
         Ok(b - h)
     }
 
-    /// Get the baseline of a text span.
+    /// Get the baseline of a text span
     fn baseline(&self, span: &TextSpan) -> Result<u16> {
         match span.state.just_page {
             JustificationPage::Top => self.baseline_top(span),
@@ -870,26 +761,26 @@ impl<'a> Pages<'a> {
         }
     }
 
-    /// Get the baseline of a top-justified span.
+    /// Get the baseline of a top-justified span
     fn baseline_top(&self, span: &TextSpan) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let (above, _) = self.offset_vert(span)?;
         Ok(top + above)
     }
 
-    /// Get the baseline of a middle-justified span.
+    /// Get the baseline of a middle-justified span
     fn baseline_middle(&self, span: &TextSpan) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let h = span.state.text_rectangle.h;
         let (above, below) = self.offset_vert(span)?;
         let offset = (h - above - below) / 2; // offset for centering
         let y = top + offset + above;
-        let ch = self.default_state.char_height();
+        let ch = self.char_height();
         // Truncate to line-height boundary
         Ok((y / ch) * ch)
     }
 
-    /// Get the baseline of a bottom-justified span.
+    /// Get the baseline of a bottom-justified span
     fn baseline_bottom(&self, span: &TextSpan) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
         let h = span.state.text_rectangle.h;
@@ -906,8 +797,8 @@ impl<'a> Pages<'a> {
         let mut lines = vec![];
         for span in self.spans.iter().filter(|s| rs.matches_line(&s.state)) {
             let ln = usize::from(span.state.line_number);
-            let h = span.height(self.fonts)?;
-            let fs = span.font_spacing(self.fonts)?;
+            let h = span.height(self.fonts())?;
+            let fs = span.font_spacing(self.fonts())?;
             let ls = span.line_spacing();
             let line = TextLine::new(h, fs, ls);
             if ln >= lines.len() {
@@ -987,8 +878,9 @@ fn render_rect(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::dms::config::{MultiCfg, VmsCfg};
     use crate::dms::font::ifnt;
-    use crate::dms::multi::{ColorClassic, ColorCtx, ColorScheme};
+    use crate::dms::multi::{ColorClassic, ColorScheme};
 
     fn font_table() -> FontTable {
         let mut fonts = FontTable::default();
@@ -1002,20 +894,25 @@ mod test {
     }
 
     fn render_full(multi: &str) -> Result<Vec<Page>> {
-        let fonts = font_table();
-        Pages::builder(60, 30)
-            .with_color_ctx(ColorCtx::new(
-                ColorScheme::Color24Bit,
-                ColorClassic::White.rgb(),
-                ColorClassic::Black.rgb(),
-            ))
-            .with_page_on_time_ds(20)
-            .with_justification_page(JustificationPage::Top)
-            .with_justification_line(JustificationLine::Left)
-            .with_font_num(8)
-            .with_fonts(&fonts)
-            .build(multi)
-            .collect()
+        let dms = Dms::builder()
+            .with_vms_cfg(VmsCfg {
+                char_height_pixels: 0,
+                char_width_pixels: 0,
+                sign_height_pixels: 30,
+                sign_width_pixels: 60,
+                ..Default::default()
+            })
+            .with_font_definition(font_table())
+            .with_multi_cfg(MultiCfg {
+                default_justification_line: JustificationLine::Left,
+                default_justification_page: JustificationPage::Top,
+                default_font: 8,
+                color_scheme: ColorScheme::Color24Bit,
+                default_foreground_rgb: ColorClassic::White.rgb().into(),
+                ..Default::default()
+            })
+            .build();
+        Pages::new(&dms, multi).collect()
     }
 
     #[test]
@@ -1039,7 +936,7 @@ mod test {
 
     #[test]
     fn page_times() {
-        assert_eq!(render_full("").unwrap()[0].duration_ds, 20);
+        assert_eq!(render_full("").unwrap()[0].duration_ds, 30);
         assert_eq!(render_full("[pt25o10]").unwrap()[0].duration_ds, 25);
         assert_eq!(render_full("[pt20o10]").unwrap()[1].duration_ds, 10);
         assert_eq!(render_full("[pt30o5][np]").unwrap()[2].duration_ds, 30);
@@ -1109,20 +1006,23 @@ mod test {
     }
 
     fn render_char(multi: &str) -> Result<Vec<Page>> {
-        let fonts = font_table();
-        Pages::builder(100, 21)
-            .with_color_ctx(ColorCtx::new(
-                ColorScheme::Monochrome1Bit,
-                ColorClassic::White.rgb(),
-                ColorClassic::Black.rgb(),
-            ))
-            .with_char_size(5, 7)
-            .with_page_on_time_ds(20)
-            .with_justification_page(JustificationPage::Top)
-            .with_justification_line(JustificationLine::Left)
-            .with_fonts(&fonts)
-            .build(multi)
-            .collect()
+        let dms = Dms::builder()
+            .with_vms_cfg(VmsCfg {
+                char_height_pixels: 7,
+                char_width_pixels: 5,
+                sign_height_pixels: 21,
+                sign_width_pixels: 100,
+                ..Default::default()
+            })
+            .with_font_definition(font_table())
+            .with_multi_cfg(MultiCfg {
+                default_justification_line: JustificationLine::Left,
+                default_justification_page: JustificationPage::Top,
+                default_font: 5,
+                ..Default::default()
+            })
+            .build();
+        Pages::new(&dms, multi).collect()
     }
 
     #[test]

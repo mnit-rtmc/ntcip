@@ -25,15 +25,15 @@ pub struct DmsBuilder {
 #[derive(Clone)]
 pub struct Dms {
     /// Configuration common to all signs — `dmsSignCfg`
-    sign_cfg: SignCfg,
+    pub(crate) sign_cfg: SignCfg,
     /// Configuration for variable message signs — `vmsCfg`
-    vms_cfg: VmsCfg,
+    pub(crate) vms_cfg: VmsCfg,
     /// Font definition — `fontDefinition`
-    font_definition: FontTable,
+    pub(crate) font_definition: FontTable,
     /// MULTI configuration — `multiCfg`
-    multi_cfg: MultiCfg,
+    pub(crate) multi_cfg: MultiCfg,
     /// Graphic definition — `graphicDefinition`
-    graphic_definition: GraphicTable,
+    pub(crate) graphic_definition: GraphicTable,
 }
 
 impl DmsBuilder {
@@ -105,11 +105,6 @@ impl Dms {
     /// Get graphic definition
     pub fn graphic_definition(&self) -> &GraphicTable {
         &self.graphic_definition
-    }
-
-    /// Get default font
-    fn default_font(&self) -> u8 {
-        self.multi_cfg.default_font
     }
 
     /// Get the face width (mm)
@@ -303,12 +298,12 @@ impl Dms {
     }
 
     /// Get the character width as u8
-    fn char_width(&self) -> u8 {
+    pub(crate) fn char_width(&self) -> u8 {
         self.vms_cfg.char_width_pixels
     }
 
     /// Get the character height as u8
-    fn char_height(&self) -> u8 {
+    pub(crate) fn char_height(&self) -> u8 {
         self.vms_cfg.char_height_pixels
     }
 
@@ -343,30 +338,19 @@ impl Dms {
         }
     }
 
+    /// Get the sign's color context
+    pub(crate) fn color_ctx(&self) -> ColorCtx {
+        let color_scheme = self.color_scheme();
+        let fg_default = self.foreground_default_rgb();
+        let bg_default = self.background_default_rgb();
+        ColorCtx::new(color_scheme, fg_default, bg_default)
+    }
+
     /// Render to a series of pages
     pub fn render_pages<'a>(
         &'a self,
         multi: &'a str,
     ) -> impl Iterator<Item = Result<Page>> + 'a {
-        let width = self.pixel_width();
-        let height = self.pixel_height();
-        let color_scheme = self.color_scheme();
-        let fg_default = self.foreground_default_rgb();
-        let bg_default = self.background_default_rgb();
-        let color_ctx = ColorCtx::new(color_scheme, fg_default, bg_default);
-        let char_width = self.char_width();
-        let char_height = self.char_height();
-        let font_num = self.default_font();
-        Pages::builder(width, height)
-            .with_color_ctx(color_ctx)
-            .with_char_size(char_width, char_height)
-            .with_page_on_time_ds(self.multi_cfg.default_page_on_time)
-            .with_page_off_time_ds(self.multi_cfg.default_page_off_time)
-            .with_justification_page(self.multi_cfg.default_justification_page)
-            .with_justification_line(self.multi_cfg.default_justification_line)
-            .with_font_num(font_num)
-            .with_fonts(&self.font_definition)
-            .with_graphics(&self.graphic_definition)
-            .build(multi)
+        Pages::new(self, multi)
     }
 }

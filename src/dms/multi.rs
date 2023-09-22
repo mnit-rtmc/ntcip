@@ -5,8 +5,6 @@
 //! MarkUp Language for Transportation Information
 use log::{debug, warn};
 use std::fmt;
-use std::iter::Peekable;
-use std::str::Chars;
 use std::str::FromStr;
 
 /// Classic color values
@@ -133,7 +131,7 @@ pub enum MovingTextDirection {
 
 /// Values are tags or text from a parsed MULTI
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum Value {
+pub(crate) enum Value<'p> {
     /// Background color tag.
     ///
     /// This tag remains for backward compatibility with 1203v1.
@@ -234,7 +232,7 @@ pub(crate) enum Value {
     SpacingCharacterEnd(),
 
     /// Text value
-    Text(String),
+    Text(&'p str),
 
     /// Text rectangle tag
     ///
@@ -277,11 +275,9 @@ pub enum SyntaxError {
 
 /// Parser for MULTI values
 #[derive(Clone)]
-pub(crate) struct Parser<'a> {
-    /// Remaining characters to parse
-    remaining: Peekable<Chars<'a>>,
-    /// Currently parsing a tag
-    within_tag: bool,
+pub(crate) struct Parser<'p> {
+    /// Remaining slice to parse
+    ms: &'p str,
 }
 
 impl ColorClassic {
@@ -590,7 +586,7 @@ impl fmt::Display for MovingTextDirection {
     }
 }
 
-impl fmt::Display for Value {
+impl<'p> fmt::Display for Value<'p> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Value::ColorBackground(None) => write!(f, "[cb]"),
@@ -668,19 +664,19 @@ impl fmt::Display for Value {
     }
 }
 
-impl From<Value> for String {
-    fn from(v: Value) -> String {
+impl<'p> From<Value<'p>> for String {
+    fn from(v: Value<'p>) -> String {
         format!("{v}")
     }
 }
 
-impl From<&Value> for String {
-    fn from(v: &Value) -> Self {
+impl<'p> From<&Value<'p>> for String {
+    fn from(v: &Value<'p>) -> Self {
         format!("{v}")
     }
 }
 
-impl Value {
+impl<'p> Value<'p> {
     /// Check if a `Value` is "blank"
     fn is_blank(&self) -> bool {
         match self {
@@ -881,8 +877,8 @@ fn parse_flash_time(tag: &str) -> Option<Value> {
     if tag.len() > 2 {
         let v = &tag[2..];
         match &v[..1] {
-            "t" => parse_flash_on(&v[1..]),
-            "o" => parse_flash_off(&v[1..]),
+            "t" | "T" => parse_flash_on(&v[1..]),
+            "o" | "O" => parse_flash_off(&v[1..]),
             _ => None,
         }
     } else {
@@ -892,7 +888,7 @@ fn parse_flash_time(tag: &str) -> Option<Value> {
 
 /// Parse a flash on -> off tag fragment
 fn parse_flash_on(v: &str) -> Option<Value> {
-    let mut vs = v.splitn(2, 'o');
+    let mut vs = v.splitn(2, |c| c == 'o' || c == 'O');
     let t = parse_optional_99(&mut vs).ok()?;
     let o = parse_optional_99(&mut vs).ok()?;
     Some(Value::Flash(FlashOrder::OnOff, t, o))
@@ -900,7 +896,7 @@ fn parse_flash_on(v: &str) -> Option<Value> {
 
 /// Parse a flash off -> on tag fragment
 fn parse_flash_off(v: &str) -> Option<Value> {
-    let mut vs = v.splitn(2, 't');
+    let mut vs = v.splitn(2, |c| c == 't' || c == 'T');
     let o = parse_optional_99(&mut vs).ok()?;
     let t = parse_optional_99(&mut vs).ok()?;
     Some(Value::Flash(FlashOrder::OffOn, o, t))
@@ -1117,7 +1113,7 @@ fn parse_new_page(tag: &str) -> Option<Value> {
 
 /// Parse a Page Time tag [pt]
 fn parse_page_time(tag: &str) -> Option<Value> {
-    let mut vs = tag[2..].splitn(2, 'o');
+    let mut vs = tag[2..].splitn(2, |c| c == 'o' || c == 'O');
     match (parse_optional(&mut vs), parse_optional(&mut vs)) {
         (Ok(t), Ok(o)) => Some(Value::PageTime(t, o)),
         _ => None,
@@ -1150,143 +1146,110 @@ fn parse_text_rectangle(tag: &str) -> Option<Value> {
 
 /// Parse a tag (without brackets)
 fn parse_tag(tag: &str) -> Result<Option<Value>, SyntaxError> {
-    let tl = &tag.to_ascii_lowercase();
-    let t = tl.as_str();
+    let mut chars = tag.chars().map(|c| c.to_ascii_lowercase());
+    let (t0, t1, t2) = (chars.next(), chars.next(), chars.next());
     // Sorted by most likely occurrence
-    let v = if t.starts_with("nl") {
-        parse_new_line(t)
-    } else if t.starts_with("np") {
-        parse_new_page(t)
-    } else if t.starts_with("fo") {
-        parse_font(t)
-    } else if t.starts_with("jl") {
-        parse_justification_line(t)
-    } else if t.starts_with("jp") {
-        parse_justification_page(t)
-    } else if t.starts_with("pt") {
-        parse_page_time(t)
-    } else if t.starts_with("pb") {
-        parse_page_background(t)
-    } else if t.starts_with("cf") {
-        parse_color_foreground(t)
-    } else if t.starts_with("cr") {
-        parse_color_rectangle(t)
-    } else if t.starts_with("tr") {
-        parse_text_rectangle(t)
-    } else if t.starts_with("cb") {
-        parse_color_background(t)
-    } else if t.starts_with('g') {
-        parse_graphic(tag)
-    } else if t.starts_with("sc") {
-        parse_spacing_character(t)
-    } else if t.starts_with("/sc") {
-        parse_spacing_character_end(tag)
-    } else if t.starts_with("hc") {
-        parse_hexadecimal_character(t)
-    } else if t.starts_with("fl") {
-        parse_flash_time(t)
-    } else if t.starts_with("/fl") {
-        parse_flash_end(tag)
-    }
-    // Don't treat "fe" as a field tag -- this allows handling non-MULTI
-    // tag (e.g. [feedx]) properly by returning UnsupportedTag.
-    else if t.starts_with('f') && !t.starts_with("fe") {
-        parse_field(tag)
-    } else if t.starts_with("mv") {
-        parse_moving_text(tag)
-    } else if t.starts_with("ms") {
-        parse_manufacturer_specific(tag)
-    } else if t.starts_with("/ms") {
-        parse_manufacturer_specific_end(tag)
-    } else {
-        return Err(SyntaxError::UnsupportedTag(tag.into()));
+    let val = match (t0, t1, t2) {
+        (Some('n'), Some('l'), _) => parse_new_line(tag),
+        (Some('n'), Some('p'), _) => parse_new_page(tag),
+        (Some('f'), Some('o'), _) => parse_font(tag),
+        (Some('j'), Some('l'), _) => parse_justification_line(tag),
+        (Some('j'), Some('p'), _) => parse_justification_page(tag),
+        (Some('p'), Some('t'), _) => parse_page_time(tag),
+        (Some('p'), Some('b'), _) => parse_page_background(tag),
+        (Some('c'), Some('f'), _) => parse_color_foreground(tag),
+        (Some('c'), Some('r'), _) => parse_color_rectangle(tag),
+        (Some('t'), Some('r'), _) => parse_text_rectangle(tag),
+        (Some('c'), Some('b'), _) => parse_color_background(tag),
+        (Some('s'), Some('c'), _) => parse_spacing_character(tag),
+        (Some('h'), Some('c'), _) => parse_hexadecimal_character(tag),
+        (Some('f'), Some('l'), _) => parse_flash_time(tag),
+        (Some('m'), Some('v'), _) => parse_moving_text(tag),
+        (Some('m'), Some('s'), _) => parse_manufacturer_specific(tag),
+        // Don't treat "fe" as a field tag -- this allows non-MULTI
+        // tag (e.g. [feedx]) properly by returning UnsupportedTag.
+        (Some('f'), Some('e'), _) => {
+            return Err(SyntaxError::UnsupportedTag(tag.into()))
+        }
+        (Some('f'), _, _) => parse_field(tag),
+        (Some('g'), _, _) => parse_graphic(tag),
+        (Some('/'), Some('s'), Some('c')) => parse_spacing_character_end(tag),
+        (Some('/'), Some('f'), Some('l')) => parse_flash_end(tag),
+        (Some('/'), Some('m'), Some('s')) => {
+            parse_manufacturer_specific_end(tag)
+        }
+        _ => return Err(SyntaxError::UnsupportedTag(tag.into())),
     };
-    match v {
-        Some(v) => Ok(Some(v)),
+    match val {
+        Some(val) => Ok(Some(val)),
         None => Err(SyntaxError::UnsupportedTagValue(tag.into())),
     }
 }
 
-impl<'a> Parser<'a> {
+impl<'p> Parser<'p> {
     /// Create a new MULTI parser
-    pub fn new(m: &'a str) -> Self {
-        debug!("Parser::new {}", m);
-        let remaining = m.chars().peekable();
-        Parser {
-            remaining,
-            within_tag: false,
-        }
-    }
-
-    /// Peek at the next character
-    fn peek_char(&mut self) -> Option<char> {
-        self.remaining.peek().copied()
-    }
-
-    /// Get the next character
-    fn next_char(&mut self) -> Result<Option<char>, SyntaxError> {
-        if let Some(c) = self.remaining.next() {
-            // NTCIP 1203 mentions Extended ASCII (codepage 437) -- don't do it!
-            match c {
-                ' '..='~' => Ok(Some(c)),
-                _ => Err(SyntaxError::CharacterNotDefined(c)),
-            }
-        } else {
-            Ok(None)
-        }
-    }
-
-    /// Parse a tag starting at the current position
-    fn parse_tag(&mut self) -> Result<Option<Value>, SyntaxError> {
-        let mut s = String::new();
-        while let Some(c) = self.next_char()? {
-            match c {
-                '[' => return Err(SyntaxError::UnsupportedTagValue(s)),
-                ']' => return parse_tag(&s),
-                _ => s.push(c),
-            }
-        }
-        Err(SyntaxError::UnsupportedTag(s))
+    pub fn new(ms: &'p str) -> Self {
+        debug!("Parser::new {}", ms);
+        Parser { ms }
     }
 
     /// Parse a value at the current position
-    fn parse_value(&mut self) -> Result<Option<Value>, SyntaxError> {
-        if self.within_tag {
-            self.within_tag = false;
-            return self.parse_tag();
+    fn parse_value(&mut self) -> Result<Option<Value<'p>>, SyntaxError> {
+        if self.ms.starts_with("[[") || self.ms.starts_with("]]") {
+            let span = &self.ms[..1];
+            self.ms = &self.ms[2..];
+            return Ok(Some(Value::Text(span)));
         }
-        let mut s = String::new();
-        while let Some(c) = self.next_char()? {
-            if c == '[' {
-                if let Some('[') = self.peek_char() {
-                    self.next_char()?;
-                } else if s.is_empty() {
-                    return self.parse_tag();
-                } else {
-                    self.within_tag = true;
-                    break;
-                }
-            } else if c == ']' {
-                if let Some(']') = self.peek_char() {
-                    self.next_char()?;
-                } else {
-                    return Err(SyntaxError::UnsupportedTag(s));
+        let tag = self.ms.starts_with('[');
+        for (i, c) in self.ms.char_indices() {
+            match c {
+                ' '..='~' => (),
+                _ => {
+                    self.ms = self.ms.strip_prefix(c).unwrap_or("");
+                    return Err(SyntaxError::CharacterNotDefined(c));
                 }
             }
-            s.push(c);
+            if tag {
+                if c == ']' {
+                    let tag = &self.ms[1..i];
+                    self.ms = &self.ms[i + 1..];
+                    return parse_tag(tag);
+                }
+            } else if c == '[' {
+                let span = &self.ms[..i];
+                self.ms = &self.ms[i..];
+                return Ok(Some(Value::Text(span)));
+            } else if c == ']' {
+                if i > 0 {
+                    let span = &self.ms[..i];
+                    self.ms = &self.ms[i..];
+                    return Ok(Some(Value::Text(span)));
+                } else {
+                    self.ms = &self.ms[1..];
+                    return Err(SyntaxError::UnsupportedTag("]".to_string()));
+                }
+            }
         }
-        if s.is_empty() {
-            Ok(None)
+        if tag {
+            let tag = self.ms;
+            self.ms = "";
+            Err(SyntaxError::UnsupportedTag(tag.to_string()))
         } else {
-            Ok(Some(Value::Text(s)))
+            let span = self.ms;
+            self.ms = "";
+            if span.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(Value::Text(span)))
+            }
         }
     }
 }
 
-impl<'a> Iterator for Parser<'a> {
-    type Item = Result<Value, SyntaxError>;
+impl<'p> Iterator for Parser<'p> {
+    type Item = Result<Value<'p>, SyntaxError>;
 
-    fn next(&mut self) -> Option<Result<Value, SyntaxError>> {
+    fn next(&mut self) -> Option<Self::Item> {
         self.parse_value().transpose()
     }
 }
@@ -1316,7 +1279,7 @@ pub fn is_blank(ms: &str) -> bool {
 }
 
 /// Get an iterator of text spans in a MULTI string
-pub fn text_spans(ms: &str) -> impl Iterator<Item = String> + '_ {
+pub fn text_spans(ms: &str) -> impl Iterator<Item = &str> + '_ {
     Parser::new(ms).flatten().filter_map(|v| match v {
         Value::Text(t) => Some(t),
         _ => None,
@@ -1472,14 +1435,28 @@ mod test {
     #[test]
     fn parse_bracket() {
         let mut m = Parser::new("[[a]]b[[[[c]][[]]]]d");
-        assert_eq!(m.next(), Some(Ok(Value::Text("[a]b[[c][]]d".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("a".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("]".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("b".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("c".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("]".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("]".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("]".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("d".into()))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_bracket2() {
         let mut m = Parser::new("[[[[[[[[");
-        assert_eq!(m.next(), Some(Ok(Value::Text("[[[[".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
         assert_eq!(m.next(), None);
     }
 
@@ -2646,13 +2623,15 @@ mod test {
     #[test]
     fn parse_multi() {
         let mut m = Parser::new("[[TEST[nl]TEST 2[np]TEST 3XX[NL]TEST 4]]");
-        assert_eq!(m.next(), Some(Ok(Value::Text("[TEST".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("TEST".into()))));
         assert_eq!(m.next(), Some(Ok(Value::NewLine(None))));
         assert_eq!(m.next(), Some(Ok(Value::Text("TEST 2".into()))));
         assert_eq!(m.next(), Some(Ok(Value::NewPage())));
         assert_eq!(m.next(), Some(Ok(Value::Text("TEST 3XX".into()))));
         assert_eq!(m.next(), Some(Ok(Value::NewLine(None))));
-        assert_eq!(m.next(), Some(Ok(Value::Text("TEST 4]".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("TEST 4".into()))));
+        assert_eq!(m.next(), Some(Ok(Value::Text("]".into()))));
         assert_eq!(m.next(), None);
     }
 
@@ -2676,11 +2655,7 @@ mod test {
         let mut m = Parser::new("[x[x]");
         assert_eq!(
             m.next(),
-            Some(Err(SyntaxError::UnsupportedTagValue("x".into())))
-        );
-        assert_eq!(
-            m.next(),
-            Some(Err(SyntaxError::UnsupportedTag("x".into())))
+            Some(Err(SyntaxError::UnsupportedTag("x[x".into())))
         );
         assert_eq!(m.next(), None);
     }
@@ -2688,7 +2663,10 @@ mod test {
     #[test]
     fn parse_tag2() {
         let mut m = Parser::new("]");
-        assert_eq!(m.next(), Some(Err(SyntaxError::UnsupportedTag("".into()))));
+        assert_eq!(
+            m.next(),
+            Some(Err(SyntaxError::UnsupportedTag("]".into())))
+        );
         assert_eq!(m.next(), None);
     }
 
@@ -2697,7 +2675,7 @@ mod test {
         let mut m = Parser::new("[nl");
         assert_eq!(
             m.next(),
-            Some(Err(SyntaxError::UnsupportedTag("nl".into())))
+            Some(Err(SyntaxError::UnsupportedTag("[nl".into())))
         );
         assert_eq!(m.next(), None);
     }
@@ -2705,7 +2683,10 @@ mod test {
     #[test]
     fn parse_tag4() {
         let mut m = Parser::new("[");
-        assert_eq!(m.next(), Some(Err(SyntaxError::UnsupportedTag("".into()))));
+        assert_eq!(
+            m.next(),
+            Some(Err(SyntaxError::UnsupportedTag("[".into())))
+        );
         assert_eq!(m.next(), None);
     }
 
@@ -2722,11 +2703,11 @@ mod test {
     #[test]
     fn parse_tag6() {
         let mut m = Parser::new("bad]");
+        assert_eq!(m.next(), Some(Ok(Value::Text("bad"))));
         assert_eq!(
             m.next(),
-            Some(Err(SyntaxError::UnsupportedTag("bad".into())))
+            Some(Err(SyntaxError::UnsupportedTag("]".into())))
         );
-        assert_eq!(m.next(), None);
     }
 
     #[test]
@@ -2821,11 +2802,11 @@ mod test {
         assert_eq!(normalize("["), "");
         assert_eq!(normalize("]"), "");
         assert_eq!(normalize("[bad tag"), "");
-        assert_eq!(normalize("bad tag]"), "");
+        assert_eq!(normalize("bad tag]"), "bad tag");
         assert_eq!(normalize("bad[tag"), "bad");
-        assert_eq!(normalize("bad]tag"), "tag");
+        assert_eq!(normalize("bad]tag"), "badtag");
         assert_eq!(normalize("bad[ [nl] tag"), "bad tag");
-        assert_eq!(normalize("bad ]tag [nl]"), "tag [nl]");
+        assert_eq!(normalize("bad ]tag [nl]"), "bad tag [nl]");
         assert_eq!(normalize("[ttS123]"), "");
     }
 

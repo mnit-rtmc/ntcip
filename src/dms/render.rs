@@ -585,7 +585,7 @@ impl<'a> Pages<'a> {
                 }
                 Value::Text(t) => {
                     let rs = &mut self.render_state;
-                    self.spans.push(TextSpan::new(rs, t));
+                    self.spans.push(TextSpan::new(rs, t.to_string()));
                     rs.span_number += 1;
                     line_blank = false;
                 }

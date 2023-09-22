@@ -104,7 +104,7 @@ pub enum JustificationPage {
 
 /// Order of flashing messages
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum FlashOrder {
+pub(crate) enum FlashOrder {
     /// Flash on, then off
     OnOff,
     /// Flash off, then on
@@ -113,7 +113,7 @@ pub enum FlashOrder {
 
 /// Mode for moving text
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum MovingTextMode {
+pub(crate) enum MovingTextMode {
     /// Text wraps around, appearing circular
     Circular,
     /// No wrap around, delay in tenths of a second
@@ -122,7 +122,7 @@ pub enum MovingTextMode {
 
 /// Direction for moving text
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum MovingTextDirection {
+pub(crate) enum MovingTextDirection {
     /// Left-moving text
     Left,
     /// Right-moving text

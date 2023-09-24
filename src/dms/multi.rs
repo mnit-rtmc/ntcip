@@ -708,9 +708,12 @@ fn parse_color<'a, I>(v: I) -> Option<Color>
 where
     I: Iterator<Item = &'a str>,
 {
-    match v.map(|i| i.parse::<u8>()).collect::<Vec<_>>().as_slice() {
-        [Ok(r), Ok(g), Ok(b)] => Some(Color::Rgb(*r, *g, *b)),
-        [Ok(n)] => Some(Color::Legacy(*n)),
+    let mut rgb = v.map(|i| i.parse::<u8>());
+    match (rgb.next(), rgb.next(), rgb.next(), rgb.next()) {
+        (Some(Ok(r)), Some(Ok(g)), Some(Ok(b)), None) => {
+            Some(Color::Rgb(r, g, b))
+        }
+        (Some(Ok(n)), None, _, _) => Some(Color::Legacy(n)),
         _ => None,
     }
 }

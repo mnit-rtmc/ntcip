@@ -372,8 +372,8 @@ impl<'a> Pages<'a> {
 
     /// Build a raster
     fn build_raster(&self) -> Raster<SRgb8> {
-        let width = self.render_state.text_rectangle.w.into();
-        let height = self.render_state.text_rectangle.h.into();
+        let width = self.render_state.text_rectangle.width.into();
+        let height = self.render_state.text_rectangle.height.into();
         let clr = self.render_state.background_rgb();
         Raster::with_color(width, height, clr)
     }
@@ -623,14 +623,14 @@ impl<'a> Pages<'a> {
         debug_assert!(cw > 0);
         // Check text rectangle matches character boundaries
         let x = rect.x - 1;
-        if x % cw != 0 || rect.w % cw != 0 {
+        if x % cw != 0 || rect.width % cw != 0 {
             return None;
         }
         let lh = self.char_height();
         debug_assert!(lh > 0);
         // Check text rectangle matches line boundaries
         let y = rect.y - 1;
-        if y % lh != 0 || rect.h % lh != 0 {
+        if y % lh != 0 || rect.height % lh != 0 {
             return None;
         }
         Some(rect)
@@ -691,7 +691,7 @@ impl<'a> Pages<'a> {
     /// Get the X position of a center-justified text span
     fn span_x_center(&self, span: &TextSpan) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
-        let w = span.state.text_rectangle.w;
+        let w = span.state.text_rectangle.width;
         let (before, after) = self.offset_horiz(span)?;
         let offset = (w - before - after) / 2; // offset for centering
         let x = left + offset + before;
@@ -703,7 +703,7 @@ impl<'a> Pages<'a> {
     /// Get the X position of a right-justified span
     fn span_x_right(&self, span: &TextSpan) -> Result<u16> {
         let left = span.state.text_rectangle.x - 1;
-        let w = span.state.text_rectangle.w;
+        let w = span.state.text_rectangle.width;
         let (_, after) = self.offset_horiz(span)?;
         Ok(left + w - after)
     }
@@ -736,7 +736,7 @@ impl<'a> Pages<'a> {
             debug!("  span '{}'  before {} after {}", span.text, before, after);
             pspan = Some(span);
         }
-        if before + after <= rs.text_rectangle.w {
+        if before + after <= rs.text_rectangle.width {
             Ok((before, after))
         } else {
             Err(SyntaxError::TextTooBig)
@@ -771,7 +771,7 @@ impl<'a> Pages<'a> {
     /// Get the baseline of a middle-justified span
     fn baseline_middle(&self, span: &TextSpan) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
-        let h = span.state.text_rectangle.h;
+        let h = span.state.text_rectangle.height;
         let (above, below) = self.offset_vert(span)?;
         let offset = (h - above - below) / 2; // offset for centering
         let y = top + offset + above;
@@ -783,7 +783,7 @@ impl<'a> Pages<'a> {
     /// Get the baseline of a bottom-justified span
     fn baseline_bottom(&self, span: &TextSpan) -> Result<u16> {
         let top = span.state.text_rectangle.y - 1;
-        let h = span.state.text_rectangle.h;
+        let h = span.state.text_rectangle.height;
         let (_, below) = self.offset_vert(span)?;
         Ok(top + h - below)
     }
@@ -829,7 +829,7 @@ impl<'a> Pages<'a> {
             }
             debug!("  line {}  above {} below {}", ln, above, below);
         }
-        if above + below <= rs.text_rectangle.h {
+        if above + below <= rs.text_rectangle.height {
             Ok((above, below))
         } else {
             Err(SyntaxError::TextTooBig)
@@ -864,8 +864,8 @@ fn render_rect(
     let rect = rect.match_width_height(full_rect);
     let rx = i32::from(rect.x) - 1;
     let ry = i32::from(rect.y) - 1;
-    let rw = u32::from(rect.w);
-    let rh = u32::from(rect.h);
+    let rw = u32::from(rect.width);
+    let rh = u32::from(rect.height);
     let region = Region::new(rx, ry, rw, rh);
     if raster.intersection(region) == region {
         raster.copy_color(region, clr);

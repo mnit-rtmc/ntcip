@@ -62,14 +62,14 @@ pub(crate) struct ColorCtx {
 /// A rectangular area of a sign
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct Rectangle {
-    /// Left edge (starting from 1).
+    /// Left edge (starting from 1)
     pub x: u16,
-    /// Top edge (starting from 1).
+    /// Top edge (starting from 1)
     pub y: u16,
-    /// Width in pixels.
-    pub w: u16,
-    /// Height in pixels.
-    pub h: u16,
+    /// Width in pixels
+    pub width: u16,
+    /// Height in pixels
+    pub height: u16,
 }
 
 /// Horizontal justification within a line
@@ -493,27 +493,27 @@ impl ColorCtx {
 
 impl fmt::Display for Rectangle {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{},{},{},{}", self.x, self.y, self.w, self.h)
+        write!(f, "{},{},{},{}", self.x, self.y, self.width, self.height)
     }
 }
 
 impl Rectangle {
     /// Create a new rectangle
-    pub fn new(x: u16, y: u16, w: u16, h: u16) -> Self {
-        Rectangle { x, y, w, h }
+    pub fn new(x: u16, y: u16, width: u16, height: u16) -> Self {
+        Rectangle { x, y, width, height }
     }
 
     /// Create a rectangle matching another width and/or height
     pub fn match_width_height(self, other: Self) -> Self {
-        let w = if self.w > 0 {
-            self.w
+        let w = if self.width > 0 {
+            self.width
         } else {
-            other.w.saturating_sub(self.x.saturating_sub(1))
+            other.width.saturating_sub(self.x.saturating_sub(1))
         };
-        let h = if self.h > 0 {
-            self.h
+        let h = if self.height > 0 {
+            self.height
         } else {
-            other.h.saturating_sub(self.y.saturating_sub(1))
+            other.height.saturating_sub(self.y.saturating_sub(1))
         };
         Rectangle::new(self.x, self.y, w, h)
     }
@@ -521,9 +521,9 @@ impl Rectangle {
     /// Check if a rectangle contains another rectangle
     pub fn contains(self, other: Self) -> bool {
         other.x >= self.x
-            && other.x + other.w <= self.x + self.w
+            && other.x + other.width <= self.x + self.width
             && other.y >= self.y
-            && other.y + other.h <= self.y + self.h
+            && other.y + other.height <= self.y + self.height
     }
 }
 

@@ -189,10 +189,10 @@ pub(crate) enum Value<'p> {
     JustificationPage(Option<JustificationPage>),
 
     /// Manufacturer specific start tag
-    ManufacturerSpecific(u32, Option<String>),
+    ManufacturerSpecific(u32, Option<&'p str>),
 
     /// Manufacturer specific end tag
-    ManufacturerSpecificEnd(u32, Option<String>),
+    ManufacturerSpecificEnd(u32, Option<&'p str>),
 
     /// Moving text tag
     ///
@@ -202,7 +202,7 @@ pub(crate) enum Value<'p> {
     /// * Pixels offset at each time step
     /// * Deciseconds between time steps
     /// * Text to be moved
-    MovingText(MovingTextMode, MovingTextDirection, u16, u8, u8, String),
+    MovingText(MovingTextMode, MovingTextDirection, u16, u8, u8, &'p str),
 
     /// New line tag
     ///
@@ -1009,7 +1009,7 @@ fn parse_manufacturer_specific(tag: &str) -> Option<Value> {
     let mut vs = tag[2..].splitn(2, ',');
     match (parse_int(&mut vs), vs.next()) {
         (Some(m), Some(t)) => {
-            Some(Value::ManufacturerSpecific(m, Some(t.into())))
+            Some(Value::ManufacturerSpecific(m, Some(t)))
         }
         (Some(m), None) => Some(Value::ManufacturerSpecific(m, None)),
         _ => None,
@@ -1021,7 +1021,7 @@ fn parse_manufacturer_specific_end(tag: &str) -> Option<Value> {
     let mut vs = tag[3..].splitn(2, ',');
     match (parse_int(&mut vs), vs.next()) {
         (Some(m), Some(t)) => {
-            Some(Value::ManufacturerSpecificEnd(m, Some(t.into())))
+            Some(Value::ManufacturerSpecificEnd(m, Some(t)))
         }
         (Some(m), None) => Some(Value::ManufacturerSpecificEnd(m, None)),
         _ => None,
@@ -1074,7 +1074,7 @@ fn parse_moving_text_mode(tag: &str, mode: MovingTextMode) -> Option<Value> {
                 width,
                 s,
                 r,
-                text.into(),
+                text,
             ));
         }
     }
@@ -1297,7 +1297,7 @@ mod test {
 
     #[test]
     fn value_size() {
-        assert_eq!(std::mem::size_of::<Value>(), 32);
+        assert_eq!(std::mem::size_of::<Value>(), 24);
     }
 
     #[test]

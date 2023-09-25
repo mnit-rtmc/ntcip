@@ -615,8 +615,7 @@ impl<'a> Pages<'a> {
 
     /// Update the text rectangle
     fn update_text_rectangle(&self, rect: Rectangle) -> Option<Rectangle> {
-        let rect = rect.intersection(self.default_state.text_rectangle);
-        if !self.default_state.text_rectangle.contains(rect) {
+        if rect.intersection(self.default_state.text_rectangle) != rect {
             return None;
         }
         let cw = self.char_width();

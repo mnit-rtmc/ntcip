@@ -61,7 +61,7 @@ pub(crate) struct ColorCtx {
 
 /// A rectangular area of a sign
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct Rectangle {
+pub struct Rectangle {
     /// Left edge (starting from 1)
     pub x: u16,
     /// Top edge (starting from 1)
@@ -497,25 +497,31 @@ impl fmt::Display for Rectangle {
     }
 }
 
+impl Default for Rectangle {
+    fn default() -> Self {
+        Rectangle::new(1, 1, 0, 0)
+    }
+}
+
 impl Rectangle {
     /// Create a new rectangle
     pub fn new(x: u16, y: u16, width: u16, height: u16) -> Self {
         Rectangle { x, y, width, height }
     }
 
-    /// Create a rectangle matching another width and/or height
-    pub fn match_width_height(self, other: Self) -> Self {
-        let w = if self.width > 0 {
-            self.width
+    /// Create intersection between this and another rectangle
+    pub fn intersection(self, rhs: Self) -> Self {
+        let left = self.x.max(rhs.x);
+        let right = (self.x + self.width).min(rhs.x + rhs.width);
+        let top = self.y.max(rhs.y);
+        let bottom = (self.y + self.height).min(rhs.y + rhs.height);
+        if right > left && bottom > top {
+            let width = right - left;
+            let height = bottom - top;
+            Rectangle::new(left, top, width, height)
         } else {
-            other.width.saturating_sub(self.x.saturating_sub(1))
-        };
-        let h = if self.height > 0 {
-            self.height
-        } else {
-            other.height.saturating_sub(self.y.saturating_sub(1))
-        };
-        Rectangle::new(self.x, self.y, w, h)
+            Rectangle::default()
+        }
     }
 
     /// Check if a rectangle contains another rectangle
@@ -2850,5 +2856,14 @@ mod test {
         assert_eq!(join_text("ABC[sc2]DEF", " "), "ABC DEF");
         assert_eq!(join_text("DEF[tr1,1,40,20]ABC", " "), "DEF ABC");
         assert_eq!(join_text("ABC[x]DEF", "_"), "ABC_DEF");
+    }
+
+    #[test]
+    fn rectangles() {
+        let r1 = Rectangle::new(1, 1, 2, 2);
+        let r2 = Rectangle::new(2, 2, 2, 2);
+        assert_eq!(r1.intersection(r2), Rectangle::new(2, 2, 1, 1));
+        let r3 = Rectangle::new(3, 3, 2, 2);
+        assert_eq!(r1.intersection(r3), Rectangle::default());
     }
 }

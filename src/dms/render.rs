@@ -615,7 +615,7 @@ impl<'a> Pages<'a> {
 
     /// Update the text rectangle
     fn update_text_rectangle(&self, rect: Rectangle) -> Option<Rectangle> {
-        let rect = rect.match_width_height(self.default_state.text_rectangle);
+        let rect = rect.intersection(self.default_state.text_rectangle);
         if !self.default_state.text_rectangle.contains(rect) {
             return None;
         }
@@ -861,13 +861,12 @@ fn render_rect(
     let width = raster.width().try_into().unwrap();
     let height = raster.height().try_into().unwrap();
     let full_rect = Rectangle::new(1, 1, width, height);
-    let rect = rect.match_width_height(full_rect);
-    let rx = i32::from(rect.x) - 1;
-    let ry = i32::from(rect.y) - 1;
-    let rw = u32::from(rect.width);
-    let rh = u32::from(rect.height);
-    let region = Region::new(rx, ry, rw, rh);
-    if raster.intersection(region) == region {
+    if rect.intersection(full_rect) == rect {
+        let rx = i32::from(rect.x) - 1;
+        let ry = i32::from(rect.y) - 1;
+        let rw = u32::from(rect.width);
+        let rh = u32::from(rect.height);
+        let region = Region::new(rx, ry, rw, rh);
         raster.copy_color(region, clr);
         Ok(())
     } else {

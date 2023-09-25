@@ -615,6 +615,7 @@ impl<'a> Pages<'a> {
 
     /// Update the text rectangle
     fn update_text_rectangle(&self, rect: Rectangle) -> Option<Rectangle> {
+        let rect = rect.extend_width_height(self.default_state.text_rectangle);
         if rect.intersection(self.default_state.text_rectangle) != rect {
             return None;
         }
@@ -860,6 +861,7 @@ fn render_rect(
     let width = raster.width().try_into().unwrap();
     let height = raster.height().try_into().unwrap();
     let full_rect = Rectangle::new(1, 1, width, height);
+    let rect = rect.extend_width_height(full_rect);
     if rect.intersection(full_rect) == rect {
         let rx = i32::from(rect.x) - 1;
         let ry = i32::from(rect.y) - 1;

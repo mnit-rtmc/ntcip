@@ -514,6 +514,21 @@ impl Rectangle {
         }
     }
 
+    /// Extend 0 width and/or height to full rectangle edges
+    pub(crate) fn extend_width_height(self, full: Self) -> Self {
+        let width = if self.width > 0 {
+            self.width
+        } else {
+            full.width.saturating_sub(self.x.saturating_sub(1))
+        };
+        let height = if self.height > 0 {
+            self.height
+        } else {
+            full.height.saturating_sub(self.y.saturating_sub(1))
+        };
+        Rectangle::new(self.x, self.y, width, height)
+    }
+
     /// Create intersection between this and another rectangle
     pub fn intersection(self, rhs: Self) -> Self {
         let left = self.x.max(rhs.x);

@@ -204,7 +204,17 @@ impl RenderState {
 
     /// Lookup current font in cache
     fn font<'a>(&self, fonts: &'a FontTable) -> Result<&'a Font> {
-        fonts.lookup(self.font_num, self.font_version_id)
+        match (fonts.lookup(self.font_num), self.font_version_id) {
+            (Some(f), Some(vid)) => {
+                if vid == f.version_id {
+                    Ok(f)
+                } else {
+                    Err(SyntaxError::FontVersionID)
+                }
+            }
+            (Some(f), None) => Ok(f),
+            (None, _) => Err(SyntaxError::FontNotDefined(self.font_num)),
+        }
     }
 }
 

@@ -229,19 +229,8 @@ impl FontTable {
     }
 
     /// Lookup a font by number
-    pub fn lookup(&self, fnum: u8, version_id: Option<u16>) -> Result<&Font> {
-        let font = self.fonts.iter().find(|f| f.number == fnum);
-        match (font, version_id) {
-            (Some(f), Some(vid)) => {
-                if vid == f.version_id {
-                    Ok(f)
-                } else {
-                    Err(SyntaxError::FontVersionID)
-                }
-            }
-            (Some(f), None) => Ok(f),
-            (None, _) => Err(SyntaxError::FontNotDefined(fnum)),
-        }
+    pub fn lookup(&self, fnum: u8) -> Option<&Font> {
+        self.fonts.iter().find(|f| f.number == fnum)
     }
 
     /// Lookup a font by name

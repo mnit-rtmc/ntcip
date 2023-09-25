@@ -506,7 +506,12 @@ impl Default for Rectangle {
 impl Rectangle {
     /// Create a new rectangle
     pub fn new(x: u16, y: u16, width: u16, height: u16) -> Self {
-        Rectangle { x, y, width, height }
+        Rectangle {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     /// Create intersection between this and another rectangle
@@ -1017,9 +1022,7 @@ fn parse_justification_page(tag: &str) -> Option<Value> {
 fn parse_manufacturer_specific(tag: &str) -> Option<Value> {
     let mut vs = tag[2..].splitn(2, ',');
     match (parse_int(&mut vs), vs.next()) {
-        (Some(m), Some(t)) => {
-            Some(Value::ManufacturerSpecific(m, Some(t)))
-        }
+        (Some(m), Some(t)) => Some(Value::ManufacturerSpecific(m, Some(t))),
         (Some(m), None) => Some(Value::ManufacturerSpecific(m, None)),
         _ => None,
     }
@@ -1029,9 +1032,7 @@ fn parse_manufacturer_specific(tag: &str) -> Option<Value> {
 fn parse_manufacturer_specific_end(tag: &str) -> Option<Value> {
     let mut vs = tag[3..].splitn(2, ',');
     match (parse_int(&mut vs), vs.next()) {
-        (Some(m), Some(t)) => {
-            Some(Value::ManufacturerSpecificEnd(m, Some(t)))
-        }
+        (Some(m), Some(t)) => Some(Value::ManufacturerSpecificEnd(m, Some(t))),
         (Some(m), None) => Some(Value::ManufacturerSpecificEnd(m, None)),
         _ => None,
     }
@@ -1077,14 +1078,7 @@ fn parse_moving_text_mode(tag: &str, mode: MovingTextMode) -> Option<Value> {
         if let (Some(dir), Some(width), Some(s), Some(r), Some(text)) =
             (dir, width, s, r, text)
         {
-            return Some(Value::MovingText(
-                mode,
-                dir,
-                width,
-                s,
-                r,
-                text,
-            ));
+            return Some(Value::MovingText(mode, dir, width, s, r, text));
         }
     }
     None

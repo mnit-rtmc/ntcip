@@ -351,7 +351,7 @@ impl Dms {
     /// number for each fillable rectangle in the pattern.
     pub(crate) fn fillable_rectangles<'a>(
         &'a self,
-        pat_ms: &'a str,
+        pattern: &'a str,
     ) -> impl Iterator<Item = (Rectangle, u8)> + 'a {
         let full_rect =
             Rectangle::new(1, 1, self.pixel_width(), self.pixel_height());
@@ -359,7 +359,7 @@ impl Dms {
         let mut rect_font = (full_rect, font_num);
         let mut fillable = true;
         // NewPage is needed at the end to check for final fillable rect
-        Parser::new(pat_ms)
+        Parser::new(pattern)
             .flatten()
             .chain(once(Value::NewPage()))
             .filter_map(move |v| match v {
@@ -407,10 +407,10 @@ impl Dms {
     /// number for each fillable line in the pattern.
     pub fn fillable_widths<'a>(
         &'a self,
-        pat_ms: &'a str,
+        pattern: &'a str,
     ) -> impl Iterator<Item = (u16, u8)> + 'a {
         let mut lines = Vec::new();
-        for (rect, font_num) in self.fillable_rectangles(pat_ms) {
+        for (rect, font_num) in self.fillable_rectangles(pattern) {
             if let Some(font) = self.font_definition().lookup(font_num) {
                 let height = u16::from(font.height);
                 let spacing = height + u16::from(font.line_spacing);

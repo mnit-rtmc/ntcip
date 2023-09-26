@@ -702,6 +702,24 @@ impl<'p> From<&Value<'p>> for String {
     }
 }
 
+impl<'p> TryFrom<&'p str> for Value<'p> {
+    type Error = SyntaxError;
+
+    fn try_from(ms: &'p str) -> Result<Self, Self::Error> {
+        if ms == "[[" || ms == "]]" {
+            Ok(Value::Text(&ms[..1]))
+        } else if ms.starts_with('[') && ms.ends_with(']') {
+            parse_tag(&ms[1..ms.len() - 1])
+        } else if ms.starts_with('[') || ms.starts_with(']') {
+            Err(SyntaxError::UnsupportedTag(ms.to_string()))
+        } else if let Some(c) = ms.chars().find(|c| !(' '..='~').contains(c)) {
+            Err(SyntaxError::CharacterNotDefined(c))
+        } else {
+            Ok(Value::Text(ms))
+        }
+    }
+}
+
 impl<'p> Value<'p> {
     /// Check if a `Value` is "blank"
     fn is_blank(&self) -> bool {
@@ -1163,11 +1181,11 @@ fn parse_text_rectangle(tag: &str) -> Option<Value> {
 }
 
 /// Parse a tag (without brackets)
-fn parse_tag(tag: &str) -> Result<Option<Value>, SyntaxError> {
+fn parse_tag(tag: &str) -> Result<Value, SyntaxError> {
     let mut chars = tag.chars().map(|c| c.to_ascii_lowercase());
     let (t0, t1, t2) = (chars.next(), chars.next(), chars.next());
     // Sorted by most likely occurrence
-    let val = match (t0, t1, t2) {
+    match (t0, t1, t2) {
         (Some('n'), Some('l'), _) => parse_new_line(tag),
         (Some('n'), Some('p'), _) => parse_new_page(tag),
         (Some('f'), Some('o'), _) => parse_font(tag),
@@ -1197,11 +1215,8 @@ fn parse_tag(tag: &str) -> Result<Option<Value>, SyntaxError> {
             parse_manufacturer_specific_end(tag)
         }
         _ => return Err(SyntaxError::UnsupportedTag(tag.into())),
-    };
-    match val {
-        Some(val) => Ok(Some(val)),
-        None => Err(SyntaxError::UnsupportedTagValue(tag.into())),
     }
+    .ok_or_else(|| SyntaxError::UnsupportedTagValue(tag.into()))
 }
 
 impl<'p> Parser<'p> {
@@ -1227,11 +1242,8 @@ impl<'p> Parser<'p> {
                 if self.ms.starts_with('[') {
                     (ms, self.ms) = self.ms.split_at(i + 1);
                     return Some(ms);
-                } else if i > 0 {
-                    (ms, self.ms) = self.ms.split_at(i);
-                    return Some(ms);
                 } else {
-                    (ms, self.ms) = self.ms.split_at(1);
+                    (ms, self.ms) = self.ms.split_at(i.max(1));
                     return Some(ms);
                 }
             }
@@ -1246,23 +1258,8 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse a value at the current position
-    fn parse_value(&mut self) -> Result<Option<Value<'p>>, SyntaxError> {
-        if let Some(ms) = self.next_slice() {
-            if ms == "[[" || ms == "]]" {
-                return Ok(Some(Value::Text(&ms[..1])));
-            }
-            if ms.starts_with('[') && ms.ends_with(']') {
-                return parse_tag(&ms[1..ms.len() - 1]);
-            }
-            if ms.starts_with('[') || ms.starts_with(']') {
-                return Err(SyntaxError::UnsupportedTag(ms.to_string()));
-            }
-            if let Some(c) = ms.chars().find(|c| !(' '..='~').contains(c)) {
-                return Err(SyntaxError::CharacterNotDefined(c));
-            }
-            return Ok(Some(Value::Text(ms)));
-        }
-        Ok(None)
+    fn parse_value(&mut self) -> Option<Result<Value<'p>, SyntaxError>> {
+        self.next_slice().map(Value::try_from)
     }
 }
 
@@ -1270,7 +1267,7 @@ impl<'p> Iterator for Parser<'p> {
     type Item = Result<Value<'p>, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.parse_value().transpose()
+        self.parse_value()
     }
 }
 

@@ -1213,34 +1213,30 @@ impl<'p> Parser<'p> {
 
     /// Get the next slice, split on tag boundaries
     fn next_slice(&mut self) -> Option<&'p str> {
+        let ms;
         if self.ms.starts_with("[[") || self.ms.starts_with("]]") {
-            let ms = &self.ms[..2];
-            self.ms = &self.ms[2..];
+            (ms, self.ms) = self.ms.split_at(2);
             return Some(ms);
         }
         for (i, c) in self.ms.char_indices() {
             if c == '[' && i > 0 {
-                let ms = &self.ms[..i];
-                self.ms = &self.ms[i..];
+                (ms, self.ms) = self.ms.split_at(i);
                 return Some(ms);
             }
             if c == ']' {
                 if self.ms.starts_with('[') {
-                    let ms = &self.ms[..=i];
-                    self.ms = &self.ms[i + 1..];
+                    (ms, self.ms) = self.ms.split_at(i + 1);
                     return Some(ms);
                 } else if i > 0 {
-                    let ms = &self.ms[..i];
-                    self.ms = &self.ms[i..];
+                    (ms, self.ms) = self.ms.split_at(i);
                     return Some(ms);
                 } else {
-                    let ms = &self.ms[..1];
-                    self.ms = &self.ms[1..];
+                    (ms, self.ms) = self.ms.split_at(1);
                     return Some(ms);
                 }
             }
         }
-        let ms = self.ms;
+        ms = self.ms;
         self.ms = "";
         if !ms.is_empty() {
             Some(ms)
@@ -1261,7 +1257,7 @@ impl<'p> Parser<'p> {
             if ms.starts_with('[') || ms.starts_with(']') {
                 return Err(SyntaxError::UnsupportedTag(ms.to_string()));
             }
-            if let Some(c) = ms.chars().find(|c| !(' '..='~').contains(&c)) {
+            if let Some(c) = ms.chars().find(|c| !(' '..='~').contains(c)) {
                 return Err(SyntaxError::CharacterNotDefined(c));
             }
             return Ok(Some(Value::Text(ms)));

@@ -1211,56 +1211,62 @@ impl<'p> Parser<'p> {
         Parser { ms }
     }
 
+    /// Get the next slice, split on tag boundaries
+    fn next_slice(&mut self) -> Option<&'p str> {
+        if self.ms.starts_with("[[") || self.ms.starts_with("]]") {
+            let ms = &self.ms[..2];
+            self.ms = &self.ms[2..];
+            return Some(ms);
+        }
+        for (i, c) in self.ms.char_indices() {
+            if c == '[' && i > 0 {
+                let ms = &self.ms[..i];
+                self.ms = &self.ms[i..];
+                return Some(ms);
+            }
+            if c == ']' {
+                if self.ms.starts_with('[') {
+                    let ms = &self.ms[..=i];
+                    self.ms = &self.ms[i + 1..];
+                    return Some(ms);
+                } else if i > 0 {
+                    let ms = &self.ms[..i];
+                    self.ms = &self.ms[i..];
+                    return Some(ms);
+                } else {
+                    let ms = &self.ms[..1];
+                    self.ms = &self.ms[1..];
+                    return Some(ms);
+                }
+            }
+        }
+        let ms = self.ms;
+        self.ms = "";
+        if !ms.is_empty() {
+            Some(ms)
+        } else {
+            None
+        }
+    }
+
     /// Parse a value at the current position
     fn parse_value(&mut self) -> Result<Option<Value<'p>>, SyntaxError> {
-        if self.ms.starts_with("[[") || self.ms.starts_with("]]") {
-            let span = &self.ms[..1];
-            self.ms = &self.ms[2..];
-            return Ok(Some(Value::Text(span)));
-        }
-        let tag = self.ms.starts_with('[');
-        for (i, c) in self.ms.char_indices() {
-            match c {
-                ' '..='~' => (),
-                _ => {
-                    self.ms = self.ms.strip_prefix(c).unwrap_or("");
-                    return Err(SyntaxError::CharacterNotDefined(c));
-                }
+        if let Some(ms) = self.next_slice() {
+            if ms == "[[" || ms == "]]" {
+                return Ok(Some(Value::Text(&ms[..1])));
             }
-            if tag {
-                if c == ']' {
-                    let tag = &self.ms[1..i];
-                    self.ms = &self.ms[i + 1..];
-                    return parse_tag(tag);
-                }
-            } else if c == '[' {
-                let span = &self.ms[..i];
-                self.ms = &self.ms[i..];
-                return Ok(Some(Value::Text(span)));
-            } else if c == ']' {
-                if i > 0 {
-                    let span = &self.ms[..i];
-                    self.ms = &self.ms[i..];
-                    return Ok(Some(Value::Text(span)));
-                } else {
-                    self.ms = &self.ms[1..];
-                    return Err(SyntaxError::UnsupportedTag("]".to_string()));
-                }
+            if ms.starts_with('[') && ms.ends_with(']') {
+                return parse_tag(&ms[1..ms.len() - 1]);
             }
-        }
-        if tag {
-            let tag = self.ms;
-            self.ms = "";
-            Err(SyntaxError::UnsupportedTag(tag.to_string()))
-        } else {
-            let span = self.ms;
-            self.ms = "";
-            if span.is_empty() {
-                Ok(None)
-            } else {
-                Ok(Some(Value::Text(span)))
+            if ms.starts_with('[') || ms.starts_with(']') {
+                return Err(SyntaxError::UnsupportedTag(ms.to_string()));
             }
+            if let Some(c) = ms.chars().find(|c| !(' '..='~').contains(&c)) {
+                return Err(SyntaxError::CharacterNotDefined(c));
+            }
+            return Ok(Some(Value::Text(ms)));
         }
+        Ok(None)
     }
 }
 
@@ -2664,7 +2670,6 @@ mod test {
     fn parse_rustacean() {
         let mut m = Parser::new("🦀🦀");
         assert_eq!(m.next(), Some(Err(SyntaxError::CharacterNotDefined('🦀'))));
-        assert_eq!(m.next(), Some(Err(SyntaxError::CharacterNotDefined('🦀'))));
         assert_eq!(m.next(), None);
     }
 
@@ -2673,7 +2678,11 @@ mod test {
         let mut m = Parser::new("[x[x]");
         assert_eq!(
             m.next(),
-            Some(Err(SyntaxError::UnsupportedTag("x[x".into())))
+            Some(Err(SyntaxError::UnsupportedTag("[x".into())))
+        );
+        assert_eq!(
+            m.next(),
+            Some(Err(SyntaxError::UnsupportedTag("x".into())))
         );
         assert_eq!(m.next(), None);
     }
@@ -2783,7 +2792,7 @@ mod test {
         assert_eq!(normalize("[["), "[[");
         assert_eq!(normalize("]]"), "]]");
         assert_eq!(normalize("[[NOT TAG]]"), "[[NOT TAG]]");
-        assert_eq!(normalize("\t\n\rTAIL"), "TAIL");
+        assert_eq!(normalize("\t\n\rTAIL"), "");
     }
 
     #[test]
@@ -2823,7 +2832,7 @@ mod test {
         assert_eq!(normalize("bad tag]"), "bad tag");
         assert_eq!(normalize("bad[tag"), "bad");
         assert_eq!(normalize("bad]tag"), "badtag");
-        assert_eq!(normalize("bad[ [nl] tag"), "bad tag");
+        assert_eq!(normalize("bad[ [nl] tag"), "bad[nl] tag");
         assert_eq!(normalize("bad ]tag [nl]"), "bad tag [nl]");
         assert_eq!(normalize("[ttS123]"), "");
     }

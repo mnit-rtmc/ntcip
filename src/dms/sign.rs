@@ -401,28 +401,23 @@ impl Dms {
             })
     }
 
-    /// Find fillable text lines in a MULTI "pattern"
+    /// Find widths of fillable text line in a MULTI "pattern"
     ///
-    /// Returns an iterator of tuples containing a Rectangle and font
+    /// Returns an iterator of tuples containing pixel width and font
     /// number for each fillable line in the pattern.
-    pub fn fillable_lines<'a>(
+    pub fn fillable_widths<'a>(
         &'a self,
         pat_ms: &'a str,
-    ) -> impl Iterator<Item = (Rectangle, u8)> + 'a {
+    ) -> impl Iterator<Item = (u16, u8)> + 'a {
         let mut lines = Vec::new();
-        for (mut rect, font_num) in self.fillable_rectangles(pat_ms) {
+        for (rect, font_num) in self.fillable_rectangles(pat_ms) {
             if let Some(font) = self.font_definition().lookup(font_num) {
                 let height = u16::from(font.height);
                 let spacing = height + u16::from(font.line_spacing);
-                while rect.height >= height {
-                    let r = Rectangle::new(rect.x, rect.y, rect.width, height);
-                    lines.push((r, font_num));
-                    rect = Rectangle::new(
-                        rect.x,
-                        rect.y + spacing,
-                        rect.width,
-                        rect.height.saturating_sub(spacing),
-                    );
+                let mut rheight = rect.height;
+                while rheight >= height {
+                    lines.push((rect.width, font_num));
+                    rheight -= spacing;
                 }
             }
         }
@@ -449,7 +444,7 @@ mod test {
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 0,
                 char_width_pixels: 0,
-                sign_height_pixels: 26,
+                sign_height_pixels: 21,
                 sign_width_pixels: 50,
                 ..Default::default()
             })
@@ -465,16 +460,16 @@ mod test {
     fn fillable_rect1() {
         let dms = make_dms();
         let mut r = dms.fillable_rectangles("");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 26), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
         assert_eq!(r.next(), None);
     }
 
     #[test]
-    fn fillable_line1() {
+    fn fillable_width_1() {
         let dms = make_dms();
-        let mut r = dms.fillable_lines("");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 8), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 11, 50, 8), 8)));
+        let mut r = dms.fillable_widths("");
+        assert_eq!(r.next(), Some((50, 8)));
+        assert_eq!(r.next(), Some((50, 8)));
         assert_eq!(r.next(), None);
     }
 
@@ -489,19 +484,19 @@ mod test {
     fn fillable_rect3() {
         let dms = make_dms();
         let mut r = dms.fillable_rectangles("[np]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 26), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 26), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
         assert_eq!(r.next(), None);
     }
 
     #[test]
-    fn fillable_line3() {
+    fn fillable_width_3() {
         let dms = make_dms();
-        let mut r = dms.fillable_lines("[np]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 8), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 11, 50, 8), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 8), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 11, 50, 8), 8)));
+        let mut r = dms.fillable_widths("[np]");
+        assert_eq!(r.next(), Some((50, 8)));
+        assert_eq!(r.next(), Some((50, 8)));
+        assert_eq!(r.next(), Some((50, 8)));
+        assert_eq!(r.next(), Some((50, 8)));
         assert_eq!(r.next(), None);
     }
 
@@ -509,16 +504,16 @@ mod test {
     fn fillable_rect4() {
         let dms = make_dms();
         let mut r = dms.fillable_rectangles("FIRST[np]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 26), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
         assert_eq!(r.next(), None);
     }
 
     #[test]
-    fn fillable_line4() {
+    fn fillable_width_4() {
         let dms = make_dms();
-        let mut r = dms.fillable_lines("FIRST[np]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 8), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 11, 50, 8), 8)));
+        let mut r = dms.fillable_widths("FIRST[np]");
+        assert_eq!(r.next(), Some((50, 8)));
+        assert_eq!(r.next(), Some((50, 8)));
         assert_eq!(r.next(), None);
     }
 
@@ -526,7 +521,7 @@ mod test {
     fn fillable_rect5() {
         let dms = make_dms();
         let mut r = dms.fillable_rectangles("[np]SECOND");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 26), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
         assert_eq!(r.next(), None);
     }
 
@@ -534,9 +529,9 @@ mod test {
     fn fillable_rect6() {
         let dms = make_dms();
         let mut r = dms.fillable_rectangles("[np][np]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 26), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 26), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 26), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
         assert_eq!(r.next(), None);
     }
 
@@ -565,11 +560,11 @@ mod test {
     }
 
     #[test]
-    fn fillable_line9() {
+    fn fillable_width_9() {
         let dms = make_dms();
-        let mut r = dms.fillable_lines("[tr1,1,50,12][tr1,14,50,12]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 8), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 14, 50, 8), 8)));
+        let mut r = dms.fillable_widths("[tr1,1,50,12][tr1,14,50,12]");
+        assert_eq!(r.next(), Some((50, 8)));
+        assert_eq!(r.next(), Some((50, 8)));
         assert_eq!(r.next(), None);
     }
 
@@ -583,11 +578,11 @@ mod test {
     }
 
     #[test]
-    fn fillable_line10() {
+    fn fillable_width_10() {
         let dms = make_dms();
-        let mut r = dms.fillable_lines("[tr1,1,50,12][fo7][tr1,14,50,12]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 8), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 14, 50, 7), 7)));
+        let mut r = dms.fillable_widths("[tr1,1,50,12][fo7][tr1,14,50,12]");
+        assert_eq!(r.next(), Some((50, 8)));
+        assert_eq!(r.next(), Some((50, 7)));
         assert_eq!(r.next(), None);
     }
 
@@ -598,7 +593,7 @@ mod test {
             .fillable_rectangles("[tr1,1,50,12][fo7][tr1,14,50,12][fo8][np]");
         assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 12), 8)));
         assert_eq!(r.next(), Some((Rectangle::new(1, 14, 50, 12), 7)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 26), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
         assert_eq!(r.next(), None);
     }
 
@@ -606,19 +601,19 @@ mod test {
     fn fillable_rect12() {
         let dms = make_dms();
         let mut r = dms.fillable_rectangles("[tr1,1,25,0][tr26,1,0,0]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 25, 26), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(26, 1, 25, 26), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 25, 21), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(26, 1, 25, 21), 8)));
         assert_eq!(r.next(), None);
     }
 
     #[test]
-    fn fillable_line12() {
+    fn fillable_width_12() {
         let dms = make_dms();
-        let mut r = dms.fillable_lines("[tr1,1,25,0][tr26,1,0,0]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 25, 8), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 11, 25, 8), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(26, 1, 25, 8), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(26, 11, 25, 8), 8)));
+        let mut r = dms.fillable_widths("[tr1,1,25,0][tr26,1,0,0]");
+        assert_eq!(r.next(), Some((25, 8)));
+        assert_eq!(r.next(), Some((25, 8)));
+        assert_eq!(r.next(), Some((25, 8)));
+        assert_eq!(r.next(), Some((25, 8)));
         assert_eq!(r.next(), None);
     }
 }

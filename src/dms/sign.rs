@@ -5,8 +5,8 @@
 use crate::dms::config::{MultiCfg, SignCfg, VmsCfg};
 use crate::dms::font::FontTable;
 use crate::dms::graphic::GraphicTable;
-use crate::dms::multi::{ColorCtx, ColorScheme, Parser, Rectangle, Value};
-use std::iter::once;
+use crate::dms::multi::{ColorCtx, ColorScheme, Rectangle};
+use crate::dms::pattern::{PatternParser, PatternValue};
 
 /// Builder for DMS
 #[derive(Clone, Default)]
@@ -345,60 +345,9 @@ impl Dms {
         ColorCtx::new(color_scheme, fg_default, bg_default)
     }
 
-    /// Find fillable text rectangles in a MULTI "pattern"
-    ///
-    /// Returns an iterator of tuples containing a Rectangle and font
-    /// number for each fillable rectangle in the pattern.
-    pub(crate) fn fillable_rectangles<'a>(
-        &'a self,
-        pattern: &'a str,
-    ) -> impl Iterator<Item = (Rectangle, u8)> + 'a {
-        let full_rect =
-            Rectangle::new(1, 1, self.pixel_width(), self.pixel_height());
-        let mut font_num = self.multi_cfg.default_font;
-        let mut rect_font = (full_rect, font_num);
-        let mut fillable = true;
-        // NewPage is needed at the end to check for final fillable rect
-        Parser::new(pattern)
-            .flatten()
-            .chain(once(Value::NewPage()))
-            .filter_map(move |v| match v {
-                Value::Font(None) => {
-                    font_num = self.multi_cfg.default_font;
-                    None
-                }
-                Value::Font(Some((n, _))) => {
-                    font_num = n;
-                    None
-                }
-                Value::Text(_) | Value::NewLine(_) => {
-                    fillable = false;
-                    None
-                }
-                Value::NewPage() => {
-                    let fill = fillable;
-                    fillable = true;
-                    let rf = rect_font;
-                    rect_font = (full_rect, font_num);
-                    if fill {
-                        Some(rf)
-                    } else {
-                        None
-                    }
-                }
-                Value::TextRectangle(tr) => {
-                    let fill = fillable && (rect_font.0 != full_rect);
-                    fillable = true;
-                    let rf = rect_font;
-                    rect_font = (tr.extend_width_height(full_rect), font_num);
-                    if fill {
-                        Some(rf)
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            })
+    /// Get a rectangle of the full sign
+    pub(crate) fn full_rect(&self) -> Rectangle {
+        Rectangle::new(1, 1, self.pixel_width(), self.pixel_height())
     }
 
     /// Find widths of fillable text line in a MULTI "pattern"
@@ -410,7 +359,13 @@ impl Dms {
         pattern: &'a str,
     ) -> impl Iterator<Item = (u16, u8)> + 'a {
         let mut lines = Vec::new();
-        for (rect, font_num) in self.fillable_rectangles(pattern) {
+        for (rect, font_num) in PatternParser::new(self, pattern)
+            .flatten()
+            .filter_map(|v| match v {
+                PatternValue::FillableRect(r, f) => Some((r, f)),
+                _ => None,
+            })
+        {
             if let Some(font) = self.font_definition().lookup(font_num) {
                 let height = u16::from(font.height);
                 let spacing = height + u16::from(font.line_spacing);
@@ -457,14 +412,6 @@ mod test {
     }
 
     #[test]
-    fn fillable_rect1() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
     fn fillable_width_1() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("");
@@ -474,23 +421,7 @@ mod test {
     }
 
     #[test]
-    fn fillable_rect2() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("TEXT");
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_rect3() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("[np]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_width_3() {
+    fn fillable_width_2() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("[np]");
         assert_eq!(r.next(), Some((50, 8)));
@@ -501,15 +432,7 @@ mod test {
     }
 
     #[test]
-    fn fillable_rect4() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("FIRST[np]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_width_4() {
+    fn fillable_width_3() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("FIRST[np]");
         assert_eq!(r.next(), Some((50, 8)));
@@ -518,49 +441,7 @@ mod test {
     }
 
     #[test]
-    fn fillable_rect5() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("[np]SECOND");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_rect6() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("[np][np]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_rect7() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("[tr1,1,50,24]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 24), 8)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_rect8() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("[tr1,1,50,24]TEXT");
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_rect9() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("[tr1,1,50,12][tr1,14,50,12]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 12), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 14, 50, 12), 8)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_width_9() {
+    fn fillable_width_4() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("[tr1,1,50,12][tr1,14,50,12]");
         assert_eq!(r.next(), Some((50, 8)));
@@ -569,16 +450,7 @@ mod test {
     }
 
     #[test]
-    fn fillable_rect10() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("[tr1,1,50,12][fo7][tr1,14,50,12]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 12), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 14, 50, 12), 7)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_width_10() {
+    fn fillable_width_5() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("[tr1,1,50,12][fo7][tr1,14,50,12]");
         assert_eq!(r.next(), Some((50, 8)));
@@ -587,27 +459,7 @@ mod test {
     }
 
     #[test]
-    fn fillable_rect11() {
-        let dms = make_dms();
-        let mut r = dms
-            .fillable_rectangles("[tr1,1,50,12][fo7][tr1,14,50,12][fo8][np]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 12), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 14, 50, 12), 7)));
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_rect12() {
-        let dms = make_dms();
-        let mut r = dms.fillable_rectangles("[tr1,1,25,0][tr26,1,0,0]");
-        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 25, 21), 8)));
-        assert_eq!(r.next(), Some((Rectangle::new(26, 1, 25, 21), 8)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_width_12() {
+    fn fillable_width_6() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("[tr1,1,25,0][tr26,1,0,0]");
         assert_eq!(r.next(), Some((25, 8)));

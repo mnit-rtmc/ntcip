@@ -9,6 +9,7 @@ pub mod config;
 pub mod font;
 pub mod graphic;
 pub mod multi;
+mod pattern;
 mod render;
 mod sign;
 

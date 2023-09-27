@@ -5,8 +5,8 @@
 use crate::dms::config::{MultiCfg, SignCfg, VmsCfg};
 use crate::dms::font::FontTable;
 use crate::dms::graphic::GraphicTable;
-use crate::dms::multi::{ColorCtx, ColorScheme, Rectangle};
-use crate::dms::pattern::{PatternParser, PatternValue};
+use crate::dms::multi::{ColorCtx, ColorScheme, Parser, Rectangle, Value};
+use crate::dms::pattern::{PatValue, PatternParser};
 
 /// Builder for DMS
 #[derive(Clone, Default)]
@@ -362,17 +362,84 @@ impl Dms {
         for (rect, font_num) in PatternParser::new(self, pattern)
             .flatten()
             .filter_map(|v| match v {
-                PatternValue::FillableRect(r, f) => Some((r, f)),
+                PatValue::FillableRect(r, f) => Some((r, f)),
                 _ => None,
             })
         {
-            if let Some(font) = self.font_definition().lookup(font_num) {
-                let height = u16::from(font.height);
-                let spacing = height + u16::from(font.line_spacing);
-                let mut rheight = rect.height;
-                while rheight >= height {
-                    lines.push((rect.width, font_num));
-                    rheight -= spacing;
+            for _ in 0..self.rect_lines(rect, font_num) {
+                lines.push((rect.width, font_num));
+            }
+        }
+        lines.into_iter()
+    }
+
+    /// Get the number of lines in a text rectangle
+    fn rect_lines(&self, rect: Rectangle, font_num: u8) -> usize {
+        let mut n_lines = 0;
+        if let Some(font) = self.font_definition().lookup(font_num) {
+            let height = u16::from(font.height);
+            let spacing = height + u16::from(font.line_spacing);
+            let mut rheight = rect.height;
+            while rheight >= height {
+                n_lines += 1;
+                rheight -= spacing;
+            }
+        }
+        n_lines
+    }
+
+    /// Find fillable text lines matching a MULTI "pattern"
+    ///
+    /// Returns an iterator of string slices matching each fillable line in
+    /// the pattern.
+    pub fn fillable_lines<'a>(
+        &'a self,
+        pattern: &'a str,
+        ms: &'a str,
+    ) -> impl Iterator<Item = &'a str> {
+        let mut lines = Vec::new();
+        let mut values = Parser::new(ms);
+        for pval in PatternParser::new(self, pattern).flatten() {
+            match pval {
+                PatValue::FillableRect(rect, font_num) => {
+                    let mut n_lines = self.rect_lines(rect, font_num);
+                    values.set_checkpoint();
+                    let mut check = values.checkpointed();
+                    loop {
+                        let value = values.next();
+                        match value {
+                            Some(Ok(Value::Text(_)
+                                | Value::ColorForeground(_)
+                                | Value::JustificationLine(_)
+                                | Value::SpacingCharacter(_)
+                                | Value::SpacingCharacterEnd(),
+                            )) => (),
+                            Some(Ok(Value::NewLine(_))) => {
+                                if n_lines > 0 {
+                                    lines.push(check);
+                                    n_lines -= 1;
+                                    values.set_checkpoint();
+                                }
+                            }
+                            _ => break,
+                        }
+                        check = values.checkpointed();
+                    }
+                    for _ in 0..n_lines {
+                        lines.push(check);
+                        values.set_checkpoint();
+                        check = values.checkpointed();
+                    }
+                }
+                PatValue::Value(val) => {
+                    match values.next() {
+                        Some(Ok(v)) if v == val => (),
+                        _ => {
+                            // ms does not match pattern
+                            lines.clear();
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -417,6 +484,15 @@ mod test {
         let mut r = dms.fillable_widths("");
         assert_eq!(r.next(), Some((50, 8)));
         assert_eq!(r.next(), Some((50, 8)));
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
+    fn fillable_lines_1() {
+        let dms = make_dms();
+        let mut r = dms.fillable_lines("", "LINE 1[nl]LINE 2");
+        assert_eq!(r.next(), Some("LINE 1"));
+        assert_eq!(r.next(), Some("LINE 2"));
         assert_eq!(r.next(), None);
     }
 

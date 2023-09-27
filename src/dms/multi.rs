@@ -278,6 +278,12 @@ pub enum SyntaxError {
 pub(crate) struct Parser<'p> {
     /// Remaining slice to parse
     ms: &'p str,
+
+    /// Checkpoint offset
+    checkpoint: usize,
+
+    /// Current offset
+    offset: usize,
 }
 
 impl ColorClassic {
@@ -1223,33 +1229,56 @@ impl<'p> Parser<'p> {
     /// Create a new MULTI parser
     pub fn new(ms: &'p str) -> Self {
         debug!("Parser::new {}", ms);
-        Parser { ms }
+        Parser {
+            ms,
+            checkpoint: 0,
+            offset: 0,
+        }
+    }
+
+    /// Set checkpoint
+    pub fn set_checkpoint(&mut self) {
+        self.checkpoint = self.offset;
+    }
+
+    /// Get checkpointed slice
+    pub fn checkpointed(&self) -> &'p str {
+        &self.ms[self.checkpoint..self.offset]
+    }
+
+    /// Get remaining slice
+    fn remaining(&self) -> &'p str {
+        &self.ms[self.offset..]
+    }
+
+    /// Chop starting slice
+    fn chop_start(&mut self, i: usize) -> Option<&'p str> {
+        debug_assert!(i > 0);
+        let ms = &self.ms[self.offset..self.offset + i];
+        self.offset += i;
+        Some(ms)
     }
 
     /// Get the next slice, split on tag boundaries
-    fn next_slice(&mut self) -> Option<&'p str> {
-        let ms;
-        if self.ms.starts_with("[[") || self.ms.starts_with("]]") {
-            (ms, self.ms) = self.ms.split_at(2);
-            return Some(ms);
+    pub(crate) fn next_slice(&mut self) -> Option<&'p str> {
+        let ms = self.remaining();
+        if ms.starts_with("[[") || ms.starts_with("]]") {
+            return self.chop_start(2);
         }
-        for (i, c) in self.ms.char_indices() {
+        for (i, c) in ms.char_indices() {
             if c == '[' && i > 0 {
-                (ms, self.ms) = self.ms.split_at(i);
-                return Some(ms);
+                return self.chop_start(i);
             }
             if c == ']' {
-                if self.ms.starts_with('[') {
-                    (ms, self.ms) = self.ms.split_at(i + 1);
-                    return Some(ms);
+                if ms.starts_with('[') {
+                    return self.chop_start(i + 1);
                 } else {
-                    (ms, self.ms) = self.ms.split_at(i.max(1));
-                    return Some(ms);
+                    return self.chop_start(i.max(1));
                 }
             }
         }
-        ms = self.ms;
-        self.ms = "";
+        let ms = self.remaining();
+        self.offset += ms.len();
         if !ms.is_empty() {
             Some(ms)
         } else {

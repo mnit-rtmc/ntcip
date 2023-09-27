@@ -7,7 +7,7 @@ use crate::dms::sign::Dms;
 
 /// Pattern values are MULTI values or "pseudo-values" from a pattern
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum PatternValue<'p> {
+pub(crate) enum PatValue<'p> {
     /// MULTI value
     Value(Value<'p>),
     /// Fillable rectangle (w/font number)
@@ -49,12 +49,12 @@ impl<'p> PatternParser<'p> {
 }
 
 impl<'p> Iterator for PatternParser<'p> {
-    type Item = Result<PatternValue<'p>, SyntaxError>;
+    type Item = Result<PatValue<'p>, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let value = self.value.take();
         if let Some(v) = value {
-            return Some(Ok(PatternValue::Value(v)));
+            return Some(Ok(PatValue::Value(v)));
         }
         if self.end {
             return None;
@@ -81,8 +81,10 @@ impl<'p> Iterator for PatternParser<'p> {
                 let rect_font = self.rect_font;
                 self.rect_font = Some((self.dms.full_rect(), self.font_num));
                 if let Some((rect, font)) = rect_font {
-                    self.value = Some(value);
-                    return Some(Ok(PatternValue::FillableRect(rect, font)));
+                    if !self.end {
+                        self.value = Some(value);
+                    }
+                    return Some(Ok(PatValue::FillableRect(rect, font)));
                 }
             }
             Value::TextRectangle(tr) => {
@@ -93,15 +95,13 @@ impl<'p> Iterator for PatternParser<'p> {
                 if let Some((rect, font)) = rect_font {
                     if rect != full_rect {
                         self.value = Some(value);
-                        return Some(Ok(PatternValue::FillableRect(
-                            rect, font,
-                        )));
+                        return Some(Ok(PatValue::FillableRect(rect, font)));
                     }
                 }
             }
             _ => (),
         }
-        Some(Ok(PatternValue::Value(value)))
+        Some(Ok(PatValue::Value(value)))
     }
 }
 
@@ -144,7 +144,7 @@ mod test {
         PatternParser::new(&dms, ms)
             .flatten()
             .filter_map(|v| match v {
-                PatternValue::FillableRect(r, f) => Some((r, f)),
+                PatValue::FillableRect(r, f) => Some((r, f)),
                 _ => None,
             })
     }

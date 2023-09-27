@@ -395,44 +395,47 @@ impl Dms {
     pub fn fillable_lines<'a>(
         &'a self,
         pattern: &'a str,
-        ms: &'a str,
+        mut ms: &'a str,
     ) -> impl Iterator<Item = &'a str> {
         let mut lines = Vec::new();
-        let mut values = Parser::new(ms);
         for pval in PatternParser::new(self, pattern).flatten() {
             match pval {
                 PatValue::FillableRect(rect, font_num) => {
                     let mut n_lines = self.rect_lines(rect, font_num);
-                    values.set_checkpoint();
-                    let mut check = values.checkpointed();
+                    let mut values = Parser::new(ms);
+                    let (mut before, mut after) = values.split();
                     loop {
                         let value = values.next();
                         match value {
-                            Some(Ok(Value::Text(_)
+                            Some(Ok(
+                                Value::Text(_)
                                 | Value::ColorForeground(_)
                                 | Value::JustificationLine(_)
                                 | Value::SpacingCharacter(_)
                                 | Value::SpacingCharacterEnd(),
-                            )) => (),
+                            )) => (before, after) = values.split(),
                             Some(Ok(Value::NewLine(_))) => {
                                 if n_lines > 0 {
-                                    lines.push(check);
+                                    lines.push(before);
                                     n_lines -= 1;
-                                    values.set_checkpoint();
                                 }
+                                (_, ms) = values.split();
+                                values = Parser::new(ms);
+                                (before, after) = values.split();
                             }
                             _ => break,
                         }
-                        check = values.checkpointed();
                     }
                     for _ in 0..n_lines {
-                        lines.push(check);
-                        values.set_checkpoint();
-                        check = values.checkpointed();
+                        lines.push(before);
+                        before = "";
                     }
+                    ms = after;
                 }
                 PatValue::Value(val) => {
-                    match values.next() {
+                    let mut values = Parser::new(ms);
+                    let value = values.next();
+                    match value {
                         Some(Ok(v)) if v == val => (),
                         _ => {
                             // ms does not match pattern
@@ -440,6 +443,8 @@ impl Dms {
                             break;
                         }
                     }
+                    let (_before, after) = values.split();
+                    ms = after;
                 }
             }
         }
@@ -508,11 +513,31 @@ mod test {
     }
 
     #[test]
+    fn fillable_lines_2() {
+        let dms = make_dms();
+        let mut r = dms.fillable_lines("[np]", "PAGE 1[np]PAGE 2");
+        assert_eq!(r.next(), Some("PAGE 1"));
+        assert_eq!(r.next(), Some(""));
+        assert_eq!(r.next(), Some("PAGE 2"));
+        assert_eq!(r.next(), Some(""));
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
     fn fillable_width_3() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("FIRST[np]");
         assert_eq!(r.next(), Some((50, 8)));
         assert_eq!(r.next(), Some((50, 8)));
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
+    fn fillable_lines_3() {
+        let dms = make_dms();
+        let mut r = dms.fillable_lines("FIRST[np]", "FIRST[np]SECOND");
+        assert_eq!(r.next(), Some("SECOND"));
+        assert_eq!(r.next(), Some(""));
         assert_eq!(r.next(), None);
     }
 
@@ -526,11 +551,35 @@ mod test {
     }
 
     #[test]
+    fn fillable_lines_4() {
+        let dms = make_dms();
+        let mut r = dms.fillable_lines(
+            "[tr1,1,50,12][tr1,14,50,12]",
+            "[tr1,1,50,12]FIRST[tr1,14,50,12]SECOND",
+        );
+        assert_eq!(r.next(), Some("FIRST"));
+        assert_eq!(r.next(), Some("SECOND"));
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
     fn fillable_width_5() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("[tr1,1,50,12][fo7][tr1,14,50,12]");
         assert_eq!(r.next(), Some((50, 8)));
         assert_eq!(r.next(), Some((50, 7)));
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
+    fn fillable_lines_5() {
+        let dms = make_dms();
+        let mut r = dms.fillable_lines(
+            "[tr1,1,50,12][fo7][tr1,14,50,12]",
+            "[tr1,1,50,12]1ST[fo7][tr1,14,50,12]2ND",
+        );
+        assert_eq!(r.next(), Some("1ST"));
+        assert_eq!(r.next(), Some("2ND"));
         assert_eq!(r.next(), None);
     }
 

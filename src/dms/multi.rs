@@ -279,9 +279,6 @@ pub(crate) struct Parser<'p> {
     /// Remaining slice to parse
     ms: &'p str,
 
-    /// Checkpoint offset
-    checkpoint: usize,
-
     /// Current offset
     offset: usize,
 }
@@ -1229,21 +1226,11 @@ impl<'p> Parser<'p> {
     /// Create a new MULTI parser
     pub fn new(ms: &'p str) -> Self {
         debug!("Parser::new {}", ms);
-        Parser {
-            ms,
-            checkpoint: 0,
-            offset: 0,
-        }
+        Parser { ms, offset: 0 }
     }
 
-    /// Set checkpoint
-    pub fn set_checkpoint(&mut self) {
-        self.checkpoint = self.offset;
-    }
-
-    /// Get checkpointed slice
-    pub fn checkpointed(&self) -> &'p str {
-        &self.ms[self.checkpoint..self.offset]
+    pub fn split(&self) -> (&'p str, &'p str) {
+        self.ms.split_at(self.offset)
     }
 
     /// Get remaining slice

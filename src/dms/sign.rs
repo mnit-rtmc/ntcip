@@ -432,9 +432,17 @@ impl Dms {
                     }
                     ms = after;
                 }
+                PatValue::Value(Value::Font(_)) => {
+                    // ignore font tags in pattern
+                    // since they are after fillable text
+                }
                 PatValue::Value(val) => {
                     let mut values = Parser::new(ms);
-                    let value = values.next();
+                    let mut value = values.next();
+                    // ignore font tags in ms
+                    while let Some(Ok(Value::Font(_))) = &value {
+                        value = values.next();
+                    }
                     match value {
                         Some(Ok(v)) if v == val => (),
                         _ => {
@@ -591,6 +599,27 @@ mod test {
         assert_eq!(r.next(), Some((25, 8)));
         assert_eq!(r.next(), Some((25, 8)));
         assert_eq!(r.next(), Some((25, 8)));
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
+    fn fillable_lines_6() {
+        let dms = make_dms();
+        let mut r = dms.fillable_lines(
+            "[tr1,1,25,0][tr26,1,0,0]",
+            "[tr1,1,25,0]ONE[tr26,1,0,0]TWO",
+        );
+        assert_eq!(r.next(), Some("ONE"));
+        assert_eq!(r.next(), Some(""));
+        assert_eq!(r.next(), Some("TWO"));
+        assert_eq!(r.next(), Some(""));
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
+    fn fillable_lines_fail() {
+        let dms = make_dms();
+        let mut r = dms.fillable_lines("[tr1,1,25,0]", "[tr1,1,25,21]TEXT");
         assert_eq!(r.next(), None);
     }
 }

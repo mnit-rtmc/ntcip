@@ -333,6 +333,14 @@ impl<'a> Pages<'a> {
     ///
     /// * `dms` Sign to render.
     /// * `ms` MULTI string to render.
+    ///
+    /// Some tags are not supported:
+    ///
+    /// * `[f…]`: Field
+    /// * `[fl…]`: Flash
+    /// * `[ms…]`: Manufacturer Specific
+    /// * `[mv…]`: Moving Text
+    ///
     pub fn new(dms: &'a Dms, ms: &'a str) -> Self {
         let default_state = RenderState::new(dms);
         let render_state = default_state.clone();

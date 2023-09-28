@@ -2,7 +2,29 @@
 //
 // Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
-//! MarkUp Language for Transportation Information
+//! **M**ark**U**p **L**anguage for **T**ransportation **I**nformation
+//!
+//! Tags:
+//!
+//! * `[cb…]`: Color — Background
+//! * `[cf…]`: Color — Foreground
+//! * `[cr…]`: Color Rectangle
+//! * `[f…]`: Field
+//! * `[fl…]`: Flash
+//! * `[fo…]`: Font
+//! * `[g…]`: Graphic
+//! * `[hc…]`: Hexadecimal Character
+//! * `[jl…]`: Justification — Line
+//! * `[jp…]`: Justification — Page
+//! * `[ms…]`: Manufacturer Specific
+//! * `[mv…]`: Moving Text
+//! * `[nl…]`: New Line
+//! * `[np]`: New Page
+//! * `[pb…]`: Page Background
+//! * `[pt…]`: Page Time
+//! * `[sc…]`: Spacing Character
+//! * `[tr…]`: Text Rectangle
+//!
 use log::{debug, warn};
 use std::fmt;
 use std::str::FromStr;

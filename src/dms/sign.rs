@@ -426,8 +426,10 @@ impl Dms {
                             _ => break,
                         }
                     }
-                    for _ in 0..n_lines {
+                    // pad extra lines in rectangle
+                    while n_lines > 0 {
                         lines.push(before);
+                        n_lines -= 1;
                         before = "";
                     }
                     ms = after;
@@ -446,7 +448,7 @@ impl Dms {
                     match value {
                         Some(Ok(v)) if v == val => (),
                         _ => {
-                            // ms does not match pattern
+                            // abort!  ms does not match pattern
                             lines.clear();
                             break;
                         }

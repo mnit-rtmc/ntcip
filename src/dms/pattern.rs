@@ -7,18 +7,15 @@ use crate::dms::sign::Dms;
 
 /// Pattern values are MULTI values or "pseudo-values" from a pattern
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum PatValue<'p> {
+enum PatValue<'p> {
     /// MULTI value
     Value(Value<'p>),
     /// Fillable rectangle (w/font number)
     FillableRect(Rectangle, u8),
 }
 
-/// Find fillable text rectangles in a MULTI "pattern"
-///
-/// Returns an iterator of tuples containing a Rectangle and font
-/// number for each fillable rectangle in the pattern.
-pub(crate) struct PatternParser<'p> {
+/// Pattern value iterator
+struct PatIter<'p> {
     /// Sign
     dms: &'p Dms,
     /// MULTI parser
@@ -33,11 +30,31 @@ pub(crate) struct PatternParser<'p> {
     end: bool,
 }
 
-impl<'p> PatternParser<'p> {
-    pub fn new(dms: &'p Dms, ms: &'p str) -> Self {
+/// Fillable MULTI pattern
+///
+/// This is a message which can be composed with lines of text.  The fillable
+/// parts are blank text rectangles or pages:
+///
+/// * `[tr…]` tag
+/// * `[np]` tag
+/// * Implicit page at start of message
+///
+/// To be fillable, a rectangle or page must not be followed by any text or
+/// tags before the next `[tr…]` or `[np]` tag.  The only exception allowed
+/// is the `[fo…]` tag, which applies to the **next** rectangle or page.
+pub struct FillablePattern<'p> {
+    /// Sign
+    dms: &'p Dms,
+    /// MULTI string
+    ms: &'p str,
+}
+
+impl<'p> PatIter<'p> {
+    /// Create a new pattern iterator
+    fn new(dms: &'p Dms, ms: &'p str) -> Self {
         let rect = dms.full_rect();
         let font_num = dms.multi_cfg.default_font;
-        PatternParser {
+        PatIter {
             parser: Parser::new(ms),
             value: None,
             dms,
@@ -48,7 +65,139 @@ impl<'p> PatternParser<'p> {
     }
 }
 
-impl<'p> Iterator for PatternParser<'p> {
+impl<'p> FillablePattern<'p> {
+    /// Create a new fillable pattern
+    ///
+    /// * `dms`: The sign
+    /// * `ms`: MULTI string
+    pub fn new(dms: &'p Dms, ms: &'p str) -> Self {
+        FillablePattern { dms, ms }
+    }
+
+    /// Find widths of fillable text lines
+    ///
+    /// Returns an iterator of tuples containing pixel width and font
+    /// number for each fillable line in the pattern.
+    pub fn widths(self) -> impl Iterator<Item = (u16, u8)> + 'p {
+        let dms = self.dms;
+        let mut lines = Vec::new();
+        for (rect, font_num) in PatIter::new(self.dms, self.ms)
+            .flatten()
+            .filter_map(|v| match v {
+                PatValue::FillableRect(r, f) => Some((r, f)),
+                _ => None,
+            })
+        {
+            for _ in 0..dms.rect_lines(rect, font_num) {
+                lines.push((rect.width, font_num));
+            }
+        }
+        lines.into_iter()
+    }
+
+    /// Fill lines into "fillable" parts of the pattern
+    pub fn fill(self, mut lines: impl Iterator<Item = &'p str>) -> String {
+        let mut font_val = None;
+        let mut ms = String::new();
+        for value in PatIter::new(self.dms, self.ms) {
+            match value {
+                Ok(PatValue::Value(Value::Font(fv))) => font_val = Some(fv),
+                Ok(PatValue::Value(val)) => ms.push_str(&val.to_string()),
+                Ok(PatValue::FillableRect(rect, font_num)) => {
+                    for i in 0..self.dms.rect_lines(rect, font_num) {
+                        match lines.next() {
+                            Some(line) => {
+                                if i > 0 {
+                                    ms.push_str("[nl]");
+                                }
+                                ms.push_str(line);
+                            }
+                            None => break,
+                        }
+                    }
+                    // defer font tag until lines are filled
+                    if let Some(fv) = font_val {
+                        ms.push_str(&Value::Font(fv).to_string());
+                    }
+                    font_val = None;
+                }
+                Err(_) => return String::new(),
+            }
+        }
+        ms
+    }
+
+    /// Find text lines in a MULTI string matching pattern
+    ///
+    /// Returns an iterator of string slices matching each fillable line in
+    /// the pattern.
+    pub fn lines(self, mut ms: &str) -> impl Iterator<Item = &str> {
+        let mut lines = Vec::new();
+        for pval in PatIter::new(self.dms, self.ms).flatten() {
+            match pval {
+                PatValue::FillableRect(rect, font_num) => {
+                    let mut n_lines = self.dms.rect_lines(rect, font_num);
+                    let mut values = Parser::new(ms);
+                    let (mut before, mut after) = values.split();
+                    loop {
+                        let value = values.next();
+                        match value {
+                            Some(Ok(
+                                Value::Text(_)
+                                | Value::ColorForeground(_)
+                                | Value::JustificationLine(_)
+                                | Value::SpacingCharacter(_)
+                                | Value::SpacingCharacterEnd(),
+                            )) => (before, after) = values.split(),
+                            Some(Ok(Value::NewLine(_))) => {
+                                if n_lines > 0 {
+                                    lines.push(before);
+                                    n_lines -= 1;
+                                }
+                                (_, ms) = values.split();
+                                values = Parser::new(ms);
+                                (before, after) = values.split();
+                            }
+                            _ => break,
+                        }
+                    }
+                    // pad extra lines in rectangle
+                    while n_lines > 0 {
+                        lines.push(before);
+                        n_lines -= 1;
+                        before = "";
+                    }
+                    ms = after;
+                }
+                PatValue::Value(Value::Font(_)) => {
+                    // ignore font tags in pattern
+                    // since they are after fillable text
+                }
+                PatValue::Value(val) => {
+                    let mut values = Parser::new(ms);
+                    let mut value = values.next();
+                    // ignore font tags in ms
+                    while let Some(Ok(Value::Font(_))) = &value {
+                        value = values.next();
+                    }
+                    match value {
+                        Some(Ok(v)) if v == val => (),
+                        _ => {
+                            // abort!  ms does not match pattern
+                            lines.clear();
+                            break;
+                        }
+                    }
+                    let (_before, after) = values.split();
+                    ms = after;
+                }
+            }
+        }
+        lines.into_iter()
+    }
+}
+
+impl<'p> Iterator for PatIter<'p> {
     type Item = Result<PatValue<'p>, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -141,12 +290,10 @@ mod test {
         dms: &'p Dms,
         ms: &'p str,
     ) -> impl Iterator<Item = (Rectangle, u8)> + 'p {
-        PatternParser::new(&dms, ms)
-            .flatten()
-            .filter_map(|v| match v {
-                PatValue::FillableRect(r, f) => Some((r, f)),
-                _ => None,
-            })
+        PatIter::new(&dms, ms).flatten().filter_map(|v| match v {
+            PatValue::FillableRect(r, f) => Some((r, f)),
+            _ => None,
+        })
     }
 
     #[test]
@@ -250,5 +397,137 @@ mod test {
         assert_eq!(r.next(), Some((Rectangle::new(1, 1, 25, 21), 8)));
         assert_eq!(r.next(), Some((Rectangle::new(26, 1, 25, 21), 8)));
         assert_eq!(r.next(), None);
+    }
+
+    #[test]
+    fn fillable_width_1() {
+        let dms = make_dms();
+        let mut w = FillablePattern::new(&dms, "").widths();
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), None);
+    }
+
+    #[test]
+    fn fillable_width_2() {
+        let dms = make_dms();
+        let mut w = FillablePattern::new(&dms, "[np]").widths();
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), None);
+    }
+
+    #[test]
+    fn fillable_width_3() {
+        let dms = make_dms();
+        let mut w = FillablePattern::new(&dms, "FIRST[np]").widths();
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), None);
+    }
+
+    #[test]
+    fn fillable_width_4() {
+        let dms = make_dms();
+        let mut w =
+            FillablePattern::new(&dms, "[tr1,1,50,12][tr1,14,50,12]").widths();
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), None);
+    }
+
+    #[test]
+    fn fillable_width_5() {
+        let dms = make_dms();
+        let mut w =
+            FillablePattern::new(&dms, "[tr1,1,50,12][fo7][tr1,14,50,12]")
+                .widths();
+        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 7)));
+        assert_eq!(w.next(), None);
+    }
+
+    #[test]
+    fn fillable_width_6() {
+        let dms = make_dms();
+        let mut w =
+            FillablePattern::new(&dms, "[tr1,1,25,0][tr26,1,0,0]").widths();
+        assert_eq!(w.next(), Some((25, 8)));
+        assert_eq!(w.next(), Some((25, 8)));
+        assert_eq!(w.next(), Some((25, 8)));
+        assert_eq!(w.next(), Some((25, 8)));
+        assert_eq!(w.next(), None);
+    }
+
+    #[test]
+    fn fillable_lines_fail() {
+        let dms = make_dms();
+        let mut l = FillablePattern::new(&dms, "TEXT").lines("TEXT");
+        assert_eq!(l.next(), None);
+        l = FillablePattern::new(&dms, "[tr1,1,25,0]")
+            .lines("[tr1,1,25,21]TEXT");
+        assert_eq!(l.next(), None);
+    }
+
+    fn roundtrip_1(pattern: &str, ms: &str) {
+        let dms = make_dms();
+        let lines = FillablePattern::new(&dms, pattern).lines(ms);
+        let res = FillablePattern::new(&dms, pattern).fill(lines);
+        assert_eq!(res, ms);
+    }
+
+    fn roundtrip_2(pattern: &str, ms: &str, ms2: &str) {
+        let dms = make_dms();
+        let lines = FillablePattern::new(&dms, pattern).lines(ms);
+        let res = FillablePattern::new(&dms, pattern).fill(lines);
+        assert_eq!(res, ms2);
+    }
+
+    #[test]
+    fn roundtrip_fillable_1() {
+        roundtrip_1("", "[nl]");
+        roundtrip_1("", "LINE 1[nl]LINE 2");
+        roundtrip_1("", "ABC[nl][jl2]D[jl3]E[jl4]F");
+        roundtrip_1("", "ABC[sc3]DEF[/sc][nl]");
+        roundtrip_1("[np]", "[nl][np][nl]");
+        roundtrip_1("[np]", "PAGE 1[nl][np]PAGE 2[nl]");
+        roundtrip_1("FIRST[np]", "FIRST[np]SECOND[nl]");
+        roundtrip_1("[np][np]", "[nl][np][nl][np][nl]");
+        roundtrip_1("", "CRASH[nl]AHEAD");
+        roundtrip_1(
+            "[tr1,1,50,12][tr1,14,50,12]",
+            "[tr1,1,50,12]FIRST[tr1,14,50,12]SECOND",
+        );
+        roundtrip_1(
+            "[tr1,1,50,12][fo7][tr1,14,50,12]",
+            "[tr1,1,50,12]1ST[fo7][tr1,14,50,12]2ND",
+        );
+        roundtrip_1(
+            "[tr1,1,50,8][fo7][tr1,10,50,7]",
+            "[tr1,1,50,8]ABC[fo7][tr1,10,50,7]123",
+        );
+        roundtrip_1("[g1][tr1,10,50,8]", "[g1][tr1,10,50,8]TEXT");
+    }
+
+    #[test]
+    fn roundtrip_fillable_2() {
+        roundtrip_2("", "ABC[nl3]DEF", "ABC[nl]DEF");
+        // check that non-line tags are stripped
+        roundtrip_2("", "[cb8]ABC", "[nl]");
+        roundtrip_2("", "[pb0,0,0]ABC", "[nl]");
+        roundtrip_2("", "[cr255,0,0,0]ABC", "[nl]");
+        roundtrip_2("", "[fo7]ABC", "[nl]");
+        roundtrip_2("", "[g1,0,0]ABC", "[nl]");
+        roundtrip_2("", "[jp3]ABC", "[nl]");
+        roundtrip_2("", "[pt50o0]ABC", "[nl]");
+        roundtrip_2("[np]", "PAGE 1[np]PAGE 2", "PAGE 1[nl][np]PAGE 2[nl]");
+        roundtrip_2("FIRST[np]", "FIRST[np]SECOND", "FIRST[np]SECOND[nl]");
+        roundtrip_2(
+            "[tr1,1,25,0][tr26,1,0,0]",
+            "[tr1,1,25,0]ONE[tr26,1,0,0]TWO",
+            "[tr1,1,25,0]ONE[nl][tr26,1,0,0]TWO[nl]",
+        );
     }
 }

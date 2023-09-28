@@ -382,10 +382,46 @@ impl Dms {
             let mut rheight = rect.height;
             while rheight >= height {
                 n_lines += 1;
-                rheight -= spacing;
+                rheight = rheight.saturating_sub(spacing);
             }
         }
         n_lines
+    }
+
+    /// Fill fillable text lines matching a MULTI "pattern"
+    pub fn fillable_fill<'a>(
+        &'a self,
+        pattern: &'a str,
+        mut lines: impl Iterator<Item = &'a str>,
+    ) -> String {
+        let mut font_val = None;
+        let mut ms = String::new();
+        for value in PatternParser::new(self, pattern) {
+            match value {
+                Ok(PatValue::Value(Value::Font(fv))) => font_val = Some(fv),
+                Ok(PatValue::Value(val)) => ms.push_str(&val.to_string()),
+                Ok(PatValue::FillableRect(rect, font_num)) => {
+                    for i in 0..self.rect_lines(rect, font_num) {
+                        match lines.next() {
+                            Some(line) => {
+                                if i > 0 {
+                                    ms.push_str("[nl]");
+                                }
+                                ms.push_str(line);
+                            }
+                            None => break,
+                        }
+                    }
+                    // defer font tag until lines are filled
+                    if let Some(fv) = font_val {
+                        ms.push_str(&Value::Font(fv).to_string());
+                    }
+                    font_val = None;
+                }
+                Err(_) => return String::new(),
+            }
+        }
+        ms
     }
 
     /// Find fillable text lines matching a MULTI "pattern"
@@ -503,15 +539,6 @@ mod test {
     }
 
     #[test]
-    fn fillable_lines_1() {
-        let dms = make_dms();
-        let mut r = dms.fillable_lines("", "LINE 1[nl]LINE 2");
-        assert_eq!(r.next(), Some("LINE 1"));
-        assert_eq!(r.next(), Some("LINE 2"));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
     fn fillable_width_2() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("[np]");
@@ -519,17 +546,6 @@ mod test {
         assert_eq!(r.next(), Some((50, 8)));
         assert_eq!(r.next(), Some((50, 8)));
         assert_eq!(r.next(), Some((50, 8)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_lines_2() {
-        let dms = make_dms();
-        let mut r = dms.fillable_lines("[np]", "PAGE 1[np]PAGE 2");
-        assert_eq!(r.next(), Some("PAGE 1"));
-        assert_eq!(r.next(), Some(""));
-        assert_eq!(r.next(), Some("PAGE 2"));
-        assert_eq!(r.next(), Some(""));
         assert_eq!(r.next(), None);
     }
 
@@ -543,15 +559,6 @@ mod test {
     }
 
     #[test]
-    fn fillable_lines_3() {
-        let dms = make_dms();
-        let mut r = dms.fillable_lines("FIRST[np]", "FIRST[np]SECOND");
-        assert_eq!(r.next(), Some("SECOND"));
-        assert_eq!(r.next(), Some(""));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
     fn fillable_width_4() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("[tr1,1,50,12][tr1,14,50,12]");
@@ -561,35 +568,11 @@ mod test {
     }
 
     #[test]
-    fn fillable_lines_4() {
-        let dms = make_dms();
-        let mut r = dms.fillable_lines(
-            "[tr1,1,50,12][tr1,14,50,12]",
-            "[tr1,1,50,12]FIRST[tr1,14,50,12]SECOND",
-        );
-        assert_eq!(r.next(), Some("FIRST"));
-        assert_eq!(r.next(), Some("SECOND"));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
     fn fillable_width_5() {
         let dms = make_dms();
         let mut r = dms.fillable_widths("[tr1,1,50,12][fo7][tr1,14,50,12]");
         assert_eq!(r.next(), Some((50, 8)));
         assert_eq!(r.next(), Some((50, 7)));
-        assert_eq!(r.next(), None);
-    }
-
-    #[test]
-    fn fillable_lines_5() {
-        let dms = make_dms();
-        let mut r = dms.fillable_lines(
-            "[tr1,1,50,12][fo7][tr1,14,50,12]",
-            "[tr1,1,50,12]1ST[fo7][tr1,14,50,12]2ND",
-        );
-        assert_eq!(r.next(), Some("1ST"));
-        assert_eq!(r.next(), Some("2ND"));
         assert_eq!(r.next(), None);
     }
 
@@ -605,23 +588,71 @@ mod test {
     }
 
     #[test]
-    fn fillable_lines_6() {
+    fn fillable_lines_fail() {
         let dms = make_dms();
-        let mut r = dms.fillable_lines(
-            "[tr1,1,25,0][tr26,1,0,0]",
-            "[tr1,1,25,0]ONE[tr26,1,0,0]TWO",
-        );
-        assert_eq!(r.next(), Some("ONE"));
-        assert_eq!(r.next(), Some(""));
-        assert_eq!(r.next(), Some("TWO"));
-        assert_eq!(r.next(), Some(""));
+        let mut r = dms.fillable_lines("TEXT", "TEXT");
+        assert_eq!(r.next(), None);
+        r = dms.fillable_lines("[tr1,1,25,0]", "[tr1,1,25,21]TEXT");
         assert_eq!(r.next(), None);
     }
 
-    #[test]
-    fn fillable_lines_fail() {
+    fn roundtrip_1(pattern: &str, ms: &str) {
         let dms = make_dms();
-        let mut r = dms.fillable_lines("[tr1,1,25,0]", "[tr1,1,25,21]TEXT");
-        assert_eq!(r.next(), None);
+        let lines = dms.fillable_lines(pattern, ms);
+        let res = dms.fillable_fill(pattern, lines);
+        assert_eq!(res, ms);
+    }
+
+    fn roundtrip_2(pattern: &str, ms: &str, ms2: &str) {
+        let dms = make_dms();
+        let lines = dms.fillable_lines(pattern, ms);
+        let res = dms.fillable_fill(pattern, lines);
+        assert_eq!(res, ms2);
+    }
+
+    #[test]
+    fn roundtrip_fillable_1() {
+        roundtrip_1("", "[nl]");
+        roundtrip_1("", "LINE 1[nl]LINE 2");
+        roundtrip_1("", "ABC[nl][jl2]D[jl3]E[jl4]F");
+        roundtrip_1("", "ABC[sc3]DEF[/sc][nl]");
+        roundtrip_1("[np]", "[nl][np][nl]");
+        roundtrip_1("[np]", "PAGE 1[nl][np]PAGE 2[nl]");
+        roundtrip_1("FIRST[np]", "FIRST[np]SECOND[nl]");
+        roundtrip_1("[np][np]", "[nl][np][nl][np][nl]");
+        roundtrip_1("", "CRASH[nl]AHEAD");
+        roundtrip_1(
+            "[tr1,1,50,12][tr1,14,50,12]",
+            "[tr1,1,50,12]FIRST[tr1,14,50,12]SECOND",
+        );
+        roundtrip_1(
+            "[tr1,1,50,12][fo7][tr1,14,50,12]",
+            "[tr1,1,50,12]1ST[fo7][tr1,14,50,12]2ND",
+        );
+        roundtrip_1(
+            "[tr1,1,50,8][fo7][tr1,10,50,7]",
+            "[tr1,1,50,8]ABC[fo7][tr1,10,50,7]123",
+        );
+        roundtrip_1("[g1][tr1,10,50,8]", "[g1][tr1,10,50,8]TEXT");
+    }
+
+    #[test]
+    fn roundtrip_fillable_2() {
+        roundtrip_2("", "ABC[nl3]DEF", "ABC[nl]DEF");
+        // check that non-line tags are stripped
+        roundtrip_2("", "[cb8]ABC", "[nl]");
+        roundtrip_2("", "[pb0,0,0]ABC", "[nl]");
+        roundtrip_2("", "[cr255,0,0,0]ABC", "[nl]");
+        roundtrip_2("", "[fo7]ABC", "[nl]");
+        roundtrip_2("", "[g1,0,0]ABC", "[nl]");
+        roundtrip_2("", "[jp3]ABC", "[nl]");
+        roundtrip_2("", "[pt50o0]ABC", "[nl]");
+        roundtrip_2("[np]", "PAGE 1[np]PAGE 2", "PAGE 1[nl][np]PAGE 2[nl]");
+        roundtrip_2("FIRST[np]", "FIRST[np]SECOND", "FIRST[np]SECOND[nl]");
+        roundtrip_2(
+            "[tr1,1,25,0][tr26,1,0,0]",
+            "[tr1,1,25,0]ONE[tr26,1,0,0]TWO",
+            "[tr1,1,25,0]ONE[nl][tr26,1,0,0]TWO[nl]",
+        );
     }
 }

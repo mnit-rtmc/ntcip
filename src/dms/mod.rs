@@ -6,13 +6,15 @@
 //!
 //! [PDF]: https://www.ntcip.org/file/2018/11/NTCIP1203v03f.pdf
 pub mod config;
-pub mod font;
-pub mod graphic;
+mod font;
+mod graphic;
 pub mod multi;
 mod pattern;
 mod render;
 mod sign;
 
+pub use font::{ifnt, Font, FontError, FontTable};
+pub use graphic::{Graphic, GraphicError, GraphicTable};
 pub use pattern::FillablePattern;
 pub use render::{Page, Pages};
 pub use sign::{Dms, DmsBuilder, SignError};

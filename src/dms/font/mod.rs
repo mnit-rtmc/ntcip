@@ -7,7 +7,7 @@ use crate::dms::multi::{Result, SyntaxError};
 use log::debug;
 use pix::{rgb::SRgb8, Raster};
 
-/// Read/write .ifnt format
+/// Read/write fonts in `.ifnt` format
 pub mod ifnt;
 
 /// Font error

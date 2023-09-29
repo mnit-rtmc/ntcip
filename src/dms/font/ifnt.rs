@@ -5,9 +5,9 @@
 use super::{CharacterEntry, Font, FontError};
 use std::io::{BufRead, BufReader, Lines, Read, Write};
 
-/// Font read error
+/// `.ifnt` format error
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
+pub enum IfntError {
     #[error("I/O {0}")]
     Io(#[from] std::io::Error),
 
@@ -25,7 +25,7 @@ pub enum Error {
 }
 
 /// Result type
-type Result<T> = std::result::Result<T, Error>;
+type Result<T> = std::result::Result<T, IfntError>;
 
 /// Character row
 struct Row<'a> {
@@ -44,7 +44,7 @@ struct Bitmap {
     count: usize,
 }
 
-/// Read a font in .ifnt format
+/// Read a font in `.ifnt` format
 pub fn read<R: Read>(reader: R) -> Result<Font> {
     let mut lines = BufReader::new(reader).lines();
     let name = parse_string(&next_line(&mut lines)?, "name")?;
@@ -85,7 +85,7 @@ fn read_character<R: BufRead>(
         let line = next_line(lines)?;
         let row = parse_row(&line)?;
         if row.width != width {
-            return Err(Error::Parse("width"));
+            return Err(IfntError::Parse("width"));
         }
         bitmap.push_bits(row)?;
     }
@@ -105,30 +105,30 @@ fn next_line<R: BufRead>(lines: &mut Lines<R>) -> Result<String> {
             return Ok(line);
         }
     }
-    Err(Error::UnexpectedEnd)
+    Err(IfntError::UnexpectedEnd)
 }
 
-/// Parse a value from an .ifnt file
+/// Parse a value from an `.ifnt` file
 fn parse_kv<'a>(line: &'a str, key: &'static str) -> Result<&'a str> {
     if let Some((ky, val)) = line.split_once(": ") {
         if ky == key {
             return Ok(val);
         }
     }
-    Err(Error::Parse(key))
+    Err(IfntError::Parse(key))
 }
 
-/// Parse a string value from an .ifnt file
+/// Parse a string value from an `.ifnt` file
 fn parse_string(line: &str, key: &'static str) -> Result<String> {
     Ok(parse_kv(line, key)?.to_string())
 }
 
-/// Parse a u8 value from an .ifnt file
+/// Parse a u8 value from an `.ifnt` file
 fn parse_u8(line: &str, key: &'static str) -> Result<u8> {
     Ok(parse_kv(line, key)?.parse()?)
 }
 
-/// Parse a codepoint from an .ifnt file
+/// Parse a codepoint from an `.ifnt` file
 fn parse_cp(line: &str) -> Result<u16> {
     let value = parse_kv(line, "codepoint")?;
     if let Some((val, ch)) = value.split_once(' ') {
@@ -137,12 +137,12 @@ fn parse_cp(line: &str) -> Result<u16> {
             return Ok(cp);
         }
     }
-    Err(Error::Parse("codepoint"))
+    Err(IfntError::Parse("codepoint"))
 }
 
 /// Parse a row of pixels
 fn parse_row(line: &str) -> Result<Row> {
-    let width = u8::try_from(line.len()).or(Err(Error::Parse("width")))?;
+    let width = u8::try_from(line.len()).or(Err(IfntError::Parse("width")))?;
     Ok(Row { line, width })
 }
 
@@ -151,7 +151,7 @@ impl<'a> Row<'a> {
         self.line.chars().map(|c| match c {
             '.' => Ok(false),
             'X' => Ok(true),
-            _ => Err(Error::Parse("bitmap")),
+            _ => Err(IfntError::Parse("bitmap")),
         })
     }
 }
@@ -182,7 +182,7 @@ impl From<Bitmap> for Vec<u8> {
     }
 }
 
-/// Write a font to an .ifnt file
+/// Write a font to an `.ifnt` file
 pub fn write<W: Write>(mut writer: W, font: &Font) -> Result<()> {
     font.validate()?;
     writeln!(writer, "name: {}", font.name)?;

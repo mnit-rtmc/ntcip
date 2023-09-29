@@ -1,7 +1,7 @@
 /// Graphic example
 mod bmp;
-use ntcip::dms::graphic::Graphic;
 use ntcip::dms::multi::ColorScheme;
+use ntcip::dms::Graphic;
 
 fn main() {
     let bitmap = vec![

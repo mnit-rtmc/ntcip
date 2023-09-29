@@ -297,7 +297,7 @@ pub enum SyntaxError {
 }
 
 /// Result type
-pub type Result<T> = std::result::Result<T, SyntaxError>;
+pub(crate) type Result<T> = std::result::Result<T, SyntaxError>;
 
 /// MULTI string
 #[derive(Clone, Debug)]

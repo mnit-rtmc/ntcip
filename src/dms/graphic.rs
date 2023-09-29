@@ -54,7 +54,7 @@ pub struct Graphic {
     pub bitmap: Vec<u8>,
 }
 
-/// A table of graphics
+/// Table of graphics
 #[derive(Clone)]
 pub struct GraphicTable<const G: usize> {
     /// Graphics in table

@@ -1,9 +1,8 @@
 /// Example DMS rendering
 mod bmp;
 use ntcip::dms::config::{MultiCfg, VmsCfg};
-use ntcip::dms::font::{ifnt, FontTable};
 use ntcip::dms::multi::{ColorScheme, JustificationLine, JustificationPage};
-use ntcip::dms::{Dms, Pages};
+use ntcip::dms::{ifnt, Dms, FontTable, Pages};
 
 fn font_table() -> FontTable<1> {
     let mut fonts = FontTable::default();

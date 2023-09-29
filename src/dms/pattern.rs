@@ -2,7 +2,7 @@
 //
 // Copyright (C) 2023  Minnesota Department of Transportation
 //
-use crate::dms::multi::{MultiStr, Rectangle, SyntaxError, Value};
+use crate::dms::multi::{MultiStr, Rectangle, Result, Value};
 use crate::dms::sign::Dms;
 
 /// Pattern values are MULTI values or "pseudo-values" from a pattern
@@ -198,7 +198,7 @@ impl<'p> FillablePattern<'p> {
 }
 
 impl<'p> Iterator for PatIter<'p> {
-    type Item = Result<PatValue<'p>, SyntaxError>;
+    type Item = Result<PatValue<'p>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let value = self.value.take();

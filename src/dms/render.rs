@@ -502,7 +502,13 @@ impl<'a> Pages<'a> {
 
     /// Lookup a graphic from the table
     fn graphic(&self, gn: u8, gid: Option<u16>) -> Result<&'a Graphic> {
-        self.dms.graphic_definition().lookup(gn, gid)
+        let graphics = self.dms.graphic_definition();
+        match (graphics.lookup(gn), gid) {
+            (Some(g), None) => Ok(g),
+            // FIXME: calculate and check version_id
+            (Some(g), Some(_gid)) => Ok(g),
+            (None, _) => Err(SyntaxError::GraphicNotDefined(gn)),
+        }
     }
 
     /// Render one text rectangle

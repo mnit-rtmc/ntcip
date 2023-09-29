@@ -213,17 +213,7 @@ impl GraphicTable {
     }
 
     /// Lookup a graphic by number
-    pub fn lookup(
-        &self,
-        gnum: u8,
-        version_id: Option<u16>,
-    ) -> Result<&Graphic> {
-        let graphic = self.graphics.iter().find(|g| g.number == gnum);
-        match (graphic, version_id) {
-            (Some(g), None) => Ok(g),
-            // FIXME: calculate and check version_id
-            (Some(g), Some(_vid)) => Ok(g),
-            (None, _) => Err(SyntaxError::GraphicNotDefined(gnum)),
-        }
+    pub fn lookup(&self, gnum: u8) -> Option<&Graphic> {
+        self.graphics.iter().find(|g| g.number == gnum)
     }
 }

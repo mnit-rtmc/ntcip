@@ -4,14 +4,17 @@
 //
 use crate::dms::config::{MultiCfg, SignCfg, VmsCfg};
 use crate::dms::font::{FontError, FontTable};
-use crate::dms::graphic::GraphicTable;
+use crate::dms::graphic::{GraphicError, GraphicTable};
 use crate::dms::multi::{ColorCtx, ColorScheme, Rectangle};
 
 /// Sign error
 #[derive(Debug, thiserror::Error)]
 pub enum SignError {
-    #[error("Invalid font: {0}")]
+    #[error("Font error: {0}")]
     FontValidation(#[from] FontError),
+
+    #[error("Graphic error: {0}")]
+    GraphicValidation(#[from] GraphicError),
 }
 
 /// Builder for DMS
@@ -77,8 +80,9 @@ impl<const F: usize, const G: usize> DmsBuilder<F, G> {
 
     /// Build the DMS with validation
     pub fn build(mut self) -> Result<Dms<{ F }, { G }>, SignError> {
-        // FIXME: validate more!
+        // FIXME: validate config!
         self.font_definition.validate()?;
+        self.graphic_definition.validate()?;
         Ok(Dms {
             sign_cfg: self.sign_cfg,
             vms_cfg: self.vms_cfg,

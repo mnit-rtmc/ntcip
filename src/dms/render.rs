@@ -422,13 +422,15 @@ impl<'a> Pages<'a> {
         for value in self.values.clone() {
             let val = value?;
             match val {
-                Value::Field(_, _)
-                | Value::Flash(_, _, _)
+                Value::Flash(_, _, _)
                 | Value::FlashEnd()
                 | Value::ManufacturerSpecific(_, _)
                 | Value::ManufacturerSpecificEnd(_, _)
                 | Value::MovingText(_, _, _, _, _, _) => {
                     return Err(SyntaxError::UnsupportedTag(val.into()));
+                }
+                Value::Field(_, _) => {
+                    return Err(SyntaxError::FieldDeviceNotExist);
                 }
                 Value::NewPage() => break,
                 _ => (),

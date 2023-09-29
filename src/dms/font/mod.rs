@@ -10,6 +10,25 @@ use pix::{rgb::SRgb8, Raster};
 /// Read/write .ifnt format
 pub mod ifnt;
 
+/// Font error
+#[derive(Debug, thiserror::Error)]
+pub enum FontError {
+    #[error("Invalid number")]
+    InvalidNumber,
+
+    #[error("Duplicate number")]
+    DuplicateNumber,
+
+    #[error("Duplicate character number")]
+    DuplicateCharNumber,
+
+    #[error("Invalid height")]
+    InvalidHeight,
+
+    #[error("Invalid character height")]
+    InvalidCharHeight,
+}
+
 /// Character for a bitmap [font]
 ///
 /// [font]: struct.Font.html
@@ -38,17 +57,17 @@ pub struct Font {
     pub line_spacing: u8,
     /// Characters in font
     pub characters: Vec<CharacterEntry>,
-    /// Version ID hash
-    pub version_id: u16,
 }
 
 /// Table of fonts
 ///
 /// This represents the `fontDefinition` of a Dms.
-#[derive(Clone, Default)]
-pub struct FontTable {
+#[derive(Clone)]
+pub struct FontTable<const F: usize> {
     /// Fonts in table
-    fonts: Vec<Font>,
+    fonts: [Font; F],
+    /// Version IDs
+    version_ids: [Option<u16>; F],
 }
 
 impl CharacterEntry {
@@ -110,7 +129,7 @@ impl Font {
     fn are_char_numbers_unique(&self) -> bool {
         for i in 1..self.characters.len() {
             let num = self.characters[i - 1].number;
-            if self.characters[i..].iter().any(|c| c.number == num) {
+            if num > 0 && self.characters[i..].iter().any(|c| c.number == num) {
                 return false;
             }
         }
@@ -118,11 +137,18 @@ impl Font {
     }
 
     /// Check if font is valid
-    pub fn is_valid(&self) -> bool {
-        self.number > 0
-            && self.height > 0
-            && self.characters.iter().all(|c| c.is_valid(self.height))
-            && self.are_char_numbers_unique()
+    pub fn validate(&self) -> std::result::Result<(), FontError> {
+        if self.number < 1 {
+            Err(FontError::InvalidNumber)
+        } else if self.height < 1 {
+            Err(FontError::InvalidHeight)
+        } else if !self.characters.iter().all(|c| c.is_valid(self.height)) {
+            Err(FontError::InvalidCharHeight)
+        } else if !self.are_char_numbers_unique() {
+            Err(FontError::DuplicateCharNumber)
+        } else {
+            Ok(())
+        }
     }
 
     /// Get width (if fixed-width), or 0
@@ -201,30 +227,65 @@ impl Font {
         }
         Ok(())
     }
+}
 
-    /// Get version ID hash
-    pub fn version_id(&self) -> u16 {
-        self.version_id
+impl<const F: usize> Default for FontTable<F> {
+    fn default() -> Self {
+        // workaround const generic default limitation
+        let fonts: [Font; F] = [(); F].map(|_| Font::default());
+        let version_ids: [Option<u16>; F] = [(); F].map(|_| None);
+        FontTable {
+            fonts,
+            version_ids,
+        }
     }
 }
 
-impl FontTable {
-    /// Push a font into the table
-    pub fn push(&mut self, font: Font) -> Result<()> {
-        if !font.is_valid() {
-            return Err(SyntaxError::Other("Invalid font"));
+impl<const F: usize> FontTable<F> {
+    /// Validate the font table
+    pub fn validate(&mut self) -> std::result::Result<(), FontError> {
+        for (i, font) in self.fonts.iter().enumerate() {
+            if font.number > 0 {
+                if self.version_ids[i].is_none() {
+                    // FIXME: calculate version ID
+                }
+                font.validate()?;
+            }
         }
-        if self.fonts.iter().any(|f| f.number == font.number) {
-            return Err(SyntaxError::Other("Duplicate font number"));
+        self.validate_font_numbers()
+    }
+
+    /// Check if all font numbers are unique
+    fn validate_font_numbers(&self) -> std::result::Result<(), FontError> {
+        for i in 1..self.fonts.len() {
+            let num = self.fonts[i - 1].number;
+            if num > 0 && self.fonts[i..].iter().any(|f| f.number == num) {
+                return Err(FontError::DuplicateNumber);
+            }
         }
-        // FIXME: calculate version ID
-        self.fonts.push(font);
         Ok(())
     }
 
-    /// Sort by font number
-    pub fn sort(&mut self) {
-        self.fonts.sort_by(|a, b| a.number.cmp(&b.number))
+    /// Get a font
+    pub fn get(&self, index: usize) -> Option<&Font> {
+        self.fonts.get(index)
+    }
+
+    /// Get a mutable font
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Font> {
+        if let Some(vid) = self.version_ids.get_mut(index) {
+            *vid = None;
+        }
+        self.fonts.get_mut(index)
+    }
+
+    /// Get a font version ID
+    pub fn version_id(&self, fnum: u8) -> Option<u16> {
+        self.fonts
+            .iter()
+            .zip(self.version_ids)
+            .find(|(f, _v)| f.number == fnum)
+            .and_then(|(_f, v)| v)
     }
 
     /// Lookup a font by number

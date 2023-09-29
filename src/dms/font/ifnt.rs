@@ -2,10 +2,10 @@
 //
 // Copyright (C) 2023  Minnesota Department of Transportation
 //
-use super::{CharacterEntry, Font};
+use super::{CharacterEntry, Font, FontError};
 use std::io::{BufRead, BufReader, Lines, Read, Write};
 
-/// Font error
+/// Font read error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("I/O {0}")]
@@ -20,8 +20,8 @@ pub enum Error {
     #[error("Unexpected end")]
     UnexpectedEnd,
 
-    #[error("Invalid font")]
-    InvalidFont,
+    #[error("Font error: {0}")]
+    Invalid(#[from] FontError),
 }
 
 /// Result type
@@ -184,9 +184,7 @@ impl From<Bitmap> for Vec<u8> {
 
 /// Write a font to an .ifnt file
 pub fn write<W: Write>(mut writer: W, font: &Font) -> Result<()> {
-    if !font.is_valid() {
-        return Err(Error::InvalidFont);
-    }
+    font.validate()?;
     writeln!(writer, "name: {}", font.name)?;
     writeln!(writer, "font_number: {}", font.number)?;
     writeln!(writer, "height: {}", font.height)?;

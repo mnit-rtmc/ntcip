@@ -102,9 +102,9 @@ struct TextLine {
 }
 
 /// Page renderer for dynamic message signs
-pub struct Pages<'a> {
+pub struct Pages<'a, const F: usize> {
     /// Sign to render
-    dms: &'a Dms,
+    dms: &'a Dms<F>,
 
     /// Default rendering state
     default_state: RenderState,
@@ -155,7 +155,7 @@ impl PageState {
 
 impl RenderState {
     /// Create a new render state
-    fn new(dms: &Dms) -> Self {
+    fn new<const F: usize>(dms: &Dms<F>) -> Self {
         RenderState {
             color_ctx: dms.color_ctx(),
             page_on_time_ds: dms.multi_cfg.default_page_on_time,
@@ -202,10 +202,10 @@ impl RenderState {
     }
 
     /// Lookup current font in cache
-    fn font<'a>(&self, fonts: &'a FontTable) -> Result<&'a Font> {
+    fn font<'a, const F: usize>(&self, fonts: &'a FontTable<{F}>) -> Result<&'a Font> {
         match (fonts.lookup(self.font_num), self.font_version_id) {
             (Some(f), Some(vid)) => {
-                if vid == f.version_id {
+                if Some(vid) == fonts.version_id(self.font_num) {
                     Ok(f)
                 } else {
                     Err(SyntaxError::FontVersionID)
@@ -225,14 +225,14 @@ impl TextSpan {
     }
 
     /// Get the width of a text span
-    fn width(&self, fonts: &FontTable) -> Result<u16> {
+    fn width<const F: usize>(&self, fonts: &FontTable<F>) -> Result<u16> {
         let font = self.state.font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
         font.text_width(&self.text, Some(cs))
     }
 
     /// Get the char spacing
-    fn char_spacing_fonts(&self, fonts: &FontTable) -> Result<u16> {
+    fn char_spacing_fonts<const F: usize>(&self, fonts: &FontTable<{F}>) -> Result<u16> {
         match self.state.char_spacing {
             Some(sp) => Ok(sp.into()),
             None => Ok(self.state.font(fonts)?.char_spacing.into()),
@@ -248,10 +248,10 @@ impl TextSpan {
     }
 
     /// Get the char spacing from a previous span
-    fn char_spacing_between(
+    fn char_spacing_between<const F: usize>(
         &self,
         prev: &TextSpan,
-        fonts: &FontTable,
+        fonts: &FontTable<{F}>,
     ) -> Result<u16> {
         if let Some(c) = self.state.char_spacing {
             Ok(c.into())
@@ -266,12 +266,12 @@ impl TextSpan {
     }
 
     /// Get the height of a text span
-    fn height(&self, fonts: &FontTable) -> Result<u16> {
+    fn height<const F: usize>(&self, fonts: &FontTable<{F}>) -> Result<u16> {
         Ok(self.state.font(fonts)?.height.into())
     }
 
     /// Get the font line spacing
-    fn font_spacing(&self, fonts: &FontTable) -> Result<u16> {
+    fn font_spacing<const F: usize>(&self, fonts: &FontTable<{F}>) -> Result<u16> {
         Ok(self.state.font(fonts)?.line_spacing.into())
     }
 
@@ -327,7 +327,7 @@ impl TextLine {
     }
 }
 
-impl<'a> Pages<'a> {
+impl<'a, const F: usize> Pages<'a, F> {
     /// Create a new DMS page renderer.
     ///
     /// * `dms` Sign to render.
@@ -340,7 +340,7 @@ impl<'a> Pages<'a> {
     /// * `[ms…]`: Manufacturer Specific
     /// * `[mv…]`: Moving Text
     ///
-    pub fn new(dms: &'a Dms, ms: &'a str) -> Self {
+    pub fn new(dms: &'a Dms<{F}>, ms: &'a str) -> Self {
         let default_state = RenderState::new(dms);
         let render_state = default_state.clone();
         Pages {
@@ -354,7 +354,7 @@ impl<'a> Pages<'a> {
     }
 
     /// Get the font definition
-    fn fonts(&self) -> &FontTable {
+    fn fonts(&self) -> &FontTable<F> {
         self.dms.font_definition()
     }
 
@@ -862,7 +862,7 @@ impl<'a> Pages<'a> {
     }
 }
 
-impl<'a> Iterator for Pages<'a> {
+impl<'a, const F: usize> Iterator for Pages<'a, F> {
     type Item = Result<Page>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -907,14 +907,17 @@ mod test {
     use crate::dms::font::ifnt;
     use crate::dms::multi::{ColorClassic, ColorScheme};
 
-    fn font_table() -> FontTable {
+    fn font_table() -> FontTable<4> {
         let mut fonts = FontTable::default();
         let buf = include_bytes!("../../test/F07-C.ifnt");
-        fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
+        let f = fonts.get_mut(0).unwrap();
+        *f = ifnt::read(&buf[..]).unwrap();
         let buf = include_bytes!("../../test/F07-L.ifnt");
-        fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
+        let f = fonts.get_mut(1).unwrap();
+        *f = ifnt::read(&buf[..]).unwrap();
         let buf = include_bytes!("../../test/F08.ifnt");
-        fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
+        let f = fonts.get_mut(2).unwrap();
+        *f = ifnt::read(&buf[..]).unwrap();
         fonts
     }
 
@@ -936,7 +939,8 @@ mod test {
                 default_foreground_rgb: ColorClassic::White.rgb().into(),
                 ..Default::default()
             })
-            .build();
+            .build()
+            .unwrap();
         Pages::new(&dms, ms).collect()
     }
 
@@ -1046,7 +1050,8 @@ mod test {
                 default_font: 5,
                 ..Default::default()
             })
-            .build();
+            .build()
+            .unwrap();
         Pages::new(&dms, ms).collect()
     }
 

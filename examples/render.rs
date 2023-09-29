@@ -5,14 +5,15 @@ use ntcip::dms::font::{ifnt, FontTable};
 use ntcip::dms::multi::{ColorScheme, JustificationLine, JustificationPage};
 use ntcip::dms::{Dms, Pages};
 
-fn font_table() -> FontTable {
+fn font_table() -> FontTable<1> {
     let mut fonts = FontTable::default();
     let buf = include_bytes!("../test/F08.ifnt");
-    fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
+    let f = fonts.get_mut(0).unwrap();
+    *f = ifnt::read(&buf[..]).unwrap();
     fonts
 }
 
-fn make_dms() -> Dms {
+fn make_dms() -> Dms<1> {
     Dms::builder()
         .with_vms_cfg(VmsCfg {
             char_height_pixels: 0,
@@ -30,6 +31,7 @@ fn make_dms() -> Dms {
             ..Default::default()
         })
         .build()
+        .unwrap()
 }
 
 const MULTI: &str = "[cf1]LEFT[jl3][cf2]MIDDLE[jl4][cf3]RIGHT[nl][cf4][jl2]THE[cf5][jl3]CENTER[cf6][jl4]LINE[nl][jl3][cf7]THE BOTTOM LINE[np][cf8][jp3][jl3]SECOND PAGE[np][cr1,1,20,8,255,128,128][cr121,1,20,8,128,255,128][cr1,21,20,8,128,128,255][cr121,21,20,8,128,128,128][pb32,0,64][pt40o10]PAGE 3";

@@ -3,16 +3,23 @@
 // Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
 use crate::dms::config::{MultiCfg, SignCfg, VmsCfg};
-use crate::dms::font::FontTable;
+use crate::dms::font::{FontError, FontTable};
 use crate::dms::graphic::GraphicTable;
 use crate::dms::multi::{ColorCtx, ColorScheme, Rectangle};
 
+/// Sign error
+#[derive(Debug, thiserror::Error)]
+pub enum SignError {
+    #[error("Invalid font: {0}")]
+    FontValidation(#[from] FontError),
+}
+
 /// Builder for DMS
 #[derive(Clone, Default)]
-pub struct DmsBuilder {
+pub struct DmsBuilder<const F: usize> {
     sign_cfg: SignCfg,
     vms_cfg: VmsCfg,
-    font_definition: FontTable,
+    font_definition: FontTable<F>,
     multi_cfg: MultiCfg,
     graphic_definition: GraphicTable,
 }
@@ -21,20 +28,20 @@ pub struct DmsBuilder {
 ///
 /// This is the root node of the 1203 Message Information Base (MIB)
 #[derive(Clone)]
-pub struct Dms {
+pub struct Dms<const F: usize> {
     /// Configuration common to all signs — `dmsSignCfg`
     pub(crate) sign_cfg: SignCfg,
     /// Configuration for variable message signs — `vmsCfg`
     pub(crate) vms_cfg: VmsCfg,
     /// Font definition — `fontDefinition`
-    pub(crate) font_definition: FontTable,
+    pub(crate) font_definition: FontTable<F>,
     /// MULTI configuration — `multiCfg`
     pub(crate) multi_cfg: MultiCfg,
     /// Graphic definition — `graphicDefinition`
     pub(crate) graphic_definition: GraphicTable,
 }
 
-impl DmsBuilder {
+impl<const F: usize> DmsBuilder<F> {
     /// Set sign configuration
     pub fn with_sign_cfg(mut self, cfg: SignCfg) -> Self {
         self.sign_cfg = cfg;
@@ -48,7 +55,7 @@ impl DmsBuilder {
     }
 
     /// Set font definition
-    pub fn with_font_definition(mut self, fonts: FontTable) -> Self {
+    pub fn with_font_definition(mut self, fonts: FontTable<{F}>) -> Self {
         self.font_definition = fonts;
         self
     }
@@ -66,26 +73,27 @@ impl DmsBuilder {
     }
 
     /// Build the DMS with validation
-    pub fn build(self) -> Dms {
-        // FIXME: validate
-        Dms {
+    pub fn build(mut self) -> Result<Dms<{F}>, SignError> {
+        // FIXME: validate more!
+        self.font_definition.validate()?;
+        Ok(Dms {
             sign_cfg: self.sign_cfg,
             vms_cfg: self.vms_cfg,
             font_definition: self.font_definition,
             multi_cfg: self.multi_cfg,
             graphic_definition: self.graphic_definition,
-        }
+        })
     }
 }
 
-impl Dms {
+impl<const F: usize> Dms<F> {
     /// Create a DMS builder
-    pub fn builder() -> DmsBuilder {
+    pub fn builder() -> DmsBuilder<F> {
         DmsBuilder::default()
     }
 
     /// Convert back into builder
-    pub fn into_builder(self) -> DmsBuilder {
+    pub fn into_builder(self) -> DmsBuilder<F> {
         DmsBuilder {
             sign_cfg: self.sign_cfg,
             vms_cfg: self.vms_cfg,
@@ -96,7 +104,7 @@ impl Dms {
     }
 
     /// Get font definition
-    pub fn font_definition(&self) -> &FontTable {
+    pub fn font_definition(&self) -> &FontTable<{F}> {
         &self.font_definition
     }
 

@@ -15,4 +15,4 @@ mod sign;
 
 pub use pattern::FillablePattern;
 pub use render::{Page, Pages};
-pub use sign::{Dms, DmsBuilder};
+pub use sign::{Dms, DmsBuilder, SignError};

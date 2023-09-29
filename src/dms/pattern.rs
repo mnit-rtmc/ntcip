@@ -15,9 +15,9 @@ enum PatValue<'p> {
 }
 
 /// Pattern value iterator
-struct PatIter<'p> {
+struct PatIter<'p, const F: usize> {
     /// Sign
-    dms: &'p Dms,
+    dms: &'p Dms<F>,
     /// MULTI pattern
     pattern: MultiStr<'p>,
     /// Previous MULTI value
@@ -42,16 +42,16 @@ struct PatIter<'p> {
 /// To be fillable, a rectangle or page must not be followed by any text or
 /// tags before the next `[tr…]` or `[np]` tag.  The only exception allowed
 /// is the `[fo…]` tag, which applies to the **next** rectangle or page.
-pub struct FillablePattern<'p> {
+pub struct FillablePattern<'p, const F: usize> {
     /// Sign
-    dms: &'p Dms,
+    dms: &'p Dms<F>,
     /// MULTI string
     ms: &'p str,
 }
 
-impl<'p> PatIter<'p> {
+impl<'p, const F: usize> PatIter<'p, F> {
     /// Create a new pattern iterator
-    fn new(dms: &'p Dms, ms: &'p str) -> Self {
+    fn new(dms: &'p Dms<F>, ms: &'p str) -> Self {
         let rect = dms.full_rect();
         let font_num = dms.multi_cfg.default_font;
         PatIter {
@@ -65,12 +65,12 @@ impl<'p> PatIter<'p> {
     }
 }
 
-impl<'p> FillablePattern<'p> {
+impl<'p, const F: usize> FillablePattern<'p, F> {
     /// Create a new fillable pattern
     ///
     /// * `dms`: The sign
     /// * `ms`: MULTI string
-    pub fn new(dms: &'p Dms, ms: &'p str) -> Self {
+    pub fn new(dms: &'p Dms<F>, ms: &'p str) -> Self {
         FillablePattern { dms, ms }
     }
 
@@ -197,7 +197,7 @@ impl<'p> FillablePattern<'p> {
     }
 }
 
-impl<'p> Iterator for PatIter<'p> {
+impl<'p, const F: usize> Iterator for PatIter<'p, F> {
     type Item = Result<PatValue<'p>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -260,16 +260,18 @@ mod test {
     use crate::dms::config::*;
     use crate::dms::font::*;
 
-    fn font_table() -> FontTable {
+    fn font_table() -> FontTable<2> {
         let mut fonts = FontTable::default();
         let buf = include_bytes!("../../test/F07.ifnt");
-        fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
+        let f = fonts.get_mut(0).unwrap();
+        *f = ifnt::read(&buf[..]).unwrap();
         let buf = include_bytes!("../../test/F08.ifnt");
-        fonts.push(ifnt::read(&buf[..]).unwrap()).unwrap();
+        let f = fonts.get_mut(1).unwrap();
+        *f = ifnt::read(&buf[..]).unwrap();
         fonts
     }
 
-    fn make_dms() -> Dms {
+    fn make_dms() -> Dms<2> {
         Dms::builder()
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 0,
@@ -284,10 +286,11 @@ mod test {
                 ..Default::default()
             })
             .build()
+            .unwrap()
     }
 
     fn pattern_rects<'p>(
-        dms: &'p Dms,
+        dms: &'p Dms<2>,
         ms: &'p str,
     ) -> impl Iterator<Item = (Rectangle, u8)> + 'p {
         PatIter::new(&dms, ms).flatten().filter_map(|v| match v {

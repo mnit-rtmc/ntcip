@@ -4,9 +4,8 @@
 //
 //! Graphic image support
 use crate::dms::multi::{
-    Color, ColorClassic, ColorCtx, ColorScheme, SyntaxError,
+    Color, ColorClassic, ColorCtx, ColorScheme, Result, SyntaxError,
 };
-use crate::dms::Result;
 use log::debug;
 use pix::{
     el::Pixel,

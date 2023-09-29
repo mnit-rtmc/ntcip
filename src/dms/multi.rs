@@ -83,7 +83,7 @@ pub(crate) struct ColorCtx {
 
 /// A rectangular area of a sign
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Rectangle {
+pub(crate) struct Rectangle {
     /// Left edge (starting from 1)
     pub x: u16,
     /// Top edge (starting from 1)
@@ -295,6 +295,9 @@ pub enum SyntaxError {
     GraphicNotDefined(u8),
 }
 
+/// Result type
+pub type Result<T> = std::result::Result<T, SyntaxError>;
+
 /// Parser for MULTI values
 #[derive(Clone)]
 pub(crate) struct Parser<'p> {
@@ -412,7 +415,7 @@ impl ColorCtx {
         &mut self,
         c: Option<Color>,
         v: &Value,
-    ) -> Result<(), SyntaxError> {
+    ) -> Result<()> {
         self.fg_current = match c {
             Some(c) => match self.rgb(c) {
                 Some(_) => c,
@@ -441,7 +444,7 @@ impl ColorCtx {
         &mut self,
         c: Option<Color>,
         v: &Value,
-    ) -> Result<(), SyntaxError> {
+    ) -> Result<()> {
         self.bg_current = match c {
             Some(c) => match self.rgb(c) {
                 Some(_) => c,
@@ -570,6 +573,7 @@ impl Rectangle {
     }
 
     /// Check if a rectangle contains another rectangle
+    #[allow(dead_code)]
     pub fn contains(self, other: Self) -> bool {
         other.x >= self.x
             && other.x + other.width <= self.x + self.width
@@ -730,7 +734,7 @@ impl<'p> From<&Value<'p>> for String {
 impl<'p> TryFrom<&'p str> for Value<'p> {
     type Error = SyntaxError;
 
-    fn try_from(ms: &'p str) -> Result<Self, Self::Error> {
+    fn try_from(ms: &'p str) -> Result<Self> {
         if ms == "[[" || ms == "]]" {
             Ok(Value::Text(&ms[..1]))
         } else if ms.starts_with('[') && ms.ends_with(']') {
@@ -823,27 +827,23 @@ where
 }
 
 /// Parse an optional value
-fn parse_optional<'a, I, T>(v: &mut I) -> Result<Option<T>, ()>
+fn parse_optional<'a, I, T>(
+    v: &mut I,
+) -> std::result::Result<Option<T>, <T as FromStr>::Err>
 where
     I: Iterator<Item = &'a str>,
     T: FromStr,
 {
     if let Some(s) = v.next() {
-        if s.is_empty() {
-            return Ok(None);
+        if !s.is_empty() {
+            return s.parse::<T>().map(Some);
         }
-        if let Ok(i) = s.parse::<T>() {
-            Ok(Some(i))
-        } else {
-            Err(())
-        }
-    } else {
-        Ok(None)
     }
+    Ok(None)
 }
 
 /// Parse an optional value ranging from 0 to 99
-fn parse_optional_99<'a, I>(v: &mut I) -> Result<Option<u8>, ()>
+fn parse_optional_99<'a, I>(v: &mut I) -> std::result::Result<Option<u8>, ()>
 where
     I: Iterator<Item = &'a str>,
 {
@@ -879,7 +879,7 @@ where
 }
 
 /// Parse a version ID value
-fn parse_version_id<'a, I>(v: &mut I) -> Result<Option<u16>, ()>
+fn parse_version_id<'a, I>(v: &mut I) -> std::result::Result<Option<u16>, ()>
 where
     I: Iterator<Item = &'a str>,
 {
@@ -1012,7 +1012,7 @@ fn parse_graphic(tag: &str) -> Option<Value> {
 }
 
 /// Parse a point value
-fn parse_point<'a, I>(v: &mut I) -> Result<Option<(u16, u16)>, ()>
+fn parse_point<'a, I>(v: &mut I) -> std::result::Result<Option<(u16, u16)>, ()>
 where
     I: Iterator<Item = &'a str>,
 {
@@ -1024,7 +1024,7 @@ where
 }
 
 /// Parse an x/y pair
-fn parse_xy(x: &str, y: &str) -> Result<(u16, u16), ()> {
+fn parse_xy(x: &str, y: &str) -> std::result::Result<(u16, u16), ()> {
     if let (Ok(x), Ok(y)) = (x.parse(), y.parse()) {
         if x > 0 && y > 0 {
             return Ok((x, y));
@@ -1035,25 +1035,10 @@ fn parse_xy(x: &str, y: &str) -> Result<(u16, u16), ()> {
 
 /// Parse a hexadecimal character tag [hc]
 fn parse_hexadecimal_character(tag: &str) -> Option<Value> {
-    let mut vs = std::iter::once(&tag[2..]);
-    match parse_hexadecimal(&mut vs) {
-        Ok(hc) => Some(Value::HexadecimalCharacter(hc)),
-        Err(_) => None,
-    }
-}
-
-/// Parse a hexadecimal value
-fn parse_hexadecimal<'a, I>(v: &mut I) -> Result<u16, ()>
-where
-    I: Iterator<Item = &'a str>,
-{
-    if let Some(s) = v.next() {
-        // May be 1 to 4 hexadecimal digits
-        if let Ok(i) = u16::from_str_radix(s, 16) {
-            return Ok(i);
-        }
-    }
-    Err(())
+    // May be 1 to 4 hexadecimal digits
+    u16::from_str_radix(&tag[2..], 16)
+        .ok()
+        .map(Value::HexadecimalCharacter)
 }
 
 /// Parse a Justification -- Line tag [jl]
@@ -1206,7 +1191,7 @@ fn parse_text_rectangle(tag: &str) -> Option<Value> {
 }
 
 /// Parse a tag (without brackets)
-fn parse_tag(tag: &str) -> Result<Value, SyntaxError> {
+fn parse_tag(tag: &str) -> Result<Value> {
     let mut chars = tag.chars().map(|c| c.to_ascii_lowercase());
     let (t0, t1, t2) = (chars.next(), chars.next(), chars.next());
     // Sorted by most likely occurrence
@@ -1296,13 +1281,13 @@ impl<'p> Parser<'p> {
     }
 
     /// Parse a value at the current position
-    fn parse_value(&mut self) -> Option<Result<Value<'p>, SyntaxError>> {
+    fn parse_value(&mut self) -> Option<Result<Value<'p>>> {
         self.next_slice().map(Value::try_from)
     }
 }
 
 impl<'p> Iterator for Parser<'p> {
-    type Item = Result<Value<'p>, SyntaxError>;
+    type Item = Result<Value<'p>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.parse_value()

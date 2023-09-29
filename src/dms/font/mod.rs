@@ -3,8 +3,7 @@
 // Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
 //! Font support for dynamic message signs
-use crate::dms::multi::SyntaxError;
-use crate::dms::Result;
+use crate::dms::multi::{Result, SyntaxError};
 use log::debug;
 use pix::{rgb::SRgb8, Raster};
 

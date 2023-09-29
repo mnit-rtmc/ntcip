@@ -6,11 +6,10 @@
 use crate::dms::font::{Font, FontTable};
 use crate::dms::graphic::Graphic;
 use crate::dms::multi::{
-    ColorCtx, JustificationLine, JustificationPage, Parser, Rectangle,
+    ColorCtx, JustificationLine, JustificationPage, Parser, Rectangle, Result,
     SyntaxError, Value,
 };
 use crate::dms::sign::Dms;
-use crate::dms::Result;
 use log::debug;
 use pix::{rgb::SRgb8, Raster, Region};
 

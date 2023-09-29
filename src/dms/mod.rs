@@ -13,9 +13,6 @@ mod pattern;
 mod render;
 mod sign;
 
-/// Result type
-pub type Result<T> = std::result::Result<T, multi::SyntaxError>;
-
 pub use pattern::FillablePattern;
 pub use render::{Page, Pages};
 pub use sign::{Dms, DmsBuilder};

@@ -16,19 +16,19 @@ pub enum SignError {
 
 /// Builder for DMS
 #[derive(Clone, Default)]
-pub struct DmsBuilder<const F: usize> {
+pub struct DmsBuilder<const F: usize, const G: usize> {
     sign_cfg: SignCfg,
     vms_cfg: VmsCfg,
     font_definition: FontTable<F>,
     multi_cfg: MultiCfg,
-    graphic_definition: GraphicTable,
+    graphic_definition: GraphicTable<G>,
 }
 
 /// Dynamic message sign
 ///
 /// This is the root node of the 1203 Message Information Base (MIB)
 #[derive(Clone)]
-pub struct Dms<const F: usize> {
+pub struct Dms<const F: usize, const G: usize> {
     /// Configuration common to all signs — `dmsSignCfg`
     pub(crate) sign_cfg: SignCfg,
     /// Configuration for variable message signs — `vmsCfg`
@@ -38,10 +38,10 @@ pub struct Dms<const F: usize> {
     /// MULTI configuration — `multiCfg`
     pub(crate) multi_cfg: MultiCfg,
     /// Graphic definition — `graphicDefinition`
-    pub(crate) graphic_definition: GraphicTable,
+    pub(crate) graphic_definition: GraphicTable<G>,
 }
 
-impl<const F: usize> DmsBuilder<F> {
+impl<const F: usize, const G: usize> DmsBuilder<F, G> {
     /// Set sign configuration
     pub fn with_sign_cfg(mut self, cfg: SignCfg) -> Self {
         self.sign_cfg = cfg;
@@ -55,7 +55,7 @@ impl<const F: usize> DmsBuilder<F> {
     }
 
     /// Set font definition
-    pub fn with_font_definition(mut self, fonts: FontTable<{F}>) -> Self {
+    pub fn with_font_definition(mut self, fonts: FontTable<{ F }>) -> Self {
         self.font_definition = fonts;
         self
     }
@@ -67,13 +67,16 @@ impl<const F: usize> DmsBuilder<F> {
     }
 
     /// Set graphic definition
-    pub fn with_graphic_definition(mut self, graphics: GraphicTable) -> Self {
+    pub fn with_graphic_definition(
+        mut self,
+        graphics: GraphicTable<{ G }>,
+    ) -> Self {
         self.graphic_definition = graphics;
         self
     }
 
     /// Build the DMS with validation
-    pub fn build(mut self) -> Result<Dms<{F}>, SignError> {
+    pub fn build(mut self) -> Result<Dms<{ F }, { G }>, SignError> {
         // FIXME: validate more!
         self.font_definition.validate()?;
         Ok(Dms {
@@ -86,14 +89,14 @@ impl<const F: usize> DmsBuilder<F> {
     }
 }
 
-impl<const F: usize> Dms<F> {
+impl<const F: usize, const G: usize> Dms<F, G> {
     /// Create a DMS builder
-    pub fn builder() -> DmsBuilder<F> {
+    pub fn builder() -> DmsBuilder<F, G> {
         DmsBuilder::default()
     }
 
     /// Convert back into builder
-    pub fn into_builder(self) -> DmsBuilder<F> {
+    pub fn into_builder(self) -> DmsBuilder<F, G> {
         DmsBuilder {
             sign_cfg: self.sign_cfg,
             vms_cfg: self.vms_cfg,
@@ -104,12 +107,12 @@ impl<const F: usize> Dms<F> {
     }
 
     /// Get font definition
-    pub fn font_definition(&self) -> &FontTable<{F}> {
+    pub fn font_definition(&self) -> &FontTable<{ F }> {
         &self.font_definition
     }
 
     /// Get graphic definition
-    pub fn graphic_definition(&self) -> &GraphicTable {
+    pub fn graphic_definition(&self) -> &GraphicTable<{ G }> {
         &self.graphic_definition
     }
 

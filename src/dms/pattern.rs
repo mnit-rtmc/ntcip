@@ -15,9 +15,9 @@ enum PatValue<'p> {
 }
 
 /// Pattern value iterator
-struct PatIter<'p, const F: usize> {
+struct PatIter<'p, const F: usize, const G: usize> {
     /// Sign
-    dms: &'p Dms<F>,
+    dms: &'p Dms<F, G>,
     /// MULTI pattern
     pattern: MultiStr<'p>,
     /// Previous MULTI value
@@ -42,16 +42,16 @@ struct PatIter<'p, const F: usize> {
 /// To be fillable, a rectangle or page must not be followed by any text or
 /// tags before the next `[tr…]` or `[np]` tag.  The only exception allowed
 /// is the `[fo…]` tag, which applies to the **next** rectangle or page.
-pub struct FillablePattern<'p, const F: usize> {
+pub struct FillablePattern<'p, const F: usize, const G: usize> {
     /// Sign
-    dms: &'p Dms<F>,
+    dms: &'p Dms<F, G>,
     /// MULTI string
     ms: &'p str,
 }
 
-impl<'p, const F: usize> PatIter<'p, F> {
+impl<'p, const F: usize, const G: usize> PatIter<'p, F, G> {
     /// Create a new pattern iterator
-    fn new(dms: &'p Dms<F>, ms: &'p str) -> Self {
+    fn new(dms: &'p Dms<F, G>, ms: &'p str) -> Self {
         let rect = dms.full_rect();
         let font_num = dms.multi_cfg.default_font;
         PatIter {
@@ -65,12 +65,12 @@ impl<'p, const F: usize> PatIter<'p, F> {
     }
 }
 
-impl<'p, const F: usize> FillablePattern<'p, F> {
+impl<'p, const F: usize, const G: usize> FillablePattern<'p, F, G> {
     /// Create a new fillable pattern
     ///
     /// * `dms`: The sign
     /// * `ms`: MULTI string
-    pub fn new(dms: &'p Dms<F>, ms: &'p str) -> Self {
+    pub fn new(dms: &'p Dms<F, G>, ms: &'p str) -> Self {
         FillablePattern { dms, ms }
     }
 
@@ -197,7 +197,7 @@ impl<'p, const F: usize> FillablePattern<'p, F> {
     }
 }
 
-impl<'p, const F: usize> Iterator for PatIter<'p, F> {
+impl<'p, const F: usize, const G: usize> Iterator for PatIter<'p, F, G> {
     type Item = Result<PatValue<'p>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -271,7 +271,7 @@ mod test {
         fonts
     }
 
-    fn make_dms() -> Dms<2> {
+    fn make_dms() -> Dms<2, 0> {
         Dms::builder()
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 0,
@@ -290,7 +290,7 @@ mod test {
     }
 
     fn pattern_rects<'p>(
-        dms: &'p Dms<2>,
+        dms: &'p Dms<2, 0>,
         ms: &'p str,
     ) -> impl Iterator<Item = (Rectangle, u8)> + 'p {
         PatIter::new(&dms, ms).flatten().filter_map(|v| match v {

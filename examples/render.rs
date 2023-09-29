@@ -13,7 +13,7 @@ fn font_table() -> FontTable<1> {
     fonts
 }
 
-fn make_dms() -> Dms<1> {
+fn make_dms() -> Dms<1, 0> {
     Dms::builder()
         .with_vms_cfg(VmsCfg {
             char_height_pixels: 0,

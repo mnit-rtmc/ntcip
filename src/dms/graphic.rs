@@ -4,7 +4,7 @@
 //
 //! Graphic image support
 use crate::dms::multi::{
-    Color, ColorClassic, ColorCtx, ColorScheme, Result, SyntaxError,
+    Color, ColorClassic, ColorCtx, ColorScheme, SyntaxError,
 };
 use log::debug;
 use pix::{
@@ -13,8 +13,30 @@ use pix::{
     Raster,
 };
 
+/// Graphic error
+#[derive(Debug, thiserror::Error)]
+pub enum GraphicError {
+    #[error("Invalid number")]
+    InvalidNumber,
+
+    #[error("Duplicate number")]
+    DuplicateNumber,
+
+    #[error("Invalid height")]
+    InvalidHeight,
+
+    #[error("Invalid width")]
+    InvalidWidth,
+
+    #[error("Invalid bitmap")]
+    InvalidBitmap,
+
+    #[error("Invalid transparent color")]
+    InvalidTransparentColor,
+}
+
 /// Graphic image — `dmsGraphicEntry`
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Graphic {
     /// Graphic number — `dmsGraphicNumber`
     pub number: u8,
@@ -33,10 +55,12 @@ pub struct Graphic {
 }
 
 /// A table of graphics
-#[derive(Clone, Default)]
-pub struct GraphicTable {
+#[derive(Clone)]
+pub struct GraphicTable<const G: usize> {
     /// Graphics in table
-    graphics: Vec<Graphic>,
+    graphics: [Graphic; G],
+    /// Version IDs
+    version_ids: [Option<u16>; G],
 }
 
 impl Graphic {
@@ -64,12 +88,20 @@ impl Graphic {
     }
 
     /// Check if graphic is valid
-    pub fn is_valid(&self) -> bool {
-        self.number > 0
-            && self.height > 0
-            && self.width > 0
-            && self.is_bitmap_valid()
-            && self.is_transparent_color_valid()
+    pub fn validate(&self) -> Result<(), GraphicError> {
+        if self.number < 1 {
+            Err(GraphicError::InvalidNumber)
+        } else if self.height < 1 {
+            Err(GraphicError::InvalidHeight)
+        } else if self.width < 1 {
+            Err(GraphicError::InvalidWidth)
+        } else if !self.is_bitmap_valid() {
+            Err(GraphicError::InvalidBitmap)
+        } else if !self.is_transparent_color_valid() {
+            Err(GraphicError::InvalidTransparentColor)
+        } else {
+            Ok(())
+        }
     }
 
     /// Convert graphic to a raster
@@ -106,7 +138,7 @@ impl Graphic {
         x: i32,
         y: i32,
         ctx: &ColorCtx,
-    ) -> Result<()> {
+    ) -> Result<(), SyntaxError> {
         debug_assert!(x > 0);
         debug_assert!(y > 0);
         let x = x - 1;
@@ -194,22 +226,63 @@ impl Graphic {
     }
 }
 
-impl GraphicTable {
-    /// Push a graphic into the table
-    pub fn push(&mut self, graphic: Graphic) -> Result<()> {
-        if !graphic.is_valid() {
-            return Err(SyntaxError::Other("Invalid graphic"));
+impl<const G: usize> Default for GraphicTable<G> {
+    fn default() -> Self {
+        // workaround const generic default limitation
+        let graphics: [Graphic; G] = [(); G].map(|_| Graphic::default());
+        let version_ids: [Option<u16>; G] = [(); G].map(|_| None);
+        GraphicTable {
+            graphics,
+            version_ids,
         }
-        if self.graphics.iter().any(|g| g.number == graphic.number) {
-            return Err(SyntaxError::Other("Duplicate graphic number"));
+    }
+}
+
+impl<const G: usize> GraphicTable<G> {
+    /// Validate the graphic table
+    pub fn validate(&mut self) -> Result<(), GraphicError> {
+        for (i, graphic) in self.graphics.iter().enumerate() {
+            if graphic.number > 0 {
+                if self.version_ids[i].is_none() {
+                    // FIXME: calculate version ID
+                }
+                graphic.validate()?;
+            }
         }
-        self.graphics.push(graphic);
+        self.validate_graphic_numbers()
+    }
+
+    /// Check if all graphic numbers are unique
+    fn validate_graphic_numbers(&self) -> Result<(), GraphicError> {
+        for i in 1..self.graphics.len() {
+            let num = self.graphics[i - 1].number;
+            if num > 0 && self.graphics[i..].iter().any(|g| g.number == num) {
+                return Err(GraphicError::DuplicateNumber);
+            }
+        }
         Ok(())
     }
 
-    /// Sort by graphic number
-    pub fn sort(&mut self) {
-        self.graphics.sort_by(|a, b| a.number.cmp(&b.number))
+    /// Get a graphic
+    pub fn get(&self, index: usize) -> Option<&Graphic> {
+        self.graphics.get(index)
+    }
+
+    /// Get a mutable graphic
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Graphic> {
+        if let Some(vid) = self.version_ids.get_mut(index) {
+            *vid = None;
+        }
+        self.graphics.get_mut(index)
+    }
+
+    /// Get a graphic version ID
+    pub fn version_id(&self, gnum: u8) -> Option<u16> {
+        self.graphics
+            .iter()
+            .zip(self.version_ids)
+            .find(|(g, _v)| g.number == gnum)
+            .and_then(|(_g, v)| v)
     }
 
     /// Lookup a graphic by number

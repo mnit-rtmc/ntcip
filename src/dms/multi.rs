@@ -45,9 +45,10 @@ pub enum ColorClassic {
 }
 
 /// Color scheme for dynamic message signs
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ColorScheme {
     /// Monochrome with 1-bit values
+    #[default]
     Monochrome1Bit = 1,
     /// Monochrome with 8-bit values
     Monochrome8Bit,

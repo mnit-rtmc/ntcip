@@ -234,10 +234,7 @@ impl<const F: usize> Default for FontTable<F> {
         // workaround const generic default limitation
         let fonts: [Font; F] = [(); F].map(|_| Font::default());
         let version_ids: [Option<u16>; F] = [(); F].map(|_| None);
-        FontTable {
-            fonts,
-            version_ids,
-        }
+        FontTable { fonts, version_ids }
     }
 }
 

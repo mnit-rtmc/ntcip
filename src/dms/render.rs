@@ -919,13 +919,13 @@ mod test {
     fn font_table() -> FontTable<4> {
         let mut fonts = FontTable::default();
         let buf = include_bytes!("../../test/F07-C.ifnt");
-        let f = fonts.get_mut(0).unwrap();
+        let f = fonts.lookup_mut(0).unwrap();
         *f = ifnt::read(&buf[..]).unwrap();
         let buf = include_bytes!("../../test/F07-L.ifnt");
-        let f = fonts.get_mut(1).unwrap();
+        let f = fonts.lookup_mut(0).unwrap();
         *f = ifnt::read(&buf[..]).unwrap();
         let buf = include_bytes!("../../test/F08.ifnt");
-        let f = fonts.get_mut(2).unwrap();
+        let f = fonts.lookup_mut(0).unwrap();
         *f = ifnt::read(&buf[..]).unwrap();
         fonts
     }

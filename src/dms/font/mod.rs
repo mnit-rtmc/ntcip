@@ -263,17 +263,26 @@ impl<const F: usize> FontTable<F> {
         Ok(())
     }
 
-    /// Get a font
-    pub fn get(&self, index: usize) -> Option<&Font> {
-        self.fonts.get(index)
+    /// Lookup a font by number
+    pub fn lookup(&self, fnum: u8) -> Option<&Font> {
+        self.fonts.iter().find(|f| f.number == fnum)
     }
 
-    /// Get a mutable font
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut Font> {
-        if let Some(vid) = self.version_ids.get_mut(index) {
-            *vid = None;
-        }
-        self.fonts.get_mut(index)
+    /// Lookup a mutable font by number
+    pub fn lookup_mut(&mut self, fnum: u8) -> Option<&mut Font> {
+        self.fonts
+            .iter_mut()
+            .enumerate()
+            .find(|(_i, f)| f.number == fnum)
+            .map(|(i, f)| {
+                self.version_ids[i] = None;
+                f
+            })
+    }
+
+    /// Lookup a font by name
+    pub fn lookup_name<'a>(&'a self, name: &str) -> Option<&'a Font> {
+        self.fonts.iter().find(|f| f.name == name)
     }
 
     /// Get a font version ID
@@ -283,15 +292,5 @@ impl<const F: usize> FontTable<F> {
             .zip(self.version_ids)
             .find(|(f, _v)| f.number == fnum)
             .and_then(|(_f, v)| v)
-    }
-
-    /// Lookup a font by number
-    pub fn lookup(&self, fnum: u8) -> Option<&Font> {
-        self.fonts.iter().find(|f| f.number == fnum)
-    }
-
-    /// Lookup a font by name
-    pub fn lookup_name<'a>(&'a self, name: &str) -> Option<&'a Font> {
-        self.fonts.iter().find(|f| f.name == name)
     }
 }

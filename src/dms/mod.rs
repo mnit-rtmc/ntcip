@@ -13,7 +13,7 @@ mod pattern;
 mod render;
 mod sign;
 
-pub use font::{ifnt, Font, FontError, FontTable};
+pub use font::{ifnt, CharacterEntry, Font, FontError, FontTable};
 pub use graphic::{Graphic, GraphicError, GraphicTable};
 pub use pattern::FillablePattern;
 pub use render::{Page, Pages};

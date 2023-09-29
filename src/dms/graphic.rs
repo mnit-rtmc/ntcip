@@ -263,17 +263,21 @@ impl<const G: usize> GraphicTable<G> {
         Ok(())
     }
 
-    /// Get a graphic
-    pub fn get(&self, index: usize) -> Option<&Graphic> {
-        self.graphics.get(index)
+    /// Lookup a graphic by number
+    pub fn lookup(&self, gnum: u8) -> Option<&Graphic> {
+        self.graphics.iter().find(|g| g.number == gnum)
     }
 
-    /// Get a mutable graphic
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut Graphic> {
-        if let Some(vid) = self.version_ids.get_mut(index) {
-            *vid = None;
-        }
-        self.graphics.get_mut(index)
+    /// Lookup a mutable graphic by number
+    pub fn lookup_mut(&mut self, gnum: u8) -> Option<&mut Graphic> {
+        self.graphics
+            .iter_mut()
+            .enumerate()
+            .find(|(_i, g)| g.number == gnum)
+            .map(|(i, g)| {
+                self.version_ids[i] = None;
+                g
+            })
     }
 
     /// Get a graphic version ID
@@ -283,10 +287,5 @@ impl<const G: usize> GraphicTable<G> {
             .zip(self.version_ids)
             .find(|(g, _v)| g.number == gnum)
             .and_then(|(_g, v)| v)
-    }
-
-    /// Lookup a graphic by number
-    pub fn lookup(&self, gnum: u8) -> Option<&Graphic> {
-        self.graphics.iter().find(|g| g.number == gnum)
     }
 }

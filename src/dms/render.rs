@@ -516,8 +516,14 @@ impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
         let graphics = self.dms.graphic_definition();
         match (graphics.lookup(gn), gid) {
             (Some(g), None) => Ok(g),
-            // FIXME: calculate and check version_id
-            (Some(g), Some(_gid)) => Ok(g),
+            (Some(g), Some(gid)) => {
+                if let Some(id) = graphics.version_id(gn) {
+                    if id != gid {
+                        return Err(SyntaxError::GraphicID);
+                    }
+                }
+                Ok(g)
+            }
             (None, _) => Err(SyntaxError::GraphicNotDefined(gn)),
         }
     }

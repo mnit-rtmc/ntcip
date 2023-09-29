@@ -298,9 +298,9 @@ pub enum SyntaxError {
 /// Result type
 pub type Result<T> = std::result::Result<T, SyntaxError>;
 
-/// Parser for MULTI values
-#[derive(Clone)]
-pub(crate) struct Parser<'p> {
+/// MULTI string
+#[derive(Clone, Debug)]
+pub(crate) struct MultiStr<'p> {
     /// Remaining slice to parse
     ms: &'p str,
 
@@ -1229,13 +1229,14 @@ fn parse_tag(tag: &str) -> Result<Value> {
     .ok_or_else(|| SyntaxError::UnsupportedTagValue(tag.into()))
 }
 
-impl<'p> Parser<'p> {
+impl<'p> MultiStr<'p> {
     /// Create a new MULTI parser
     pub fn new(ms: &'p str) -> Self {
-        debug!("Parser::new {}", ms);
-        Parser { ms, offset: 0 }
+        debug!("MultiStr::new {}", ms);
+        MultiStr { ms, offset: 0 }
     }
 
+    /// Split MULTI at current offset
     pub fn split(&self) -> (&'p str, &'p str) {
         self.ms.split_at(self.offset)
     }
@@ -1286,7 +1287,7 @@ impl<'p> Parser<'p> {
     }
 }
 
-impl<'p> Iterator for Parser<'p> {
+impl<'p> Iterator for MultiStr<'p> {
     type Item = Result<Value<'p>>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1297,7 +1298,7 @@ impl<'p> Iterator for Parser<'p> {
 /// Normalize a MULTI string
 pub fn normalize(ms: &str) -> String {
     let mut s = String::with_capacity(ms.len());
-    for t in Parser::new(ms).flatten() {
+    for t in MultiStr::new(ms).flatten() {
         s.push_str(&t.to_string());
     }
     s
@@ -1305,7 +1306,7 @@ pub fn normalize(ms: &str) -> String {
 
 /// Check if a MULTI string is a "blank" message
 pub fn is_blank(ms: &str) -> bool {
-    for val in Parser::new(ms) {
+    for val in MultiStr::new(ms) {
         match val {
             Ok(value) => {
                 if !value.is_blank() {
@@ -1320,7 +1321,7 @@ pub fn is_blank(ms: &str) -> bool {
 
 /// Get an iterator of text spans in a MULTI string
 pub fn text_spans(ms: &str) -> impl Iterator<Item = &str> + '_ {
-    Parser::new(ms).flatten().filter_map(|v| match v {
+    MultiStr::new(ms).flatten().filter_map(|v| match v {
         Value::Text(t) => Some(t),
         _ => None,
     })
@@ -1457,7 +1458,7 @@ mod test {
     }
 
     fn single_text(v: &str) {
-        let mut m = Parser::new(v);
+        let mut m = MultiStr::new(v);
         assert_eq!(m.next(), Some(Ok(Value::Text(v.into()))));
         assert_eq!(m.next(), None);
     }
@@ -1474,7 +1475,7 @@ mod test {
 
     #[test]
     fn parse_bracket() {
-        let mut m = Parser::new("[[a]]b[[[[c]][[]]]]d");
+        let mut m = MultiStr::new("[[a]]b[[[[c]][[]]]]d");
         assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
         assert_eq!(m.next(), Some(Ok(Value::Text("a".into()))));
         assert_eq!(m.next(), Some(Ok(Value::Text("]".into()))));
@@ -1492,7 +1493,7 @@ mod test {
 
     #[test]
     fn parse_bracket2() {
-        let mut m = Parser::new("[[[[[[[[");
+        let mut m = MultiStr::new("[[[[[[[[");
         assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
         assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
         assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
@@ -1508,7 +1509,7 @@ mod test {
 
     #[test]
     fn parse_cb1() {
-        let mut m = Parser::new("[cb0][CB1][cB255][cb256][cb]");
+        let mut m = MultiStr::new("[cb0][CB1][cB255][cb256][cb]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::ColorBackground(Some(Color::Legacy(0)))))
@@ -1531,7 +1532,7 @@ mod test {
 
     #[test]
     fn parse_cb2() {
-        let mut m = Parser::new("[cbX][cb0,0,0]");
+        let mut m = MultiStr::new("[cbX][cb0,0,0]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("cbX".into())))
@@ -1556,7 +1557,7 @@ mod test {
 
     #[test]
     fn parse_pb1() {
-        let mut m = Parser::new("[pb0][PB1][pB255][pb256][pb]");
+        let mut m = MultiStr::new("[pb0][PB1][pB255][pb256][pb]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::PageBackground(Some(Color::Legacy(0)))))
@@ -1579,7 +1580,7 @@ mod test {
 
     #[test]
     fn parse_pb2() {
-        let mut m = Parser::new("[pb0,0]");
+        let mut m = MultiStr::new("[pb0,0]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("pb0,0".into())))
@@ -1589,7 +1590,7 @@ mod test {
 
     #[test]
     fn parse_pb3() {
-        let mut m = Parser::new("[pb50,150,200]");
+        let mut m = MultiStr::new("[pb50,150,200]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::PageBackground(Some(Color::Rgb(50, 150, 200)))))
@@ -1599,7 +1600,7 @@ mod test {
 
     #[test]
     fn parse_pb4() {
-        let mut m = Parser::new("[pb0,0,255,0]");
+        let mut m = MultiStr::new("[pb0,0,255,0]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("pb0,0,255,0".into())))
@@ -1609,7 +1610,7 @@ mod test {
 
     #[test]
     fn parse_pb5() {
-        let mut m = Parser::new("[pb0,0.5,255]");
+        let mut m = MultiStr::new("[pb0,0.5,255]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("pb0,0.5,255".into())))
@@ -1630,7 +1631,7 @@ mod test {
 
     #[test]
     fn parse_cf1() {
-        let mut m = Parser::new("[cf0][CF1][cF255][cf256][cf]");
+        let mut m = MultiStr::new("[cf0][CF1][cF255][cf256][cf]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::ColorForeground(Some(Color::Legacy(0)))))
@@ -1653,7 +1654,7 @@ mod test {
 
     #[test]
     fn parse_cf2() {
-        let mut m = Parser::new("[cf0,0]");
+        let mut m = MultiStr::new("[cf0,0]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("cf0,0".into())))
@@ -1663,7 +1664,7 @@ mod test {
 
     #[test]
     fn parse_cf3() {
-        let mut m = Parser::new("[cf255,0,208][CF0,a,0]");
+        let mut m = MultiStr::new("[cf255,0,208][CF0,a,0]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::ColorForeground(Some(Color::Rgb(255, 0, 208)))))
@@ -1677,7 +1678,7 @@ mod test {
 
     #[test]
     fn parse_cf4() {
-        let mut m = Parser::new("[cf0,0,255,0]");
+        let mut m = MultiStr::new("[cf0,0,255,0]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("cf0,0,255,0".into())))
@@ -1687,7 +1688,7 @@ mod test {
 
     #[test]
     fn parse_cf5() {
-        let mut m = Parser::new("[cf0,0.5,255]");
+        let mut m = MultiStr::new("[cf0,0.5,255]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("cf0,0.5,255".into())))
@@ -1697,7 +1698,7 @@ mod test {
 
     #[test]
     fn parse_cr() {
-        let mut m = Parser::new("[cr1,1,10,10,0]");
+        let mut m = MultiStr::new("[cr1,1,10,10,0]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::ColorRectangle(
@@ -1710,7 +1711,7 @@ mod test {
 
     #[test]
     fn parse_cr2() {
-        let mut m = Parser::new("[CR1,0,10,10,0]");
+        let mut m = MultiStr::new("[CR1,0,10,10,0]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue(
@@ -1722,7 +1723,7 @@ mod test {
 
     #[test]
     fn parse_cr3() {
-        let mut m = Parser::new("[cR1,1,100,100,0,1]");
+        let mut m = MultiStr::new("[cR1,1,100,100,0,1]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue(
@@ -1734,7 +1735,7 @@ mod test {
 
     #[test]
     fn parse_cr4() {
-        let mut m = Parser::new("[Cr5,7,100,80,100,150,200]");
+        let mut m = MultiStr::new("[Cr5,7,100,80,100,150,200]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::ColorRectangle(
@@ -1747,7 +1748,7 @@ mod test {
 
     #[test]
     fn parse_cr5() {
-        let mut m = Parser::new("[cr1,1,100,100,0,1,2,3]");
+        let mut m = MultiStr::new("[cr1,1,100,100,0,1,2,3]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue(
@@ -1759,7 +1760,7 @@ mod test {
 
     #[test]
     fn parse_cr6() {
-        let mut m = Parser::new("[cr100,200,1000,2000,255,208,0]");
+        let mut m = MultiStr::new("[cr100,200,1000,2000,255,208,0]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::ColorRectangle(
@@ -1772,7 +1773,7 @@ mod test {
 
     #[test]
     fn parse_f() {
-        let mut m = Parser::new("[F]");
+        let mut m = MultiStr::new("[F]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("F".into())))
@@ -1782,21 +1783,21 @@ mod test {
 
     #[test]
     fn parse_f1() {
-        let mut m = Parser::new("[f1]");
+        let mut m = MultiStr::new("[f1]");
         assert_eq!(m.next(), Some(Ok(Value::Field(1, None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_f2() {
-        let mut m = Parser::new("[f99]");
+        let mut m = MultiStr::new("[f99]");
         assert_eq!(m.next(), Some(Ok(Value::Field(99, None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_f3() {
-        let mut m = Parser::new("[f100]");
+        let mut m = MultiStr::new("[f100]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("f100".into())))
@@ -1806,14 +1807,14 @@ mod test {
 
     #[test]
     fn parse_f4() {
-        let mut m = Parser::new("[F4,1]");
+        let mut m = MultiStr::new("[F4,1]");
         assert_eq!(m.next(), Some(Ok(Value::Field(4, Some(1)))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_fl() {
-        let mut m = Parser::new("[flto]");
+        let mut m = MultiStr::new("[flto]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::Flash(FlashOrder::OnOff, None, None)))
@@ -1823,7 +1824,7 @@ mod test {
 
     #[test]
     fn parse_fl2() {
-        let mut m = Parser::new("[FLOT]");
+        let mut m = MultiStr::new("[FLOT]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::Flash(FlashOrder::OffOn, None, None)))
@@ -1833,7 +1834,7 @@ mod test {
 
     #[test]
     fn parse_fl3() {
-        let mut m = Parser::new("[Flt10o5]");
+        let mut m = MultiStr::new("[Flt10o5]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::Flash(FlashOrder::OnOff, Some(10), Some(5))))
@@ -1843,7 +1844,7 @@ mod test {
 
     #[test]
     fn parse_fl4() {
-        let mut m = Parser::new("[fLo0t99]");
+        let mut m = MultiStr::new("[fLo0t99]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::Flash(FlashOrder::OffOn, Some(0), Some(99))))
@@ -1853,7 +1854,7 @@ mod test {
 
     #[test]
     fn parse_fl5() {
-        let mut m = Parser::new("[flt10o5x]");
+        let mut m = MultiStr::new("[flt10o5x]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("flt10o5x".into())))
@@ -1863,7 +1864,7 @@ mod test {
 
     #[test]
     fn parse_fl6() {
-        let mut m = Parser::new("[flt10o100]");
+        let mut m = MultiStr::new("[flt10o100]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("flt10o100".into())))
@@ -1873,7 +1874,7 @@ mod test {
 
     #[test]
     fn parse_fl7() {
-        let mut m = Parser::new("[flt10o10o10]");
+        let mut m = MultiStr::new("[flt10o10o10]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("flt10o10o10".into())))
@@ -1883,14 +1884,14 @@ mod test {
 
     #[test]
     fn parse_fle() {
-        let mut m = Parser::new("[/fl]");
+        let mut m = MultiStr::new("[/fl]");
         assert_eq!(m.next(), Some(Ok(Value::FlashEnd())));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_fle1() {
-        let mut m = Parser::new("[/fl1]");
+        let mut m = MultiStr::new("[/fl1]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("/fl1".into())))
@@ -1900,35 +1901,35 @@ mod test {
 
     #[test]
     fn parse_fo() {
-        let mut m = Parser::new("[fo]");
+        let mut m = MultiStr::new("[fo]");
         assert_eq!(m.next(), Some(Ok(Value::Font(None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_fo1() {
-        let mut m = Parser::new("[fo1]");
+        let mut m = MultiStr::new("[fo1]");
         assert_eq!(m.next(), Some(Ok(Value::Font(Some((1, None))))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_fo2() {
-        let mut m = Parser::new("[fO2,0000]");
+        let mut m = MultiStr::new("[fO2,0000]");
         assert_eq!(m.next(), Some(Ok(Value::Font(Some((2, Some(0)))))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_fo3() {
-        let mut m = Parser::new("[Fo3,FFFF]");
+        let mut m = MultiStr::new("[Fo3,FFFF]");
         assert_eq!(m.next(), Some(Ok(Value::Font(Some((3, Some(0xFFFF)))))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_fo4() {
-        let mut m = Parser::new("[FO4,FFFFF]");
+        let mut m = MultiStr::new("[FO4,FFFFF]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("FO4,FFFFF".into())))
@@ -1938,7 +1939,7 @@ mod test {
 
     #[test]
     fn parse_fo5() {
-        let mut m = Parser::new("[fo5,xxxx]");
+        let mut m = MultiStr::new("[fo5,xxxx]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("fo5,xxxx".into())))
@@ -1948,7 +1949,7 @@ mod test {
 
     #[test]
     fn parse_fo6() {
-        let mut m = Parser::new("[fo6,0000,0]");
+        let mut m = MultiStr::new("[fo6,0000,0]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("fo6,0000,0".into())))
@@ -1958,14 +1959,14 @@ mod test {
 
     #[test]
     fn parse_fo7() {
-        let mut m = Parser::new("[Fo7,abcd]");
+        let mut m = MultiStr::new("[Fo7,abcd]");
         assert_eq!(m.next(), Some(Ok(Value::Font(Some((7, Some(0xabcd)))))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_fo8() {
-        let mut m = Parser::new("[fo0]");
+        let mut m = MultiStr::new("[fo0]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("fo0".into())))
@@ -1975,7 +1976,7 @@ mod test {
 
     #[test]
     fn parse_g() {
-        let mut m = Parser::new("[G]");
+        let mut m = MultiStr::new("[G]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("G".into())))
@@ -1985,21 +1986,21 @@ mod test {
 
     #[test]
     fn parse_g1() {
-        let mut m = Parser::new("[g1]");
+        let mut m = MultiStr::new("[g1]");
         assert_eq!(m.next(), Some(Ok(Value::Graphic(1, None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_g2() {
-        let mut m = Parser::new("[g2,1,1]");
+        let mut m = MultiStr::new("[g2,1,1]");
         assert_eq!(m.next(), Some(Ok(Value::Graphic(2, Some((1, 1, None))))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_g3() {
-        let mut m = Parser::new("[g3,1]");
+        let mut m = MultiStr::new("[g3,1]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("g3,1".into())))
@@ -2009,7 +2010,7 @@ mod test {
 
     #[test]
     fn parse_g4() {
-        let mut m = Parser::new("[g4,1,1,0123]");
+        let mut m = MultiStr::new("[g4,1,1,0123]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::Graphic(4, Some((1, 1, Some(0x0123))))))
@@ -2019,7 +2020,7 @@ mod test {
 
     #[test]
     fn parse_g5() {
-        let mut m = Parser::new("[g5,1,0,0123]");
+        let mut m = MultiStr::new("[g5,1,0,0123]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("g5,1,0,0123".into())))
@@ -2029,7 +2030,7 @@ mod test {
 
     #[test]
     fn parse_g6() {
-        let mut m = Parser::new("[g6,300,300,12345]");
+        let mut m = MultiStr::new("[g6,300,300,12345]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue(
@@ -2041,7 +2042,7 @@ mod test {
 
     #[test]
     fn parse_g7() {
-        let mut m = Parser::new("[g7,30,30,1245,]");
+        let mut m = MultiStr::new("[g7,30,30,1245,]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue(
@@ -2053,7 +2054,7 @@ mod test {
 
     #[test]
     fn parse_g8() {
-        let mut m = Parser::new("[G8,50,50,Beef]");
+        let mut m = MultiStr::new("[G8,50,50,Beef]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::Graphic(8, Some((50, 50, Some(0xbeef))))))
@@ -2063,7 +2064,7 @@ mod test {
 
     #[test]
     fn parse_hc() {
-        let mut m = Parser::new("[hc]");
+        let mut m = MultiStr::new("[hc]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("hc".into())))
@@ -2073,21 +2074,21 @@ mod test {
 
     #[test]
     fn parse_hc1() {
-        let mut m = Parser::new("[HC1]");
+        let mut m = MultiStr::new("[HC1]");
         assert_eq!(m.next(), Some(Ok(Value::HexadecimalCharacter(0x0001))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_hc2() {
-        let mut m = Parser::new("[hcFFFF]");
+        let mut m = MultiStr::new("[hcFFFF]");
         assert_eq!(m.next(), Some(Ok(Value::HexadecimalCharacter(0xFFFF))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_hc3() {
-        let mut m = Parser::new("[hc1FFFF]");
+        let mut m = MultiStr::new("[hc1FFFF]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("hc1FFFF".into())))
@@ -2097,7 +2098,7 @@ mod test {
 
     #[test]
     fn parse_hc4() {
-        let mut m = Parser::new("[hcXXxx]");
+        let mut m = MultiStr::new("[hcXXxx]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("hcXXxx".into())))
@@ -2107,21 +2108,21 @@ mod test {
 
     #[test]
     fn parse_hc5() {
-        let mut m = Parser::new("[hc7f]");
+        let mut m = MultiStr::new("[hc7f]");
         assert_eq!(m.next(), Some(Ok(Value::HexadecimalCharacter(0x7F))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_jl() {
-        let mut m = Parser::new("[jl]");
+        let mut m = MultiStr::new("[jl]");
         assert_eq!(m.next(), Some(Ok(Value::JustificationLine(None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_jl0() {
-        let mut m = Parser::new("[JL0]");
+        let mut m = MultiStr::new("[JL0]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("JL0".into())))
@@ -2132,7 +2133,7 @@ mod test {
     #[test]
     #[allow(deprecated)]
     fn parse_jl15() {
-        let mut m = Parser::new("[jL1][Jl2][JL3][jl4][JL5]");
+        let mut m = MultiStr::new("[jL1][Jl2][JL3][jl4][JL5]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::JustificationLine(Some(JustificationLine::Other))))
@@ -2160,14 +2161,14 @@ mod test {
 
     #[test]
     fn parse_jp() {
-        let mut m = Parser::new("[jp]");
+        let mut m = MultiStr::new("[jp]");
         assert_eq!(m.next(), Some(Ok(Value::JustificationPage(None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_jp0() {
-        let mut m = Parser::new("[JP0]");
+        let mut m = MultiStr::new("[JP0]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("JP0".into())))
@@ -2178,7 +2179,7 @@ mod test {
     #[test]
     #[allow(deprecated)]
     fn parse_jp14() {
-        let mut m = Parser::new("[jP1][Jp2][JP3][jp4]");
+        let mut m = MultiStr::new("[jP1][Jp2][JP3][jp4]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::JustificationPage(Some(JustificationPage::Other))))
@@ -2204,14 +2205,14 @@ mod test {
 
     #[test]
     fn parse_ms() {
-        let mut m = Parser::new("[ms0]");
+        let mut m = MultiStr::new("[ms0]");
         assert_eq!(m.next(), Some(Ok(Value::ManufacturerSpecific(0, None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_ms1() {
-        let mut m = Parser::new("[Ms1,Test]");
+        let mut m = MultiStr::new("[Ms1,Test]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::ManufacturerSpecific(1, Some("Test".into()))))
@@ -2221,7 +2222,7 @@ mod test {
 
     #[test]
     fn parse_ms2() {
-        let mut m = Parser::new("[Ms999,RANDOM junk]");
+        let mut m = MultiStr::new("[Ms999,RANDOM junk]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::ManufacturerSpecific(
@@ -2234,7 +2235,7 @@ mod test {
 
     #[test]
     fn parse_ms3() {
-        let mut m = Parser::new("[Ms9x9]");
+        let mut m = MultiStr::new("[Ms9x9]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("Ms9x9".into())))
@@ -2244,14 +2245,14 @@ mod test {
 
     #[test]
     fn parse_mse() {
-        let mut m = Parser::new("[/ms0]");
+        let mut m = MultiStr::new("[/ms0]");
         assert_eq!(m.next(), Some(Ok(Value::ManufacturerSpecificEnd(0, None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_mse1() {
-        let mut m = Parser::new("[/Ms1,Test]");
+        let mut m = MultiStr::new("[/Ms1,Test]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::ManufacturerSpecificEnd(1, Some("Test".into()))))
@@ -2261,7 +2262,7 @@ mod test {
 
     #[test]
     fn parse_mse2() {
-        let mut m = Parser::new("[/Ms999,RANDOM junk]");
+        let mut m = MultiStr::new("[/Ms999,RANDOM junk]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::ManufacturerSpecificEnd(
@@ -2274,7 +2275,7 @@ mod test {
 
     #[test]
     fn parse_mse3() {
-        let mut m = Parser::new("[/Ms9x9]");
+        let mut m = MultiStr::new("[/Ms9x9]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("/Ms9x9".into())))
@@ -2284,7 +2285,7 @@ mod test {
 
     #[test]
     fn parse_mv() {
-        let mut m = Parser::new("[mv]");
+        let mut m = MultiStr::new("[mv]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("mv".into())))
@@ -2294,7 +2295,7 @@ mod test {
 
     #[test]
     fn parse_mv1() {
-        let mut m = Parser::new("[mvc]");
+        let mut m = MultiStr::new("[mvc]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("mvc".into())))
@@ -2304,7 +2305,7 @@ mod test {
 
     #[test]
     fn parse_mv2() {
-        let mut m = Parser::new("[mvcl]");
+        let mut m = MultiStr::new("[mvcl]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("mvcl".into())))
@@ -2314,7 +2315,7 @@ mod test {
 
     #[test]
     fn parse_mv3() {
-        let mut m = Parser::new("[mvcl100]");
+        let mut m = MultiStr::new("[mvcl100]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("mvcl100".into())))
@@ -2324,7 +2325,7 @@ mod test {
 
     #[test]
     fn parse_mv4() {
-        let mut m = Parser::new("[mvcl100,1]");
+        let mut m = MultiStr::new("[mvcl100,1]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("mvcl100,1".into())))
@@ -2334,7 +2335,7 @@ mod test {
 
     #[test]
     fn parse_mv5() {
-        let mut m = Parser::new("[mvcl100,1,10]");
+        let mut m = MultiStr::new("[mvcl100,1,10]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("mvcl100,1,10".into())))
@@ -2344,7 +2345,7 @@ mod test {
 
     #[test]
     fn parse_mv6() {
-        let mut m = Parser::new("[mvcl100,1,10,Text]");
+        let mut m = MultiStr::new("[mvcl100,1,10,Text]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::MovingText(
@@ -2361,7 +2362,7 @@ mod test {
 
     #[test]
     fn parse_mv7() {
-        let mut m = Parser::new("[mvcr150,2,5,*MOVING*]");
+        let mut m = MultiStr::new("[mvcr150,2,5,*MOVING*]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::MovingText(
@@ -2378,7 +2379,7 @@ mod test {
 
     #[test]
     fn parse_mv8() {
-        let mut m = Parser::new("[mvll75,3,4,Linear]");
+        let mut m = MultiStr::new("[mvll75,3,4,Linear]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::MovingText(
@@ -2395,7 +2396,7 @@ mod test {
 
     #[test]
     fn parse_mv9() {
-        let mut m = Parser::new("[mvlr1000,4,5,right]");
+        let mut m = MultiStr::new("[mvlr1000,4,5,right]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::MovingText(
@@ -2412,7 +2413,7 @@ mod test {
 
     #[test]
     fn parse_mv10() {
-        let mut m = Parser::new("[mvl2l100,5,1,left]");
+        let mut m = MultiStr::new("[mvl2l100,5,1,left]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::MovingText(
@@ -2429,7 +2430,7 @@ mod test {
 
     #[test]
     fn parse_mv11() {
-        let mut m = Parser::new("[mvl4x100,5,1,left]");
+        let mut m = MultiStr::new("[mvl4x100,5,1,left]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue(
@@ -2441,7 +2442,7 @@ mod test {
 
     #[test]
     fn parse_mv12() {
-        let mut m = Parser::new("[mvl4r100,5,300,left]");
+        let mut m = MultiStr::new("[mvl4r100,5,300,left]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue(
@@ -2453,35 +2454,35 @@ mod test {
 
     #[test]
     fn parse_pt() {
-        let mut m = Parser::new("[pt]");
+        let mut m = MultiStr::new("[pt]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(None, None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_pt1() {
-        let mut m = Parser::new("[pt10]");
+        let mut m = MultiStr::new("[pt10]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(Some(10), None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_pt2() {
-        let mut m = Parser::new("[pt10o]");
+        let mut m = MultiStr::new("[pt10o]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(Some(10), None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_pt3() {
-        let mut m = Parser::new("[pt10o2]");
+        let mut m = MultiStr::new("[pt10o2]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(Some(10), Some(2)))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_pt4() {
-        let mut m = Parser::new("[pt10o2o]");
+        let mut m = MultiStr::new("[pt10o2o]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("pt10o2o".into())))
@@ -2491,21 +2492,21 @@ mod test {
 
     #[test]
     fn parse_pt5() {
-        let mut m = Parser::new("[pt255O255]");
+        let mut m = MultiStr::new("[pt255O255]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(Some(255), Some(255)))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_pt6() {
-        let mut m = Parser::new("[PTO]");
+        let mut m = MultiStr::new("[PTO]");
         assert_eq!(m.next(), Some(Ok(Value::PageTime(None, None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_pt7() {
-        let mut m = Parser::new("[pt256o256]");
+        let mut m = MultiStr::new("[pt256o256]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("pt256o256".into())))
@@ -2515,7 +2516,7 @@ mod test {
 
     #[test]
     fn parse_pt8() {
-        let mut m = Parser::new("[pt%%%]");
+        let mut m = MultiStr::new("[pt%%%]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("pt%%%".into())))
@@ -2525,7 +2526,7 @@ mod test {
 
     #[test]
     fn parse_sc() {
-        let mut m = Parser::new("[sc]");
+        let mut m = MultiStr::new("[sc]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("sc".into())))
@@ -2535,21 +2536,21 @@ mod test {
 
     #[test]
     fn parse_sc1() {
-        let mut m = Parser::new("[SC1]");
+        let mut m = MultiStr::new("[SC1]");
         assert_eq!(m.next(), Some(Ok(Value::SpacingCharacter(1))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_sc2() {
-        let mut m = Parser::new("[Sc99]");
+        let mut m = MultiStr::new("[Sc99]");
         assert_eq!(m.next(), Some(Ok(Value::SpacingCharacter(99))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_sc3() {
-        let mut m = Parser::new("[sc100]");
+        let mut m = MultiStr::new("[sc100]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("sc100".into())))
@@ -2559,7 +2560,7 @@ mod test {
 
     #[test]
     fn parse_sc4() {
-        let mut m = Parser::new("[sc2,1]");
+        let mut m = MultiStr::new("[sc2,1]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("sc2,1".into())))
@@ -2569,14 +2570,14 @@ mod test {
 
     #[test]
     fn parse_sce() {
-        let mut m = Parser::new("[/sc]");
+        let mut m = MultiStr::new("[/sc]");
         assert_eq!(m.next(), Some(Ok(Value::SpacingCharacterEnd())));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_sce1() {
-        let mut m = Parser::new("[/sc1]");
+        let mut m = MultiStr::new("[/sc1]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("/sc1".into())))
@@ -2586,7 +2587,7 @@ mod test {
 
     #[test]
     fn parse_tr() {
-        let mut m = Parser::new("[tr1,1,10,10]");
+        let mut m = MultiStr::new("[tr1,1,10,10]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::TextRectangle(Rectangle::new(1, 1, 10, 10))))
@@ -2596,7 +2597,7 @@ mod test {
 
     #[test]
     fn parse_tr2() {
-        let mut m = Parser::new("[TR1,0,10,10]");
+        let mut m = MultiStr::new("[TR1,0,10,10]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("TR1,0,10,10".into())))
@@ -2606,7 +2607,7 @@ mod test {
 
     #[test]
     fn parse_tr3() {
-        let mut m = Parser::new("[tR1,1,100,100,1]");
+        let mut m = MultiStr::new("[tR1,1,100,100,1]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue(
@@ -2618,7 +2619,7 @@ mod test {
 
     #[test]
     fn parse_tr4() {
-        let mut m = Parser::new("[Tr5,7,100,80]");
+        let mut m = MultiStr::new("[Tr5,7,100,80]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::TextRectangle(Rectangle::new(5, 7, 100, 80))))
@@ -2628,7 +2629,7 @@ mod test {
 
     #[test]
     fn parse_tr5() {
-        let mut m = Parser::new("[tr1,1,,100]");
+        let mut m = MultiStr::new("[tr1,1,,100]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTagValue("tr1,1,,100".into())))
@@ -2638,7 +2639,7 @@ mod test {
 
     #[test]
     fn parse_tr6() {
-        let mut m = Parser::new("[tr1,1,0,0]");
+        let mut m = MultiStr::new("[tr1,1,0,0]");
         assert_eq!(
             m.next(),
             Some(Ok(Value::TextRectangle(Rectangle::new(1, 1, 0, 0))))
@@ -2648,7 +2649,7 @@ mod test {
 
     #[test]
     fn parse_new_line() {
-        let mut m = Parser::new("[nl][NL0][Nl1][nL9][nl10]");
+        let mut m = MultiStr::new("[nl][NL0][Nl1][nL9][nl10]");
         assert_eq!(m.next(), Some(Ok(Value::NewLine(None))));
         assert_eq!(m.next(), Some(Ok(Value::NewLine(Some(0)))));
         assert_eq!(m.next(), Some(Ok(Value::NewLine(Some(1)))));
@@ -2662,7 +2663,7 @@ mod test {
 
     #[test]
     fn parse_multi() {
-        let mut m = Parser::new("[[TEST[nl]TEST 2[np]TEST 3XX[NL]TEST 4]]");
+        let mut m = MultiStr::new("[[TEST[nl]TEST 2[np]TEST 3XX[NL]TEST 4]]");
         assert_eq!(m.next(), Some(Ok(Value::Text("[".into()))));
         assert_eq!(m.next(), Some(Ok(Value::Text("TEST".into()))));
         assert_eq!(m.next(), Some(Ok(Value::NewLine(None))));
@@ -2677,21 +2678,21 @@ mod test {
 
     #[test]
     fn parse_control_char() {
-        let mut m = Parser::new("\n");
+        let mut m = MultiStr::new("\n");
         assert_eq!(m.next(), Some(Err(SyntaxError::CharacterNotDefined('\n'))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_rustacean() {
-        let mut m = Parser::new("🦀🦀");
+        let mut m = MultiStr::new("🦀🦀");
         assert_eq!(m.next(), Some(Err(SyntaxError::CharacterNotDefined('🦀'))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_tag() {
-        let mut m = Parser::new("[x[x]");
+        let mut m = MultiStr::new("[x[x]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTag("[x".into())))
@@ -2705,7 +2706,7 @@ mod test {
 
     #[test]
     fn parse_tag2() {
-        let mut m = Parser::new("]");
+        let mut m = MultiStr::new("]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTag("]".into())))
@@ -2715,7 +2716,7 @@ mod test {
 
     #[test]
     fn parse_tag3() {
-        let mut m = Parser::new("[nl");
+        let mut m = MultiStr::new("[nl");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTag("[nl".into())))
@@ -2725,7 +2726,7 @@ mod test {
 
     #[test]
     fn parse_tag4() {
-        let mut m = Parser::new("[");
+        let mut m = MultiStr::new("[");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTag("[".into())))
@@ -2735,7 +2736,7 @@ mod test {
 
     #[test]
     fn parse_tag5() {
-        let mut m = Parser::new("[x]");
+        let mut m = MultiStr::new("[x]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTag("x".into())))
@@ -2745,7 +2746,7 @@ mod test {
 
     #[test]
     fn parse_tag6() {
-        let mut m = Parser::new("bad]");
+        let mut m = MultiStr::new("bad]");
         assert_eq!(m.next(), Some(Ok(Value::Text("bad"))));
         assert_eq!(
             m.next(),
@@ -2755,7 +2756,8 @@ mod test {
 
     #[test]
     fn parse_tag7() {
-        let mut m = Parser::new("[ttS123][vsa][slow45,10][feedL123][tz1,2,3]");
+        let mut m =
+            MultiStr::new("[ttS123][vsa][slow45,10][feedL123][tz1,2,3]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTag("ttS123".into())))
@@ -2781,7 +2783,7 @@ mod test {
 
     #[test]
     fn parse_tag8() {
-        let mut m = Parser::new("[pa1,LOW,CLOSED][loca,b,c,d]");
+        let mut m = MultiStr::new("[pa1,LOW,CLOSED][loca,b,c,d]");
         assert_eq!(
             m.next(),
             Some(Err(SyntaxError::UnsupportedTag("pa1,LOW,CLOSED".into())))

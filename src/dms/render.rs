@@ -6,8 +6,8 @@
 use crate::dms::font::{Font, FontTable};
 use crate::dms::graphic::Graphic;
 use crate::dms::multi::{
-    ColorCtx, JustificationLine, JustificationPage, Parser, Rectangle, Result,
-    SyntaxError, Value,
+    ColorCtx, JustificationLine, JustificationPage, MultiStr, Rectangle,
+    Result, SyntaxError, Value,
 };
 use crate::dms::sign::Dms;
 use log::debug;
@@ -115,8 +115,8 @@ pub struct Pages<'a> {
     /// Page state
     page_state: PageState,
 
-    /// MULTI parser
-    parser: Parser<'a>,
+    /// MULTI string iterator
+    values: MultiStr<'a>,
 
     /// Spans for current text rectangle
     spans: Vec<TextSpan>,
@@ -348,7 +348,7 @@ impl<'a> Pages<'a> {
             default_state,
             render_state,
             page_state: PageState::On(true),
-            parser: Parser::new(ms),
+            values: MultiStr::new(ms),
             spans: Vec::new(),
         }
     }
@@ -419,7 +419,7 @@ impl<'a> Pages<'a> {
 
     /// Check for unsupported MULTI tags in a page
     fn check_unsupported(&self) -> Result<()> {
-        for value in self.parser.clone() {
+        for value in self.values.clone() {
             let val = value?;
             match val {
                 Value::Field(_, _)
@@ -446,7 +446,7 @@ impl<'a> Pages<'a> {
         rs.line_spacing = ds.line_spacing;
         rs.line_number = 0;
         rs.span_number = 0;
-        for value in self.parser.clone() {
+        for value in self.values.clone() {
             let val = value?;
             match val {
                 Value::ColorBackground(clr) | Value::PageBackground(clr) => {
@@ -466,7 +466,7 @@ impl<'a> Pages<'a> {
     /// Render graphics and color rectangles
     fn render_graphics(&mut self, raster: &mut Raster<SRgb8>) -> Result<()> {
         let mut rs = self.render_state.clone();
-        for value in self.parser.clone() {
+        for value in self.values.clone() {
             let val = value?;
             match val {
                 Value::ColorBackground(clr) => {
@@ -517,7 +517,7 @@ impl<'a> Pages<'a> {
         let mut line_blank = true;
         self.page_state = PageState::done(page_off);
         self.spans.clear();
-        for value in self.parser.by_ref() {
+        for value in self.values.by_ref() {
             let val = value?;
             match val {
                 Value::ColorForeground(clr) => {

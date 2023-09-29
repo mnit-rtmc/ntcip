@@ -2,7 +2,7 @@
 //
 // Copyright (C) 2023  Minnesota Department of Transportation
 //
-use crate::dms::multi::{Parser, Rectangle, SyntaxError, Value};
+use crate::dms::multi::{MultiStr, Rectangle, SyntaxError, Value};
 use crate::dms::sign::Dms;
 
 /// Pattern values are MULTI values or "pseudo-values" from a pattern
@@ -18,8 +18,8 @@ enum PatValue<'p> {
 struct PatIter<'p> {
     /// Sign
     dms: &'p Dms,
-    /// MULTI parser
-    parser: Parser<'p>,
+    /// MULTI pattern
+    pattern: MultiStr<'p>,
     /// Previous MULTI value
     value: Option<Value<'p>>,
     /// Current font number
@@ -55,7 +55,7 @@ impl<'p> PatIter<'p> {
         let rect = dms.full_rect();
         let font_num = dms.multi_cfg.default_font;
         PatIter {
-            parser: Parser::new(ms),
+            pattern: MultiStr::new(ms),
             value: None,
             dms,
             font_num,
@@ -137,7 +137,7 @@ impl<'p> FillablePattern<'p> {
             match pval {
                 PatValue::FillableRect(rect, font_num) => {
                     let mut n_lines = self.dms.rect_lines(rect, font_num);
-                    let mut values = Parser::new(ms);
+                    let mut values = MultiStr::new(ms);
                     let (mut before, mut after) = values.split();
                     loop {
                         let value = values.next();
@@ -155,7 +155,7 @@ impl<'p> FillablePattern<'p> {
                                     n_lines -= 1;
                                 }
                                 (_, ms) = values.split();
-                                values = Parser::new(ms);
+                                values = MultiStr::new(ms);
                                 (before, after) = values.split();
                             }
                             _ => break,
@@ -174,7 +174,7 @@ impl<'p> FillablePattern<'p> {
                     // since they are after fillable text
                 }
                 PatValue::Value(val) => {
-                    let mut values = Parser::new(ms);
+                    let mut values = MultiStr::new(ms);
                     let mut value = values.next();
                     // ignore font tags in ms
                     while let Some(Ok(Value::Font(_))) = &value {
@@ -208,7 +208,7 @@ impl<'p> Iterator for PatIter<'p> {
         if self.end {
             return None;
         }
-        let value = match self.parser.next() {
+        let value = match self.pattern.next() {
             Some(Ok(v)) => v,
             Some(Err(e)) => return Some(Err(e)),
             None => {

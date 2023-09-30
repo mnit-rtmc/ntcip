@@ -517,12 +517,11 @@ impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
         match (graphics.lookup(gn), gid) {
             (Some(g), None) => Ok(g),
             (Some(g), Some(gid)) => {
-                if let Some(id) = graphics.version_id(gn) {
-                    if id != gid {
-                        return Err(SyntaxError::GraphicID);
-                    }
+                if Some(gid) == graphics.version_id(gn) {
+                    Ok(g)
+                } else {
+                    Err(SyntaxError::GraphicID)
                 }
-                Ok(g)
             }
             (None, _) => Err(SyntaxError::GraphicNotDefined(gn)),
         }

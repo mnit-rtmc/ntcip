@@ -270,6 +270,7 @@ impl<const F: usize> FontTable<F> {
 
     /// Lookup a mutable font by number
     pub fn lookup_mut(&mut self, fnum: u8) -> Option<&mut Font> {
+        // unset version ID when accessing mutably
         self.fonts
             .iter_mut()
             .enumerate()

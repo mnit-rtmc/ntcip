@@ -270,6 +270,7 @@ impl<const G: usize> GraphicTable<G> {
 
     /// Lookup a mutable graphic by number
     pub fn lookup_mut(&mut self, gnum: u8) -> Option<&mut Graphic> {
+        // unset version ID when accessing mutably
         self.graphics
             .iter_mut()
             .enumerate()

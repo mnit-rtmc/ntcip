@@ -176,7 +176,7 @@ impl Font {
     ///
     /// * `text` Span of text.
     /// * `cs` Character spacing in pixels.
-    pub(crate) fn text_width(
+    pub fn text_width(
         &self,
         text: &str,
         cs: Option<u16>,

@@ -176,11 +176,7 @@ impl Font {
     ///
     /// * `text` Span of text.
     /// * `cs` Character spacing in pixels.
-    pub fn text_width(
-        &self,
-        text: &str,
-        cs: Option<u16>,
-    ) -> Result<u16> {
+    pub fn text_width(&self, text: &str, cs: Option<u16>) -> Result<u16> {
         let mut width = 0;
         let cs = cs.unwrap_or_else(|| u16::from(self.char_spacing));
         for ch in text.chars() {

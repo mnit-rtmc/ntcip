@@ -201,12 +201,12 @@ impl<'p, const F: usize, const G: usize> Iterator for PatIter<'p, F, G> {
     type Item = Result<PatValue<'p>>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.end {
+            return None;
+        }
         let value = self.value.take();
         if let Some(v) = value {
             return Some(Ok(PatValue::Value(v)));
-        }
-        if self.end {
-            return None;
         }
         let value = match self.pattern.next() {
             Some(Ok(v)) => v,
@@ -230,9 +230,7 @@ impl<'p, const F: usize, const G: usize> Iterator for PatIter<'p, F, G> {
                 let rect_font = self.rect_font;
                 self.rect_font = Some((self.dms.full_rect(), self.font_num));
                 if let Some((rect, font)) = rect_font {
-                    if !self.end {
-                        self.value = Some(value);
-                    }
+                    self.value = Some(value);
                     return Some(Ok(PatValue::FillableRect(rect, font)));
                 }
             }
@@ -250,7 +248,7 @@ impl<'p, const F: usize, const G: usize> Iterator for PatIter<'p, F, G> {
             }
             _ => (),
         }
-        Some(Ok(PatValue::Value(value)))
+        (!self.end).then_some(Ok(PatValue::Value(value)))
     }
 }
 
@@ -472,6 +470,15 @@ mod test {
         l = FillablePattern::new(&dms, "[tr1,1,25,0]")
             .lines("[tr1,1,25,21]TEXT");
         assert_eq!(l.next(), None);
+    }
+
+    #[test]
+    fn fill_1() {
+        let dms = make_dms();
+        let lines = ["ABC", "DEF", "GHI"].into_iter();
+        let pattern = "LINE 1[nl]LINE 2[nl]LINE 3";
+        let res = FillablePattern::new(&dms, pattern).fill(lines);
+        assert_eq!(res, pattern);
     }
 
     fn roundtrip_1(pattern: &str, ms: &str) {

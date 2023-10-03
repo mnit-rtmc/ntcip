@@ -649,7 +649,7 @@ impl<'p> fmt::Display for Value<'p> {
             Value::ColorBackground(Some(c)) => write!(f, "[cb{c}]"),
             Value::ColorForeground(None) => write!(f, "[cf]"),
             Value::ColorForeground(Some(c)) => write!(f, "[cf{c}]"),
-            Value::ColorRectangle(r, c) => write!(f, "[cr{r},{c}"),
+            Value::ColorRectangle(r, c) => write!(f, "[cr{r},{c}]"),
             Value::Field(i, Some(w)) => write!(f, "[f{i},{w}]"),
             Value::Field(i, None) => write!(f, "[f{i}]"),
             Value::Flash(FlashOrder::OnOff, Some(a), Some(b)) => {

@@ -4,8 +4,9 @@
 //
 //! Configuration information
 use crate::dms::multi::{
-    Color, ColorClassic, ColorScheme, JustificationLine, JustificationPage,
+    Color, ColorClassic, ColorScheme, JustificationLine, JustificationPage, Tag,
 };
+use enumflags2::BitFlags;
 
 /// Sign type
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -125,7 +126,7 @@ pub struct MultiCfg {
     /// Color scheme — `dmsColorScheme`
     pub color_scheme: ColorScheme,
     /// Supported MULTI tags — `dmsSupportedMultiTags`
-    pub supported_multi_tags: [u8; 4],
+    pub supported_multi_tags: BitFlags<Tag>,
     /// Maximum number of pages — `dmsMaxNumberPages`
     pub max_number_pages: u8,
     /// Maximum MULTI string length — `dmsMaxMultiStringLength`
@@ -164,6 +165,21 @@ impl Default for VmsCfg {
 
 impl Default for MultiCfg {
     fn default() -> Self {
+        // Unsupported tags: Fl, Ms, Mv, F1-F13
+        let supported_multi_tags = Tag::Cb
+            | Tag::Cf
+            | Tag::Fo
+            | Tag::G
+            | Tag::Hc
+            | Tag::Jl
+            | Tag::Jp
+            | Tag::Nl
+            | Tag::Np
+            | Tag::Pt
+            | Tag::Sc
+            | Tag::Tr
+            | Tag::Cr
+            | Tag::Pb;
         MultiCfg {
             default_background_rgb: Color::Legacy(ColorClassic::Black.into()),
             default_foreground_rgb: Color::Legacy(ColorClassic::Amber.into()),
@@ -176,7 +192,7 @@ impl Default for MultiCfg {
             default_page_off_time: 0,
             default_character_set: 2,
             color_scheme: ColorScheme::Monochrome1Bit,
-            supported_multi_tags: [0, 0, 0, 0],
+            supported_multi_tags,
             max_number_pages: 4,
             max_multi_string_length: 65535,
         }

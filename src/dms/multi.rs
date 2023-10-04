@@ -4,30 +4,79 @@
 //
 //! **M**ark**U**p **L**anguage for **T**ransportation **I**nformation
 //!
-//! Tags:
-//!
-//! * `[cb…]`: Color — Background
-//! * `[cf…]`: Color — Foreground
-//! * `[cr…]`: Color Rectangle
-//! * `[f…]`: Field
-//! * `[fl…]`: Flash
-//! * `[fo…]`: Font
-//! * `[g…]`: Graphic
-//! * `[hc…]`: Hexadecimal Character
-//! * `[jl…]`: Justification — Line
-//! * `[jp…]`: Justification — Page
-//! * `[ms…]`: Manufacturer Specific
-//! * `[mv…]`: Moving Text
-//! * `[nl…]`: New Line
-//! * `[np]`: New Page
-//! * `[pb…]`: Page Background
-//! * `[pt…]`: Page Time
-//! * `[sc…]`: Spacing Character
-//! * `[tr…]`: Text Rectangle
-//!
+//! Sign messages are strings containing text and [Tag](enum.Tag.html)s
 use log::{debug, warn};
 use std::fmt;
 use std::str::FromStr;
+
+/// Message tag
+///
+/// All tags allowed in MULTI messages.
+#[enumflags2::bitflags]
+#[repr(u32)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Tag {
+    /// `[cb…]`: Color — Background
+    Cb = 1 << 0,
+    /// `[cf…]`: Color — Foreground
+    Cf = 1 << 1,
+    /// `[fl…]`: Flash
+    Fl = 1 << 2,
+    /// `[fo…]`: Font
+    Fo = 1 << 3,
+    /// `[g…]`: Graphic
+    G = 1 << 4,
+    /// `[hc…]`: Hexadecimal Character
+    Hc = 1 << 5,
+    /// `[jl…]`: Justification — Line
+    Jl = 1 << 6,
+    /// `[jp…]`: Justification — Page
+    Jp = 1 << 7,
+    /// `[ms…]`: Manufacturer Specific
+    Ms = 1 << 8,
+    /// `[mv…]`: Moving Text
+    Mv = 1 << 9,
+    /// `[nl…]`: New Line
+    Nl = 1 << 10,
+    /// `[np]`: New Page
+    Np = 1 << 11,
+    /// `[pt…]`: Page Time
+    Pt = 1 << 12,
+    /// `[sc…]`: Spacing Character
+    Sc = 1 << 13,
+    /// `[f1,…]`: Field 1 (Local time — 12 hour)
+    F1 = 1 << 14,
+    /// `[f2,…]`: Field 2 (Local time — 24 hour)
+    F2 = 1 << 15,
+    /// `[f3,…]`: Field 3 (Ambient temperature — Celsius)
+    F3 = 1 << 16,
+    /// `[f4,…]`: Field 4 (Ambient temperature — Fahrenheit)
+    F4 = 1 << 17,
+    /// `[f5,…]`: Field 5 (Speed — km/h, from dmsCurrentSpeed)
+    F5 = 1 << 18,
+    /// `[f6,…]`: Field 6 (Speed — mph, from dmsCurrentSpeed)
+    F6 = 1 << 19,
+    /// `[f7,…]`: Field 7 (Day of week)
+    F7 = 1 << 20,
+    /// `[f8,…]`: Field 8 (Day of month)
+    F8 = 1 << 21,
+    /// `[f9,…]`: Field 9 (Month of year — 2 digits)
+    F9 = 1 << 22,
+    /// `[f10,…]`: Field 10 (Year — 2 digits)
+    F10 = 1 << 23,
+    /// `[f11,…]`: Field 11 (Year — 4 digits)
+    F11 = 1 << 24,
+    /// `[f12,…]`: Field 12 (Local time — 12 hour AM/PM)
+    F12 = 1 << 25,
+    /// `[f13,…]`: Field 13 (Local time — 12 hour am/pm)
+    F13 = 1 << 26,
+    /// `[tr…]`: Text Rectangle
+    Tr = 1 << 27,
+    /// `[cr…]`: Color Rectangle
+    Cr = 1 << 28,
+    /// `[pb…]`: Page Background
+    Pb = 1 << 29,
+}
 
 /// Classic color values
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -8,6 +8,13 @@ use crate::dms::multi::{
 };
 use enumflags2::BitFlags;
 
+/// Configuration error
+#[derive(Debug, thiserror::Error)]
+pub enum CfgError {
+    #[error("Invalid page config")]
+    InvalidPageCfg,
+}
+
 /// Sign type
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DmsSignType {
@@ -196,5 +203,18 @@ impl Default for MultiCfg {
             max_number_pages: 4,
             max_multi_string_length: 65535,
         }
+    }
+}
+
+impl MultiCfg {
+    /// Validate the MULTI configuration
+    pub fn validate(&self) -> Result<(), CfgError> {
+        if self.max_number_pages == 0
+            || self.max_number_pages > 1
+                && !self.supported_multi_tags.contains(Tag::Np)
+        {
+            return Err(CfgError::InvalidPageCfg);
+        }
+        Ok(())
     }
 }

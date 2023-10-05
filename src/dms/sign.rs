@@ -2,7 +2,7 @@
 //
 // Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
-use crate::dms::config::{MultiCfg, SignCfg, VmsCfg};
+use crate::dms::config::{CfgError, MultiCfg, SignCfg, VmsCfg};
 use crate::dms::font::{FontError, FontTable};
 use crate::dms::graphic::{GraphicError, GraphicTable};
 use crate::dms::multi::{ColorCtx, ColorScheme, Rectangle};
@@ -10,6 +10,9 @@ use crate::dms::multi::{ColorCtx, ColorScheme, Rectangle};
 /// Sign error
 #[derive(Debug, thiserror::Error)]
 pub enum SignError {
+    #[error("Config error: {0}")]
+    CfgValidation(#[from] CfgError),
+
     #[error("Font error: {0}")]
     FontValidation(#[from] FontError),
 
@@ -80,7 +83,7 @@ impl<const F: usize, const G: usize> DmsBuilder<F, G> {
 
     /// Build the DMS with validation
     pub fn build(mut self) -> Result<Dms<{ F }, { G }>, SignError> {
-        // FIXME: validate config!
+        self.multi_cfg.validate()?;
         self.font_definition.validate()?;
         self.graphic_definition.validate()?;
         Ok(Dms {

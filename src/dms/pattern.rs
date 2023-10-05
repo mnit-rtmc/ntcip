@@ -30,9 +30,9 @@ struct PatIter<'p, const F: usize, const G: usize> {
     end: bool,
 }
 
-/// Fillable MULTI pattern
+/// Message pattern
 ///
-/// This is a message which can be composed with lines of text.  The fillable
+/// This is a message which can be composed with lines of text.  The *fillable*
 /// parts are blank text rectangles or pages:
 ///
 /// * `[tr…]` tag
@@ -42,7 +42,7 @@ struct PatIter<'p, const F: usize, const G: usize> {
 /// To be fillable, a rectangle or page must not be followed by any text or
 /// tags before the next `[tr…]` or `[np]` tag.  The only exception allowed
 /// is the `[fo…]` tag, which applies to the **next** rectangle or page.
-pub struct FillablePattern<'p, const F: usize, const G: usize> {
+pub struct MessagePattern<'p, const F: usize, const G: usize> {
     /// Sign
     dms: &'p Dms<F, G>,
     /// MULTI string
@@ -65,13 +65,13 @@ impl<'p, const F: usize, const G: usize> PatIter<'p, F, G> {
     }
 }
 
-impl<'p, const F: usize, const G: usize> FillablePattern<'p, F, G> {
+impl<'p, const F: usize, const G: usize> MessagePattern<'p, F, G> {
     /// Create a new fillable pattern
     ///
     /// * `dms`: The sign
     /// * `ms`: MULTI string
     pub fn new(dms: &'p Dms<F, G>, ms: &'p str) -> Self {
-        FillablePattern { dms, ms }
+        MessagePattern { dms, ms }
     }
 
     /// Find widths of fillable text lines
@@ -408,7 +408,7 @@ mod test {
     #[test]
     fn fillable_width_1() {
         let dms = make_dms();
-        let mut w = FillablePattern::new(&dms, "").widths();
+        let mut w = MessagePattern::new(&dms, "").widths();
         assert_eq!(w.next(), Some((50, 8)));
         assert_eq!(w.next(), Some((50, 8)));
         assert_eq!(w.next(), None);
@@ -417,7 +417,7 @@ mod test {
     #[test]
     fn fillable_width_2() {
         let dms = make_dms();
-        let mut w = FillablePattern::new(&dms, "[np]").widths();
+        let mut w = MessagePattern::new(&dms, "[np]").widths();
         assert_eq!(w.next(), Some((50, 8)));
         assert_eq!(w.next(), Some((50, 8)));
         assert_eq!(w.next(), Some((50, 8)));
@@ -428,7 +428,7 @@ mod test {
     #[test]
     fn fillable_width_3() {
         let dms = make_dms();
-        let mut w = FillablePattern::new(&dms, "FIRST[np]").widths();
+        let mut w = MessagePattern::new(&dms, "FIRST[np]").widths();
         assert_eq!(w.next(), Some((50, 8)));
         assert_eq!(w.next(), Some((50, 8)));
         assert_eq!(w.next(), None);
@@ -438,7 +438,7 @@ mod test {
     fn fillable_width_4() {
         let dms = make_dms();
         let mut w =
-            FillablePattern::new(&dms, "[tr1,1,50,12][tr1,14,50,12]").widths();
+            MessagePattern::new(&dms, "[tr1,1,50,12][tr1,14,50,12]").widths();
         assert_eq!(w.next(), Some((50, 8)));
         assert_eq!(w.next(), Some((50, 8)));
         assert_eq!(w.next(), None);
@@ -448,7 +448,7 @@ mod test {
     fn fillable_width_5() {
         let dms = make_dms();
         let mut w =
-            FillablePattern::new(&dms, "[tr1,1,50,12][fo7][tr1,14,50,12]")
+            MessagePattern::new(&dms, "[tr1,1,50,12][fo7][tr1,14,50,12]")
                 .widths();
         assert_eq!(w.next(), Some((50, 8)));
         assert_eq!(w.next(), Some((50, 7)));
@@ -459,7 +459,7 @@ mod test {
     fn fillable_width_6() {
         let dms = make_dms();
         let mut w =
-            FillablePattern::new(&dms, "[tr1,1,25,0][tr26,1,0,0]").widths();
+            MessagePattern::new(&dms, "[tr1,1,25,0][tr26,1,0,0]").widths();
         assert_eq!(w.next(), Some((25, 8)));
         assert_eq!(w.next(), Some((25, 8)));
         assert_eq!(w.next(), Some((25, 8)));
@@ -470,9 +470,9 @@ mod test {
     #[test]
     fn fillable_lines_fail() {
         let dms = make_dms();
-        let mut l = FillablePattern::new(&dms, "TEXT").lines("TEXT");
+        let mut l = MessagePattern::new(&dms, "TEXT").lines("TEXT");
         assert_eq!(l.next(), None);
-        l = FillablePattern::new(&dms, "[tr1,1,25,0]")
+        l = MessagePattern::new(&dms, "[tr1,1,25,0]")
             .lines("[tr1,1,25,21]TEXT");
         assert_eq!(l.next(), None);
     }
@@ -482,21 +482,21 @@ mod test {
         let dms = make_dms();
         let lines = ["ABC", "DEF", "GHI"].into_iter();
         let pattern = "LINE 1[nl]LINE 2[nl]LINE 3";
-        let res = FillablePattern::new(&dms, pattern).fill(lines);
+        let res = MessagePattern::new(&dms, pattern).fill(lines);
         assert_eq!(res, pattern);
     }
 
     fn roundtrip_1(pattern: &str, ms: &str) {
         let dms = make_dms();
-        let lines = FillablePattern::new(&dms, pattern).lines(ms);
-        let res = FillablePattern::new(&dms, pattern).fill(lines);
+        let lines = MessagePattern::new(&dms, pattern).lines(ms);
+        let res = MessagePattern::new(&dms, pattern).fill(lines);
         assert_eq!(res, ms);
     }
 
     fn roundtrip_2(pattern: &str, ms: &str, ms2: &str) {
         let dms = make_dms();
-        let lines = FillablePattern::new(&dms, pattern).lines(ms);
-        let res = FillablePattern::new(&dms, pattern).fill(lines);
+        let lines = MessagePattern::new(&dms, pattern).lines(ms);
+        let res = MessagePattern::new(&dms, pattern).fill(lines);
         assert_eq!(res, ms2);
     }
 

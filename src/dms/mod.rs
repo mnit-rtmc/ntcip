@@ -15,6 +15,6 @@ mod sign;
 
 pub use font::{ifnt, CharacterEntry, Font, FontError, FontTable};
 pub use graphic::{Graphic, GraphicError, GraphicTable};
-pub use pattern::FillablePattern;
+pub use pattern::MessagePattern;
 pub use render::{Page, Pages};
 pub use sign::{Dms, DmsBuilder, SignError};

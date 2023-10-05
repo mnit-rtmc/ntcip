@@ -800,6 +800,48 @@ impl<'p> TryFrom<&'p str> for Value<'p> {
 }
 
 impl<'p> Value<'p> {
+    /// Get tag associated with the value
+    pub(crate) fn tag(&self) -> Option<Tag> {
+        use Value::*;
+        match self {
+            ColorBackground(_) => Some(Tag::Cb),
+            ColorForeground(_) => Some(Tag::Cf),
+            ColorRectangle(_, _) => Some(Tag::Cr),
+            Field(1, _) => Some(Tag::F1),
+            Field(2, _) => Some(Tag::F2),
+            Field(3, _) => Some(Tag::F3),
+            Field(4, _) => Some(Tag::F4),
+            Field(5, _) => Some(Tag::F5),
+            Field(6, _) => Some(Tag::F6),
+            Field(7, _) => Some(Tag::F7),
+            Field(8, _) => Some(Tag::F8),
+            Field(9, _) => Some(Tag::F9),
+            Field(10, _) => Some(Tag::F10),
+            Field(11, _) => Some(Tag::F11),
+            Field(12, _) => Some(Tag::F12),
+            Field(13, _) => Some(Tag::F13),
+            Field(_, _) => None,
+            Flash(_, _, _) => Some(Tag::Fl),
+            FlashEnd() => Some(Tag::Fl),
+            Font(_) => Some(Tag::Fo),
+            Graphic(_, _) => Some(Tag::G),
+            HexadecimalCharacter(_) => Some(Tag::Hc),
+            JustificationLine(_) => Some(Tag::Jl),
+            JustificationPage(_) => Some(Tag::Jp),
+            ManufacturerSpecific(_, _) => Some(Tag::Ms),
+            ManufacturerSpecificEnd(_, _) => Some(Tag::Ms),
+            MovingText(_, _, _, _, _, _) => Some(Tag::Mv),
+            NewLine(_) => Some(Tag::Nl),
+            NewPage() => Some(Tag::Np),
+            PageBackground(_) => Some(Tag::Pb),
+            PageTime(_, _) => Some(Tag::Pt),
+            SpacingCharacter(_) => Some(Tag::Sc),
+            SpacingCharacterEnd() => Some(Tag::Sc),
+            Text(_) => None,
+            TextRectangle(_) => Some(Tag::Tr),
+        }
+    }
+
     /// Check if a `Value` is "blank"
     fn is_blank(&self) -> bool {
         match self {
@@ -989,7 +1031,7 @@ fn parse_color_rectangle(tag: &str) -> Option<Value> {
 fn parse_field(tag: &str) -> Option<Value> {
     let mut vs = tag[1..].splitn(2, ',');
     match (parse_int(&mut vs), parse_optional(&mut vs)) {
-        (Some(fid), Ok(w)) if fid < 100 => Some(Value::Field(fid, w)),
+        (Some(fid), Ok(w)) if fid < 14 => Some(Value::Field(fid, w)),
         _ => None,
     }
 }
@@ -1840,17 +1882,17 @@ mod test {
 
     #[test]
     fn parse_f2() {
-        let mut m = MultiStr::new("[f99]");
-        assert_eq!(m.next(), Some(Ok(Value::Field(99, None))));
+        let mut m = MultiStr::new("[f13]");
+        assert_eq!(m.next(), Some(Ok(Value::Field(13, None))));
         assert_eq!(m.next(), None);
     }
 
     #[test]
     fn parse_f3() {
-        let mut m = MultiStr::new("[f100]");
+        let mut m = MultiStr::new("[f14]");
         assert_eq!(
             m.next(),
-            Some(Err(SyntaxError::UnsupportedTagValue("f100".into())))
+            Some(Err(SyntaxError::UnsupportedTagValue("f14".into())))
         );
         assert_eq!(m.next(), None);
     }

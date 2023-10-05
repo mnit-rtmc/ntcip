@@ -7,7 +7,7 @@ use crate::dms::font::{Font, FontTable};
 use crate::dms::graphic::Graphic;
 use crate::dms::multi::{
     ColorCtx, JustificationLine, JustificationPage, MultiStr, Rectangle,
-    Result, SyntaxError, Value,
+    Result, SyntaxError, Tag, Value,
 };
 use crate::dms::sign::Dms;
 use log::debug;
@@ -430,19 +430,13 @@ impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
     fn check_unsupported(&self) -> Result<()> {
         for value in self.values.clone() {
             let val = value?;
-            match val {
-                Value::Flash(_, _, _)
-                | Value::FlashEnd()
-                | Value::ManufacturerSpecific(_, _)
-                | Value::ManufacturerSpecificEnd(_, _)
-                | Value::MovingText(_, _, _, _, _, _) => {
+            if let Some(tag) = val.tag() {
+                if !self.dms.multi_cfg.supported_multi_tags.contains(tag) {
                     return Err(SyntaxError::UnsupportedTag(val.into()));
                 }
-                Value::Field(_, _) => {
-                    return Err(SyntaxError::FieldDeviceNotExist);
+                if tag == Tag::Np {
+                    break;
                 }
-                Value::NewPage() => break,
-                _ => (),
             }
         }
         Ok(())
@@ -494,6 +488,9 @@ impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
                     let rgb = SRgb8::new(r, g, b);
                     render_rect(raster, rect, rgb, &val)?;
                 }
+                Value::Field(_, _) => unimplemented!(),
+                Value::Flash(_, _, _) => unimplemented!(),
+                Value::FlashEnd() => unimplemented!(),
                 Value::Graphic(gn, None) => {
                     let g = self.graphic(gn, None)?;
                     g.render_graphic(raster, 1, 1, &rs.color_ctx)?;
@@ -504,6 +501,9 @@ impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
                     let y = y.into();
                     g.render_graphic(raster, x, y, &rs.color_ctx)?;
                 }
+                Value::ManufacturerSpecific(_, _) => unimplemented!(),
+                Value::ManufacturerSpecificEnd(_, _) => unimplemented!(),
+                Value::MovingText(_, _, _, _, _, _) => unimplemented!(),
                 Value::NewPage() | Value::TextRectangle(_) => break,
                 _ => (),
             }

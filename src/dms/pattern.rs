@@ -2,7 +2,7 @@
 //
 // Copyright (C) 2023  Minnesota Department of Transportation
 //
-use crate::dms::multi::{MultiStr, Rectangle, Result, Value};
+use crate::dms::multi::{MultiStr, Rectangle, Result, SyntaxError, Value};
 use crate::dms::sign::Dms;
 
 /// Pattern values are MULTI values or "pseudo-values" from a pattern
@@ -216,6 +216,11 @@ impl<'p, const F: usize, const G: usize> Iterator for PatIter<'p, F, G> {
                 Value::NewPage()
             }
         };
+        if let Some(tag) = value.tag() {
+            if !self.dms.multi_cfg.supported_multi_tags.contains(tag) {
+                return Some(Err(SyntaxError::UnsupportedTag(value.into())));
+            }
+        }
         match value {
             Value::Font(None) => {
                 self.font_num = self.dms.multi_cfg.default_font;

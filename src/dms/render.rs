@@ -208,7 +208,7 @@ impl RenderState {
     ) -> Result<&'a Font> {
         match (fonts.lookup(self.font_num), self.font_version_id) {
             (Some(f), Some(vid)) => {
-                if Some(vid) == fonts.version_id(self.font_num) {
+                if vid == f.version_id() {
                     Ok(f)
                 } else {
                     Err(SyntaxError::FontVersionID)

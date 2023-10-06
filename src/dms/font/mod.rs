@@ -4,11 +4,16 @@
 //
 //! Font support for dynamic message signs
 use crate::dms::multi::{Result, SyntaxError};
+use crate::dms::oer::Oer;
+use crc::Crc;
 use log::debug;
 use pix::{rgb::SRgb8, Raster};
 
 /// Read/write fonts in `.ifnt` format
 pub mod ifnt;
+
+/// CRC-16 for calculating `fontVersionId`
+const CRC: Crc<u16> = Crc::<u16>::new(&crc::CRC_16_IBM_SDLC);
 
 /// Font error
 #[derive(Debug, thiserror::Error)]
@@ -66,8 +71,6 @@ pub struct Font {
 pub struct FontTable<const F: usize> {
     /// Fonts in table
     fonts: [Font; F],
-    /// Version IDs
-    version_ids: [Option<u16>; F],
 }
 
 impl CharacterEntry {
@@ -223,25 +226,39 @@ impl Font {
         }
         Ok(())
     }
+
+    /// Get version ID (`fontVersionId`)
+    pub fn version_id(&self) -> u16 {
+        // OER of FontInformation:
+        let mut oer = Oer::from(Vec::with_capacity(256));
+        oer.u8(self.number);
+        oer.u8(self.height);
+        oer.u8(self.char_spacing);
+        oer.u8(self.line_spacing);
+        oer.uint(self.characters.len() as u32);
+        for ch in &self.characters {
+            oer.u16(ch.number);
+            oer.u8(ch.width);
+            oer.octet_string(&ch.bitmap)
+        }
+        let buf = Vec::from(oer);
+        u16::from_be(CRC.checksum(&buf))
+    }
 }
 
 impl<const F: usize> Default for FontTable<F> {
     fn default() -> Self {
         // workaround const generic default limitation
         let fonts: [Font; F] = [(); F].map(|_| Font::default());
-        let version_ids: [Option<u16>; F] = [(); F].map(|_| None);
-        FontTable { fonts, version_ids }
+        FontTable { fonts }
     }
 }
 
 impl<const F: usize> FontTable<F> {
     /// Validate the font table
-    pub fn validate(&mut self) -> std::result::Result<(), FontError> {
-        for (i, font) in self.fonts.iter().enumerate() {
+    pub fn validate(&self) -> std::result::Result<(), FontError> {
+        for font in &self.fonts {
             if font.number > 0 {
-                if self.version_ids[i].is_none() {
-                    // FIXME: calculate version ID
-                }
                 font.validate()?;
             }
         }
@@ -266,28 +283,33 @@ impl<const F: usize> FontTable<F> {
 
     /// Lookup a mutable font by number
     pub fn lookup_mut(&mut self, fnum: u8) -> Option<&mut Font> {
-        // unset version ID when accessing mutably
-        self.fonts
-            .iter_mut()
-            .enumerate()
-            .find(|(_i, f)| f.number == fnum)
-            .map(|(i, f)| {
-                self.version_ids[i] = None;
-                f
-            })
+        self.fonts.iter_mut().find(|f| f.number == fnum)
     }
 
     /// Lookup a font by name
     pub fn lookup_name<'a>(&'a self, name: &str) -> Option<&'a Font> {
         self.fonts.iter().find(|f| f.name == name)
     }
+}
 
-    /// Get a font version ID
-    pub fn version_id(&self, fnum: u8) -> Option<u16> {
-        self.fonts
-            .iter()
-            .zip(self.version_ids)
-            .find(|(f, _v)| f.number == fnum)
-            .and_then(|(_f, v)| v)
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::dms::font::ifnt;
+
+    fn font_table() -> FontTable<1> {
+        let mut fonts = FontTable::default();
+        let buf = include_bytes!("../../../test/F08.ifnt");
+        let f = fonts.lookup_mut(0).unwrap();
+        *f = ifnt::read(&buf[..]).unwrap();
+        fonts.validate().unwrap();
+        fonts
+    }
+
+    #[test]
+    fn font_version_id() {
+        let fonts = font_table();
+        let font = fonts.lookup(8).unwrap();
+        assert_eq!(font.version_id(), 0x28EB);
     }
 }

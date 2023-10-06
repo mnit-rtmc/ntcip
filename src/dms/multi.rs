@@ -806,8 +806,8 @@ impl<'p> TryFrom<&'p str> for Value<'p> {
             parse_tag(&ms[1..ms.len() - 1])
         } else if ms.starts_with('[') || ms.starts_with(']') {
             Err(SyntaxError::UnsupportedTag(ms.to_string()))
-        } else if let Some(c) = ms.chars().find(|c| !(' '..='~').contains(c)) {
-            Err(SyntaxError::CharacterNotDefined(c))
+        } else if ms.chars().any(|c| !('\u{1}'..='\u{FF}').contains(&c)) {
+            Err(SyntaxError::Other("Invalid code point"))
         } else {
             Ok(Value::Text(ms))
         }
@@ -2794,16 +2794,37 @@ mod test {
     }
 
     #[test]
-    fn parse_control_char() {
-        let mut m = MultiStr::new("\n");
-        assert_eq!(m.next(), Some(Err(SyntaxError::CharacterNotDefined('\n'))));
+    fn parse_valid() {
+        let mut m = MultiStr::new("\u{1}\u{FF}");
+        assert_eq!(m.next(), Some(Ok(Value::Text("\u{1}\u{FF}".into()))));
         assert_eq!(m.next(), None);
+    }
+
+    #[test]
+    fn parse_invalid_1() {
+        let mut m = MultiStr::new("\0");
+        assert_eq!(
+            m.next(),
+            Some(Err(SyntaxError::Other("Invalid code point")))
+        );
+    }
+
+    #[test]
+    fn parse_invalid_2() {
+        let mut m = MultiStr::new("\u{100}");
+        assert_eq!(
+            m.next(),
+            Some(Err(SyntaxError::Other("Invalid code point")))
+        );
     }
 
     #[test]
     fn parse_rustacean() {
         let mut m = MultiStr::new("🦀🦀");
-        assert_eq!(m.next(), Some(Err(SyntaxError::CharacterNotDefined('🦀'))));
+        assert_eq!(
+            m.next(),
+            Some(Err(SyntaxError::Other("Invalid code point")))
+        );
         assert_eq!(m.next(), None);
     }
 
@@ -2927,7 +2948,6 @@ mod test {
         assert_eq!(normalize("[["), "[[");
         assert_eq!(normalize("]]"), "]]");
         assert_eq!(normalize("[[NOT TAG]]"), "[[NOT TAG]]");
-        assert_eq!(normalize("\t\n\rTAIL"), "");
     }
 
     #[test]

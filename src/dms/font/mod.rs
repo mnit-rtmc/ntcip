@@ -154,6 +154,24 @@ impl Font {
         }
     }
 
+    /// Get version ID (`fontVersionId`)
+    pub fn version_id(&self) -> u16 {
+        // OER of FontInformation:
+        let mut oer = Oer::from(Vec::with_capacity(256));
+        oer.u8(self.number);
+        oer.u8(self.height);
+        oer.u8(self.char_spacing);
+        oer.u8(self.line_spacing);
+        oer.uint(self.characters.len() as u32);
+        for ch in &self.characters {
+            oer.u16(ch.number);
+            oer.u8(ch.width);
+            oer.octet_string(&ch.bitmap)
+        }
+        let buf = Vec::from(oer);
+        u16::from_be(CRC.checksum(&buf))
+    }
+
     /// Get width (if fixed-width), or 0
     pub fn width(&self) -> u8 {
         let width =
@@ -225,24 +243,6 @@ impl Font {
             xx += i32::from(c.width);
         }
         Ok(())
-    }
-
-    /// Get version ID (`fontVersionId`)
-    pub fn version_id(&self) -> u16 {
-        // OER of FontInformation:
-        let mut oer = Oer::from(Vec::with_capacity(256));
-        oer.u8(self.number);
-        oer.u8(self.height);
-        oer.u8(self.char_spacing);
-        oer.u8(self.line_spacing);
-        oer.uint(self.characters.len() as u32);
-        for ch in &self.characters {
-            oer.u16(ch.number);
-            oer.u8(ch.width);
-            oer.octet_string(&ch.bitmap)
-        }
-        let buf = Vec::from(oer);
-        u16::from_be(CRC.checksum(&buf))
     }
 }
 

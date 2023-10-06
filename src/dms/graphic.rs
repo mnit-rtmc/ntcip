@@ -107,6 +107,40 @@ impl Graphic {
         }
     }
 
+    /// Get version ID (`dmsGraphicId`)
+    pub fn version_id(&self) -> u16 {
+        // OER of GraphicInfoList:
+        let mut oer = Oer::from(Vec::with_capacity(256));
+        oer.u8(self.number);
+        oer.u16(self.height.into());
+        oer.u16(self.width);
+        oer.u8(self.gtype as u8);
+        oer.u8(match self.transparent_color {
+            Some(_) => 1,
+            None => 0,
+        });
+        match self.transparent_color {
+            Some(Color::Rgb(r, g, b)) => {
+                oer.u8(r);
+                oer.u8(g);
+                oer.u8(b);
+            }
+            Some(Color::Legacy(c)) => {
+                oer.u8(c);
+                oer.u8(0);
+                oer.u8(0);
+            }
+            _ => {
+                oer.u8(0);
+                oer.u8(0);
+                oer.u8(0);
+            }
+        }
+        oer.octet_str(&self.bitmap);
+        let buf = Vec::from(oer);
+        u16::from_be(CRC.checksum(&buf))
+    }
+
     /// Convert graphic to a raster
     pub fn to_raster(&self) -> Raster<SRgba8> {
         let fg = match self.gtype {
@@ -226,40 +260,6 @@ impl Graphic {
             }
         }
         Some(SRgb8::new(red, green, blue))
-    }
-
-    /// Get version ID (`dmsGraphicId`)
-    pub fn version_id(&self) -> u16 {
-        // OER of GraphicInfoList:
-        let mut oer = Oer::from(Vec::with_capacity(256));
-        oer.u8(self.number);
-        oer.u16(self.height.into());
-        oer.u16(self.width);
-        oer.u8(self.gtype as u8);
-        oer.u8(match self.transparent_color {
-            Some(_) => 1,
-            None => 0,
-        });
-        match self.transparent_color {
-            Some(Color::Rgb(r, g, b)) => {
-                oer.u8(r);
-                oer.u8(g);
-                oer.u8(b);
-            }
-            Some(Color::Legacy(c)) => {
-                oer.u8(c);
-                oer.u8(0);
-                oer.u8(0);
-            }
-            _ => {
-                oer.u8(0);
-                oer.u8(0);
-                oer.u8(0);
-            }
-        }
-        oer.octet_str(&self.bitmap);
-        let buf = Vec::from(oer);
-        u16::from_be(CRC.checksum(&buf))
     }
 }
 

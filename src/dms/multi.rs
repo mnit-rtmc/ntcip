@@ -5,6 +5,7 @@
 //! **M**ark**U**p **L**anguage for **T**ransportation **I**nformation
 //!
 //! Sign messages are strings containing text and [Tag](enum.Tag.html)s
+use crate::dms::GraphicError;
 use log::{debug, warn};
 use std::fmt;
 use std::str::FromStr;
@@ -313,35 +314,49 @@ pub(crate) enum Value<'p> {
 }
 
 /// Syntax errors from parsing MULTI
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, thiserror::Error, Eq, PartialEq)]
 pub enum SyntaxError {
     /// An unspecified error
+    #[error("other: {0}")]
     Other(&'static str),
     /// Specified tag not supported
+    #[error("unsupported tag: {0}")]
     UnsupportedTag(String),
     /// Specified tag value not supported
+    #[error("unsupported tag value: {0}")]
     UnsupportedTagValue(String),
     /// Specified text does not fit within text rectangle
+    #[error("text too big")]
     TextTooBig,
     /// Specified font not defined
+    #[error("font not defined: {0}")]
     FontNotDefined(u8),
     /// Specified character not defined in font
+    #[error("character not defined: {0}")]
     CharacterNotDefined(char),
     /// Specified field device does not exist
+    #[error("field device does not exist")]
     FieldDeviceNotExist,
     /// Field device communication error
+    #[error("field device error")]
     FieldDeviceError,
     /// Specified flash region not supported
+    #[error("flashing region error")]
     FlashRegionError,
     /// Specified tags conflict with each other
+    #[error("tag conflict")]
     TagConflict,
     /// Number of pages not supported
+    #[error("too many pages")]
     TooManyPages,
     /// Specified font version ID does not match
+    #[error("font version ID mismatch")]
     FontVersionID,
     /// Specified graphic version ID does not match
+    #[error("graphic ID mismatch")]
     GraphicID,
     /// Specified graphic number not defined
+    #[error("graphic not defined: {0}")]
     GraphicNotDefined(u8),
 }
 
@@ -858,13 +873,14 @@ impl<'p> Value<'p> {
     }
 }
 
-impl fmt::Display for SyntaxError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "syntaxError: {self:?}")
+impl From<GraphicError> for SyntaxError {
+    fn from(err: GraphicError) -> Self {
+        match err {
+            GraphicError::TooBig => SyntaxError::Other("Graphic too big"),
+            _ => SyntaxError::Other("Graphic render error"),
+        }
     }
 }
-
-impl std::error::Error for SyntaxError {}
 
 /// Parse a color from a tag
 ///

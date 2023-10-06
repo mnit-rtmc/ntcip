@@ -3,9 +3,7 @@
 // Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
 //! Graphic image support
-use crate::dms::multi::{
-    Color, ColorClassic, ColorCtx, ColorScheme, SyntaxError,
-};
+use crate::dms::multi::{Color, ColorClassic, ColorCtx, ColorScheme};
 use crate::dms::oer::Oer;
 use crc::Crc;
 use log::debug;
@@ -38,6 +36,9 @@ pub enum GraphicError {
 
     #[error("Invalid transparent color")]
     InvalidTransparentColor,
+
+    #[error("Too big")]
+    TooBig,
 }
 
 /// Graphic image — `dmsGraphicEntry`
@@ -91,12 +92,16 @@ impl Graphic {
     }
 
     /// Check if graphic is valid
-    pub fn validate(&self) -> Result<(), GraphicError> {
+    pub fn validate(
+        &self,
+        width: u16,
+        height: u16,
+    ) -> Result<(), GraphicError> {
         if self.number < 1 {
             Err(GraphicError::InvalidNumber)
-        } else if self.height < 1 {
+        } else if self.height < 1 || u16::from(self.height) > height {
             Err(GraphicError::InvalidHeight)
-        } else if self.width < 1 {
+        } else if self.width < 1 || self.width > width {
             Err(GraphicError::InvalidWidth)
         } else if !self.is_bitmap_valid() {
             Err(GraphicError::InvalidBitmap)
@@ -175,7 +180,7 @@ impl Graphic {
         x: i32,
         y: i32,
         ctx: &ColorCtx,
-    ) -> Result<(), SyntaxError> {
+    ) -> Result<(), GraphicError> {
         debug_assert!(x > 0);
         debug_assert!(y > 0);
         let x = x - 1;
@@ -185,8 +190,7 @@ impl Graphic {
         let width = i32::try_from(page.width()).unwrap();
         let height = i32::try_from(page.height()).unwrap();
         if x + w > width || y + h > height {
-            // There is no GraphicTooBig syntax error
-            return Err(SyntaxError::Other("Graphic too big"));
+            return Err(GraphicError::TooBig);
         }
         for yy in 0..h {
             for xx in 0..w {
@@ -273,10 +277,14 @@ impl<const G: usize> Default for GraphicTable<G> {
 
 impl<const G: usize> GraphicTable<G> {
     /// Validate the graphic table
-    pub fn validate(&self) -> Result<(), GraphicError> {
+    pub fn validate(
+        &self,
+        width: u16,
+        height: u16,
+    ) -> Result<(), GraphicError> {
         for graphic in &self.graphics {
             if graphic.number > 0 {
-                graphic.validate()?;
+                graphic.validate(width, height)?;
             }
         }
         self.validate_graphic_numbers()
@@ -343,7 +351,7 @@ mod test {
                 0x00, 0xFF,
             ],
         };
-        graphics.validate().unwrap();
+        graphics.validate(50, 50).unwrap();
         graphics
     }
 

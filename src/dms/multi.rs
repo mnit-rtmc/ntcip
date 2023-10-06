@@ -5,7 +5,7 @@
 //! **M**ark**U**p **L**anguage for **T**ransportation **I**nformation
 //!
 //! Sign messages are strings containing text and [Tag](enum.Tag.html)s
-use crate::dms::GraphicError;
+use crate::dms::{FontError, GraphicError};
 use log::{debug, warn};
 use std::fmt;
 use std::str::FromStr;
@@ -361,7 +361,7 @@ pub enum SyntaxError {
 }
 
 /// Result type
-pub(crate) type Result<T> = std::result::Result<T, SyntaxError>;
+type Result<T> = std::result::Result<T, SyntaxError>;
 
 /// MULTI string
 #[derive(Clone, Debug)]
@@ -869,6 +869,15 @@ impl<'p> Value<'p> {
             Value::MovingText(_, _, _, _, _, _) => false,
             Value::Text(txt) => txt.trim() == "",
             _ => true,
+        }
+    }
+}
+
+impl From<FontError> for SyntaxError {
+    fn from(err: FontError) -> Self {
+        match err {
+            FontError::InvalidChar(c) => SyntaxError::CharacterNotDefined(c),
+            _ => SyntaxError::Other("Font error"),
         }
     }
 }

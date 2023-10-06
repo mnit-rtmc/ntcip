@@ -3,7 +3,6 @@
 // Copyright (C) 2018-2023  Minnesota Department of Transportation
 //
 //! Font support for dynamic message signs
-use crate::dms::multi::{Result, SyntaxError};
 use crate::dms::oer::Oer;
 use crc::Crc;
 use log::debug;
@@ -21,11 +20,14 @@ pub enum FontError {
     #[error("Invalid number")]
     InvalidNumber,
 
-    #[error("Duplicate number")]
-    DuplicateNumber,
+    #[error("Duplicate number: {0}")]
+    DuplicateNumber(u8),
 
-    #[error("Duplicate character number")]
-    DuplicateCharNumber,
+    #[error("Invalid character: {0}")]
+    InvalidChar(char),
+
+    #[error("Duplicate character: {0}")]
+    DuplicateChar(char),
 
     #[error("Invalid height")]
     InvalidHeight,
@@ -33,6 +35,9 @@ pub enum FontError {
     #[error("Invalid character height")]
     InvalidCharHeight,
 }
+
+/// Result type
+type Result<T> = std::result::Result<T, FontError>;
 
 /// Character for a bitmap [font]
 ///
@@ -129,27 +134,28 @@ impl CharacterEntry {
 
 impl Font {
     /// Check if all character numbers are unique
-    fn are_char_numbers_unique(&self) -> bool {
+    fn validate_char_numbers(&self) -> Result<()> {
         for i in 1..self.characters.len() {
             let num = self.characters[i - 1].number;
             if num > 0 && self.characters[i..].iter().any(|c| c.number == num) {
-                return false;
+                return Err(FontError::DuplicateChar(
+                    char::from_u32(num.into()).unwrap(),
+                ));
             }
         }
-        true
+        Ok(())
     }
 
     /// Check if font is valid
-    pub fn validate(&self) -> std::result::Result<(), FontError> {
+    pub fn validate(&self) -> Result<()> {
         if self.number < 1 {
             Err(FontError::InvalidNumber)
         } else if self.height < 1 {
             Err(FontError::InvalidHeight)
         } else if !self.characters.iter().all(|c| c.is_valid(self.height)) {
             Err(FontError::InvalidCharHeight)
-        } else if !self.are_char_numbers_unique() {
-            Err(FontError::DuplicateCharNumber)
         } else {
+            self.validate_char_numbers()?;
             Ok(())
         }
     }
@@ -190,7 +196,7 @@ impl Font {
                 return Ok(c);
             }
         }
-        Err(SyntaxError::CharacterNotDefined(ch))
+        Err(FontError::InvalidChar(ch))
     }
 
     /// Calculate the width of a span of text
@@ -256,7 +262,7 @@ impl<const F: usize> Default for FontTable<F> {
 
 impl<const F: usize> FontTable<F> {
     /// Validate the font table
-    pub fn validate(&self) -> std::result::Result<(), FontError> {
+    pub fn validate(&self) -> Result<()> {
         for font in &self.fonts {
             if font.number > 0 {
                 font.validate()?;
@@ -266,11 +272,11 @@ impl<const F: usize> FontTable<F> {
     }
 
     /// Check if all font numbers are unique
-    fn validate_font_numbers(&self) -> std::result::Result<(), FontError> {
+    fn validate_font_numbers(&self) -> Result<()> {
         for i in 1..self.fonts.len() {
             let num = self.fonts[i - 1].number;
             if num > 0 && self.fonts[i..].iter().any(|f| f.number == num) {
-                return Err(FontError::DuplicateNumber);
+                return Err(FontError::DuplicateNumber(num));
             }
         }
         Ok(())

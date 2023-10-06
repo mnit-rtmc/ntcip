@@ -2,7 +2,7 @@
 //
 // Copyright (C) 2023  Minnesota Department of Transportation
 //
-use crate::dms::multi::{MultiStr, Rectangle, Result, SyntaxError, Value};
+use crate::dms::multi::{MultiStr, Rectangle, SyntaxError, Value};
 use crate::dms::sign::Dms;
 
 /// Pattern values are MULTI values or "pseudo-values" from a pattern
@@ -198,7 +198,7 @@ impl<'p, const F: usize, const G: usize> MessagePattern<'p, F, G> {
 }
 
 impl<'p, const F: usize, const G: usize> Iterator for PatIter<'p, F, G> {
-    type Item = Result<PatValue<'p>>;
+    type Item = Result<PatValue<'p>, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.end {

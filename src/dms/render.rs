@@ -7,11 +7,14 @@ use crate::dms::font::{Font, FontTable};
 use crate::dms::graphic::Graphic;
 use crate::dms::multi::{
     ColorCtx, JustificationLine, JustificationPage, MultiStr, Rectangle,
-    Result, SyntaxError, Tag, Value,
+    SyntaxError, Tag, Value,
 };
 use crate::dms::sign::Dms;
 use log::debug;
 use pix::{rgb::SRgb8, Raster, Region};
+
+/// Result type
+type Result<T> = std::result::Result<T, SyntaxError>;
 
 /// Maximum number of text rectangles per page
 const MAX_TEXT_RECTANGLES: u32 = 50;
@@ -231,7 +234,7 @@ impl TextSpan {
     fn width<const F: usize>(&self, fonts: &FontTable<F>) -> Result<u16> {
         let font = self.state.font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
-        font.text_width(&self.text, Some(cs))
+        Ok(font.text_width(&self.text, Some(cs))?)
     }
 
     /// Get the char spacing
@@ -299,7 +302,7 @@ impl TextSpan {
     ) -> Result<()> {
         let cs = self.char_spacing_font(font).into();
         let cf = self.state.foreground_rgb();
-        font.render_text(raster, &self.text, x, y, cs, cf)
+        Ok(font.render_text(raster, &self.text, x, y, cs, cf)?)
     }
 }
 

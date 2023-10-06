@@ -517,7 +517,7 @@ impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
         match (graphics.lookup(gn), gid) {
             (Some(g), None) => Ok(g),
             (Some(g), Some(gid)) => {
-                if Some(gid) == graphics.version_id(gn) {
+                if gid == g.version_id() {
                     Ok(g)
                 } else {
                     Err(SyntaxError::GraphicID)

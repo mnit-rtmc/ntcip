@@ -6,12 +6,17 @@
 use crate::dms::multi::{
     Color, ColorClassic, ColorCtx, ColorScheme, SyntaxError,
 };
+use crate::dms::oer::Oer;
+use crc::Crc;
 use log::debug;
 use pix::{
     el::Pixel,
     rgb::{SRgb8, SRgba8},
     Raster,
 };
+
+/// CRC-16 for calculating `dmsGraphicId`
+const CRC: Crc<u16> = Crc::<u16>::new(&crc::CRC_16_IBM_SDLC);
 
 /// Graphic error
 #[derive(Debug, thiserror::Error)]
@@ -59,8 +64,6 @@ pub struct Graphic {
 pub struct GraphicTable<const G: usize> {
     /// Graphics in table
     graphics: [Graphic; G],
-    /// Version IDs
-    version_ids: [Option<u16>; G],
 }
 
 impl Graphic {
@@ -224,28 +227,55 @@ impl Graphic {
         }
         Some(SRgb8::new(red, green, blue))
     }
+
+    /// Get version ID (`dmsGraphicId`)
+    pub fn version_id(&self) -> u16 {
+        // OER of GraphicInfoList:
+        let mut oer = Oer::from(Vec::with_capacity(256));
+        oer.u8(self.number);
+        oer.u16(self.height.into());
+        oer.u16(self.width);
+        oer.u8(self.gtype as u8);
+        oer.u8(match self.transparent_color {
+            Some(_) => 1,
+            None => 0,
+        });
+        match self.transparent_color {
+            Some(Color::Rgb(r, g, b)) => {
+                oer.u8(r);
+                oer.u8(g);
+                oer.u8(b);
+            }
+            Some(Color::Legacy(c)) => {
+                oer.u8(c);
+                oer.u8(0);
+                oer.u8(0);
+            }
+            _ => {
+                oer.u8(0);
+                oer.u8(0);
+                oer.u8(0);
+            }
+        }
+        oer.octet_str(&self.bitmap);
+        let buf = Vec::from(oer);
+        u16::from_be(CRC.checksum(&buf))
+    }
 }
 
 impl<const G: usize> Default for GraphicTable<G> {
     fn default() -> Self {
         // workaround const generic default limitation
         let graphics: [Graphic; G] = [(); G].map(|_| Graphic::default());
-        let version_ids: [Option<u16>; G] = [(); G].map(|_| None);
-        GraphicTable {
-            graphics,
-            version_ids,
-        }
+        GraphicTable { graphics }
     }
 }
 
 impl<const G: usize> GraphicTable<G> {
     /// Validate the graphic table
-    pub fn validate(&mut self) -> Result<(), GraphicError> {
-        for (i, graphic) in self.graphics.iter().enumerate() {
+    pub fn validate(&self) -> Result<(), GraphicError> {
+        for graphic in &self.graphics {
             if graphic.number > 0 {
-                if self.version_ids[i].is_none() {
-                    // FIXME: calculate version ID
-                }
                 graphic.validate()?;
             }
         }
@@ -270,23 +300,61 @@ impl<const G: usize> GraphicTable<G> {
 
     /// Lookup a mutable graphic by number
     pub fn lookup_mut(&mut self, gnum: u8) -> Option<&mut Graphic> {
-        // unset version ID when accessing mutably
-        self.graphics
-            .iter_mut()
-            .enumerate()
-            .find(|(_i, g)| g.number == gnum)
-            .map(|(i, g)| {
-                self.version_ids[i] = None;
-                g
-            })
+        self.graphics.iter_mut().find(|g| g.number == gnum)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn graphic_table() -> GraphicTable<3> {
+        let mut graphics = GraphicTable::default();
+        let g = graphics.lookup_mut(0).unwrap();
+        *g = Graphic {
+            name: "Example 2".to_string(),
+            number: 4,
+            height: 6,
+            width: 10,
+            gtype: ColorScheme::Monochrome1Bit,
+            transparent_color: None,
+            bitmap: vec![0x84, 0x92, 0x63, 0x08, 0xC2, 0x48, 0xA1, 0x70],
+        };
+        let g = graphics.lookup_mut(0).unwrap();
+        *g = Graphic {
+            name: "Example 3".to_string(),
+            number: 5,
+            height: 4,
+            width: 4,
+            gtype: ColorScheme::ColorClassic,
+            transparent_color: Some(Color::Legacy(ColorClassic::White.into())),
+            bitmap: vec![1, 1, 1, 1, 7, 7, 1, 7, 7, 1, 7, 7, 1, 1, 1, 1],
+        };
+        let g = graphics.lookup_mut(0).unwrap();
+        *g = Graphic {
+            name: "Example 4".to_string(),
+            number: 7,
+            height: 2,
+            width: 2,
+            gtype: ColorScheme::Color24Bit,
+            transparent_color: Some(Color::Rgb(0, 0xFF, 0)),
+            bitmap: vec![
+                0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF,
+                0x00, 0xFF,
+            ],
+        };
+        graphics.validate().unwrap();
+        graphics
     }
 
-    /// Get a graphic version ID
-    pub fn version_id(&self, gnum: u8) -> Option<u16> {
-        self.graphics
-            .iter()
-            .zip(self.version_ids)
-            .find(|(g, _v)| g.number == gnum)
-            .and_then(|(_g, v)| v)
+    #[test]
+    fn graphic_version_id() {
+        let graphics = graphic_table();
+        let graphic = graphics.lookup(4).unwrap();
+        assert_eq!(graphic.version_id(), 0xBFF5);
+        let graphic = graphics.lookup(5).unwrap();
+        assert_eq!(graphic.version_id(), 0x8FE0);
+        let graphic = graphics.lookup(7).unwrap();
+        assert_eq!(graphic.version_id(), 0x078D);
     }
 }

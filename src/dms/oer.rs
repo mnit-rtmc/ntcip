@@ -87,4 +87,9 @@ impl Oer {
         self.length_prefix(octets.len() as u32);
         self.0.extend(octets);
     }
+
+    /// Octet string (constrained)
+    pub fn octet_str(&mut self, octets: &[u8]) {
+        self.0.extend(octets);
+    }
 }

@@ -82,7 +82,7 @@ impl<const F: usize, const G: usize> DmsBuilder<F, G> {
     }
 
     /// Build the DMS with validation
-    pub fn build(mut self) -> Result<Dms<{ F }, { G }>, SignError> {
+    pub fn build(self) -> Result<Dms<{ F }, { G }>, SignError> {
         self.multi_cfg.validate()?;
         self.font_definition.validate()?;
         self.graphic_definition.validate()?;

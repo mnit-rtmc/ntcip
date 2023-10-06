@@ -297,8 +297,11 @@ mod test {
     use super::*;
     use crate::dms::font::ifnt;
 
-    fn font_table() -> FontTable<1> {
+    fn font_table() -> FontTable<2> {
         let mut fonts = FontTable::default();
+        let buf = include_bytes!("../../../test/F02.ifnt");
+        let f = fonts.lookup_mut(0).unwrap();
+        *f = ifnt::read(&buf[..]).unwrap();
         let buf = include_bytes!("../../../test/F08.ifnt");
         let f = fonts.lookup_mut(0).unwrap();
         *f = ifnt::read(&buf[..]).unwrap();
@@ -309,6 +312,8 @@ mod test {
     #[test]
     fn font_version_id() {
         let fonts = font_table();
+        let font = fonts.lookup(2).unwrap();
+        assert_eq!(font.version_id(), 0xED52);
         let font = fonts.lookup(8).unwrap();
         assert_eq!(font.version_id(), 0x28EB);
     }

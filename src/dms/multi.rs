@@ -1423,17 +1423,12 @@ pub fn normalize(ms: &str) -> String {
 
 /// Check if a MULTI string is a "blank" message
 pub fn is_blank(ms: &str) -> bool {
-    for val in MultiStr::new(ms) {
+    MultiStr::new(ms).all(|val| {
         match val {
-            Ok(value) => {
-                if !value.is_blank() {
-                    return false;
-                }
-            }
-            Err(_) => return false,
+            Ok(value) => value.is_blank(),
+            Err(_) => false,
         }
-    }
-    true
+    })
 }
 
 /// Get an iterator of text spans in a MULTI string

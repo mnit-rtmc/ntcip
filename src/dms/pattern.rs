@@ -66,7 +66,7 @@ impl<'p, const F: usize, const G: usize> PatIter<'p, F, G> {
 }
 
 impl<'p, const F: usize, const G: usize> MessagePattern<'p, F, G> {
-    /// Create a new fillable pattern
+    /// Create a new message pattern
     ///
     /// * `dms`: The sign
     /// * `ms`: MULTI string

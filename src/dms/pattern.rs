@@ -76,20 +76,29 @@ impl<'p, const F: usize, const G: usize> MessagePattern<'p, F, G> {
 
     /// Find widths of fillable text lines
     ///
-    /// Returns an iterator of tuples containing pixel width and font
-    /// number for each fillable line in the pattern.
-    pub fn widths(self) -> impl Iterator<Item = (u16, u8)> + 'p {
+    /// Returns an iterator of tuples for each fillable line in the pattern —
+    /// `(width, font_num, rect_num)`:
+    ///
+    /// * `width`: Number of pixels
+    /// * `font_num`: Font number
+    /// * `rect_num`: Fillable rectangle number, starting from 0
+    pub fn widths(self) -> impl Iterator<Item = (u16, u8, u8)> + 'p {
         let dms = self.dms;
         let mut lines = Vec::new();
-        for (rect, font_num) in PatIter::new(self.dms, self.ms)
+        let mut rect_num = 0;
+        for (rect, font_num, rect_num) in PatIter::new(self.dms, self.ms)
             .flatten()
             .filter_map(|v| match v {
-                PatValue::FillableRect(r, f) => Some((r, f)),
+                PatValue::FillableRect(r, f) => {
+                    let rn = rect_num;
+                    rect_num += 1;
+                    Some((r, f, rn))
+                }
                 _ => None,
             })
         {
             for _ in 0..dms.rect_lines(rect, font_num) {
-                lines.push((rect.width, font_num));
+                lines.push((rect.width, font_num, rect_num));
             }
         }
         lines.into_iter()
@@ -409,8 +418,8 @@ mod test {
     fn fillable_width_1() {
         let dms = make_dms();
         let mut w = MessagePattern::new(&dms, "").widths();
-        assert_eq!(w.next(), Some((50, 8)));
-        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 8, 0)));
+        assert_eq!(w.next(), Some((50, 8, 0)));
         assert_eq!(w.next(), None);
     }
 
@@ -418,10 +427,10 @@ mod test {
     fn fillable_width_2() {
         let dms = make_dms();
         let mut w = MessagePattern::new(&dms, "[np]").widths();
-        assert_eq!(w.next(), Some((50, 8)));
-        assert_eq!(w.next(), Some((50, 8)));
-        assert_eq!(w.next(), Some((50, 8)));
-        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 8, 0)));
+        assert_eq!(w.next(), Some((50, 8, 0)));
+        assert_eq!(w.next(), Some((50, 8, 1)));
+        assert_eq!(w.next(), Some((50, 8, 1)));
         assert_eq!(w.next(), None);
     }
 
@@ -429,8 +438,8 @@ mod test {
     fn fillable_width_3() {
         let dms = make_dms();
         let mut w = MessagePattern::new(&dms, "FIRST[np]").widths();
-        assert_eq!(w.next(), Some((50, 8)));
-        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 8, 0)));
+        assert_eq!(w.next(), Some((50, 8, 0)));
         assert_eq!(w.next(), None);
     }
 
@@ -439,8 +448,8 @@ mod test {
         let dms = make_dms();
         let mut w =
             MessagePattern::new(&dms, "[tr1,1,50,12][tr1,14,50,12]").widths();
-        assert_eq!(w.next(), Some((50, 8)));
-        assert_eq!(w.next(), Some((50, 8)));
+        assert_eq!(w.next(), Some((50, 8, 0)));
+        assert_eq!(w.next(), Some((50, 8, 1)));
         assert_eq!(w.next(), None);
     }
 
@@ -450,8 +459,8 @@ mod test {
         let mut w =
             MessagePattern::new(&dms, "[tr1,1,50,12][fo7][tr1,14,50,12]")
                 .widths();
-        assert_eq!(w.next(), Some((50, 8)));
-        assert_eq!(w.next(), Some((50, 7)));
+        assert_eq!(w.next(), Some((50, 8, 0)));
+        assert_eq!(w.next(), Some((50, 7, 1)));
         assert_eq!(w.next(), None);
     }
 
@@ -460,10 +469,10 @@ mod test {
         let dms = make_dms();
         let mut w =
             MessagePattern::new(&dms, "[tr1,1,25,0][tr26,1,0,0]").widths();
-        assert_eq!(w.next(), Some((25, 8)));
-        assert_eq!(w.next(), Some((25, 8)));
-        assert_eq!(w.next(), Some((25, 8)));
-        assert_eq!(w.next(), Some((25, 8)));
+        assert_eq!(w.next(), Some((25, 8, 0)));
+        assert_eq!(w.next(), Some((25, 8, 0)));
+        assert_eq!(w.next(), Some((25, 8, 1)));
+        assert_eq!(w.next(), Some((25, 8, 1)));
         assert_eq!(w.next(), None);
     }
 

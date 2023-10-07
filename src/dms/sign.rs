@@ -372,7 +372,7 @@ impl<const F: usize, const G: usize> Dms<F, G> {
     /// Get the number of lines in a text rectangle
     pub(crate) fn rect_lines(&self, rect: Rectangle, font_num: u8) -> usize {
         let mut n_lines = 0;
-        if let Some(font) = self.font_definition().lookup(font_num) {
+        if let Some(font) = self.font_definition().font(font_num) {
             let height = u16::from(font.height);
             let spacing = height + u16::from(font.line_spacing);
             let mut rheight = rect.height;

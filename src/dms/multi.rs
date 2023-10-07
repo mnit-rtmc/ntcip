@@ -1423,11 +1423,9 @@ pub fn normalize(ms: &str) -> String {
 
 /// Check if a MULTI string is a "blank" message
 pub fn is_blank(ms: &str) -> bool {
-    MultiStr::new(ms).all(|val| {
-        match val {
-            Ok(value) => value.is_blank(),
-            Err(_) => false,
-        }
+    MultiStr::new(ms).all(|val| match val {
+        Ok(value) => value.is_blank(),
+        Err(_) => false,
     })
 }
 

@@ -209,7 +209,7 @@ impl RenderState {
         &self,
         fonts: &'a FontTable<{ F }>,
     ) -> Result<&'a Font> {
-        match (fonts.lookup(self.font_num), self.font_version_id) {
+        match (fonts.font(self.font_num), self.font_version_id) {
             (Some(f), Some(vid)) => {
                 if vid == f.version_id() {
                     Ok(f)
@@ -517,7 +517,7 @@ impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
     /// Lookup a graphic from the table
     fn graphic(&self, gn: u8, gid: Option<u16>) -> Result<&'a Graphic> {
         let graphics = self.dms.graphic_definition();
-        match (graphics.lookup(gn), gid) {
+        match (graphics.graphic(gn), gid) {
             (Some(g), None) => Ok(g),
             (Some(g), Some(gid)) => {
                 if gid == g.version_id() {
@@ -927,13 +927,13 @@ mod test {
     fn font_table() -> FontTable<4> {
         let mut fonts = FontTable::default();
         let buf = include_bytes!("../../test/F07-C.ifnt");
-        let f = fonts.lookup_mut(0).unwrap();
+        let f = fonts.font_mut(0).unwrap();
         *f = ifnt::read(&buf[..]).unwrap();
         let buf = include_bytes!("../../test/F07-L.ifnt");
-        let f = fonts.lookup_mut(0).unwrap();
+        let f = fonts.font_mut(0).unwrap();
         *f = ifnt::read(&buf[..]).unwrap();
         let buf = include_bytes!("../../test/F08.ifnt");
-        let f = fonts.lookup_mut(0).unwrap();
+        let f = fonts.font_mut(0).unwrap();
         *f = ifnt::read(&buf[..]).unwrap();
         fonts
     }

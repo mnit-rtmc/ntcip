@@ -302,12 +302,12 @@ impl<const G: usize> GraphicTable<G> {
     }
 
     /// Lookup a graphic by number
-    pub fn lookup(&self, gnum: u8) -> Option<&Graphic> {
+    pub fn graphic(&self, gnum: u8) -> Option<&Graphic> {
         self.graphics.iter().find(|g| g.number == gnum)
     }
 
     /// Lookup a mutable graphic by number
-    pub fn lookup_mut(&mut self, gnum: u8) -> Option<&mut Graphic> {
+    pub fn graphic_mut(&mut self, gnum: u8) -> Option<&mut Graphic> {
         self.graphics.iter_mut().find(|g| g.number == gnum)
     }
 }
@@ -318,7 +318,7 @@ mod test {
 
     fn graphic_table() -> GraphicTable<3> {
         let mut graphics = GraphicTable::default();
-        let g = graphics.lookup_mut(0).unwrap();
+        let g = graphics.graphic_mut(0).unwrap();
         *g = Graphic {
             name: "Example 2".to_string(),
             number: 4,
@@ -328,7 +328,7 @@ mod test {
             transparent_color: None,
             bitmap: vec![0x84, 0x92, 0x63, 0x08, 0xC2, 0x48, 0xA1, 0x70],
         };
-        let g = graphics.lookup_mut(0).unwrap();
+        let g = graphics.graphic_mut(0).unwrap();
         *g = Graphic {
             name: "Example 3".to_string(),
             number: 5,
@@ -338,7 +338,7 @@ mod test {
             transparent_color: Some(Color::Legacy(ColorClassic::White.into())),
             bitmap: vec![1, 1, 1, 1, 7, 7, 1, 7, 7, 1, 7, 7, 1, 1, 1, 1],
         };
-        let g = graphics.lookup_mut(0).unwrap();
+        let g = graphics.graphic_mut(0).unwrap();
         *g = Graphic {
             name: "Example 4".to_string(),
             number: 7,
@@ -358,11 +358,11 @@ mod test {
     #[test]
     fn graphic_version_id() {
         let graphics = graphic_table();
-        let graphic = graphics.lookup(4).unwrap();
+        let graphic = graphics.graphic(4).unwrap();
         assert_eq!(graphic.version_id(), 0xBFF5);
-        let graphic = graphics.lookup(5).unwrap();
+        let graphic = graphics.graphic(5).unwrap();
         assert_eq!(graphic.version_id(), 0x8FE0);
-        let graphic = graphics.lookup(7).unwrap();
+        let graphic = graphics.graphic(7).unwrap();
         assert_eq!(graphic.version_id(), 0x078D);
     }
 }

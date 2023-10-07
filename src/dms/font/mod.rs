@@ -89,10 +89,16 @@ impl CharacterEntry {
 
     /// Check if a pixel is lit
     pub fn is_pixel_lit(&self, row: usize, col: usize) -> bool {
-        let pos = row * usize::from(self.width) + col;
-        let off = pos / 8;
-        let bit = 7 - (pos & 0b111);
-        (self.bitmap[off] >> bit) & 1 != 0
+        let width = usize::from(self.width);
+        if col < width {
+            let pos = row * width + col;
+            let off = pos / 8;
+            if off < self.bitmap.len() {
+                let bit = 7 - (pos & 0b111);
+                return (self.bitmap[off] >> bit) & 1 != 0;
+            }
+        }
+        false
     }
 
     /// Render the character to a raster
@@ -190,13 +196,13 @@ impl Font {
     }
 
     /// Get a character
-    pub fn character(&self, ch: char) -> Result<&CharacterEntry> {
+    pub fn character(&self, ch: char) -> Option<&CharacterEntry> {
         if let Ok(n) = u16::try_from(u32::from(ch)) {
             if let Some(c) = self.characters.iter().find(|c| c.number == n) {
-                return Ok(c);
+                return Some(c);
             }
         }
-        Err(FontError::InvalidChar(ch))
+        None
     }
 
     /// Calculate the width of a span of text
@@ -207,7 +213,7 @@ impl Font {
         let mut width = 0;
         let cs = cs.unwrap_or_else(|| u16::from(self.char_spacing));
         for ch in text.chars() {
-            let c = self.character(ch)?;
+            let c = self.character(ch).ok_or(FontError::InvalidChar(ch))?;
             if width > 0 {
                 width += cs;
             }
@@ -241,7 +247,7 @@ impl Font {
         debug!("render_text: {text} @ {x},{y} height: {height}");
         let mut xx = 0;
         for ch in text.chars() {
-            let c = self.character(ch)?;
+            let c = self.character(ch).ok_or(FontError::InvalidChar(ch))?;
             if xx > 0 {
                 xx += cs;
             }
@@ -283,17 +289,17 @@ impl<const F: usize> FontTable<F> {
     }
 
     /// Lookup a font by number
-    pub fn lookup(&self, fnum: u8) -> Option<&Font> {
+    pub fn font(&self, fnum: u8) -> Option<&Font> {
         self.fonts.iter().find(|f| f.number == fnum)
     }
 
     /// Lookup a mutable font by number
-    pub fn lookup_mut(&mut self, fnum: u8) -> Option<&mut Font> {
+    pub fn font_mut(&mut self, fnum: u8) -> Option<&mut Font> {
         self.fonts.iter_mut().find(|f| f.number == fnum)
     }
 
     /// Lookup a font by name
-    pub fn lookup_name<'a>(&'a self, name: &str) -> Option<&'a Font> {
+    pub fn font_by_name<'a>(&'a self, name: &str) -> Option<&'a Font> {
         self.fonts.iter().find(|f| f.name == name)
     }
 }
@@ -306,10 +312,10 @@ mod test {
     fn font_table() -> FontTable<2> {
         let mut fonts = FontTable::default();
         let buf = include_bytes!("../../../test/F02.ifnt");
-        let f = fonts.lookup_mut(0).unwrap();
+        let f = fonts.font_mut(0).unwrap();
         *f = ifnt::read(&buf[..]).unwrap();
         let buf = include_bytes!("../../../test/F08.ifnt");
-        let f = fonts.lookup_mut(0).unwrap();
+        let f = fonts.font_mut(0).unwrap();
         *f = ifnt::read(&buf[..]).unwrap();
         fonts.validate().unwrap();
         fonts
@@ -318,9 +324,9 @@ mod test {
     #[test]
     fn font_version_id() {
         let fonts = font_table();
-        let font = fonts.lookup(2).unwrap();
+        let font = fonts.font(2).unwrap();
         assert_eq!(font.version_id(), 0xED52);
-        let font = fonts.lookup(8).unwrap();
+        let font = fonts.font(8).unwrap();
         assert_eq!(font.version_id(), 0x28EB);
     }
 }

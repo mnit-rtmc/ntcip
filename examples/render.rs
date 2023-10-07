@@ -7,7 +7,7 @@ use ntcip::dms::{ifnt, Dms, FontTable, Pages};
 fn font_table() -> FontTable<1> {
     let mut fonts = FontTable::default();
     let buf = include_bytes!("../test/F08.ifnt");
-    let f = fonts.lookup_mut(0).unwrap();
+    let f = fonts.font_mut(0).unwrap();
     *f = ifnt::read(&buf[..]).unwrap();
     fonts
 }

@@ -59,6 +59,20 @@ pub enum DmsBeaconType {
     FourBeaconStrobe,
 }
 
+/// Sign technology
+#[enumflags2::bitflags]
+#[repr(u16)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DmsSignTechnology {
+    Other = 1 << 0,
+    Led = 1 << 1,
+    FlipDisk = 1 << 2,
+    FiberOptics = 1 << 3,
+    Shuttered = 1 << 4,
+    Bulb = 1 << 5,
+    Drum = 1 << 6,
+}
+
 /// Sign configuration — `dmsSignCfg`
 ///
 /// Configuration common to all signs.
@@ -81,7 +95,7 @@ pub struct SignCfg {
     /// Beacon type — `dmsBeaconType`
     pub beacon_type: DmsBeaconType,
     /// Sign technology — `dmsSignTechnology`
-    pub sign_technology: u16,
+    pub sign_technology: BitFlags<DmsSignTechnology>,
 }
 
 /// VMS configuration — `vmsCfg`
@@ -151,7 +165,7 @@ impl Default for SignCfg {
             vertical_border: 80,
             legend: DmsLegend::NoLegend,
             beacon_type: DmsBeaconType::None,
-            sign_technology: 1,
+            sign_technology: DmsSignTechnology::Led.into(),
         }
     }
 }

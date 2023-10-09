@@ -84,6 +84,13 @@ pub enum DmsSignTechnology {
     Drum = 1 << 6,
 }
 
+/// Character set for MULTI messages
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CharacterSet {
+    Other = 1,
+    EightBit,
+}
+
 /// Sign configuration — `dmsSignCfg`
 ///
 /// Configuration common to all signs.
@@ -154,7 +161,7 @@ pub struct MultiCfg {
     /// Default page off time (1/10 s) — `defaultPageOffTime`
     pub default_page_off_time: u8,
     /// Default character set — `defaultCharacterSet`
-    pub default_character_set: u8,
+    pub default_character_set: CharacterSet,
     /// Color scheme — `dmsColorScheme`
     pub color_scheme: ColorScheme,
     /// Supported MULTI tags — `dmsSupportedMultiTags`
@@ -222,7 +229,7 @@ impl Default for MultiCfg {
             default_justification_page: JustificationPage::Middle,
             default_page_on_time: 30,
             default_page_off_time: 0,
-            default_character_set: 2,
+            default_character_set: CharacterSet::EightBit,
             color_scheme: ColorScheme::Monochrome1Bit,
             supported_multi_tags,
             max_number_pages: 4,

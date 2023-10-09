@@ -15,6 +15,17 @@ pub enum CfgError {
     InvalidPageCfg,
 }
 
+/// Sign access
+#[enumflags2::bitflags]
+#[repr(u8)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DmsSignAccess {
+    Other = 1 << 0,
+    WalkIn = 1 << 1,
+    Rear = 1 << 2,
+    Front = 1 << 3,
+}
+
 /// Sign type
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DmsSignType {
@@ -79,7 +90,7 @@ pub enum DmsSignTechnology {
 #[derive(Clone)]
 pub struct SignCfg {
     /// Access bits — `dmsSignAccess`
-    pub sign_access: u8,
+    pub sign_access: BitFlags<DmsSignAccess>,
     /// Sign type — `dmsSignType`
     pub sign_type: DmsSignType,
     /// Height of sign face (mm) — `dmsSignHeight`
@@ -157,7 +168,7 @@ pub struct MultiCfg {
 impl Default for SignCfg {
     fn default() -> Self {
         SignCfg {
-            sign_access: 0,
+            sign_access: BitFlags::empty(),
             sign_type: DmsSignType::VmsChar,
             sign_height: 1800,
             sign_width: 3500,

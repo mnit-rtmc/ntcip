@@ -276,6 +276,15 @@ impl<const G: usize> Default for GraphicTable<G> {
 }
 
 impl<const G: usize> GraphicTable<G> {
+    /// Retain only graphics within specified size
+    pub(crate) fn retain(&mut self, width: u16, height: u16) {
+        for graphic in &mut self.graphics {
+            if graphic.width > width || u16::from(graphic.height) > height {
+                *graphic = Graphic::default();
+            }
+        }
+    }
+
     /// Validate the graphic table
     pub fn validate(
         &self,

@@ -4,15 +4,15 @@
 //
 //! **M**ark**U**p **L**anguage for **T**ransportation **I**nformation
 //!
-//! Sign messages are strings containing text and [Tag](enum.Tag.html)s
+//! MULTI strings consist of text and [Tag](enum.Tag.html)s
 use crate::dms::{FontError, GraphicError};
 use log::{debug, warn};
 use std::fmt;
 use std::str::FromStr;
 
-/// Message tag
+/// MULTI tag
 ///
-/// All tags allowed in MULTI messages.
+/// All tags allowed in MULTI strings.
 #[enumflags2::bitflags]
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1413,15 +1413,19 @@ impl<'p> Iterator for MultiStr<'p> {
 }
 
 /// Normalize a MULTI string
+///
+/// Invalid characters and tags are removed.
 pub fn normalize(ms: &str) -> String {
-    let mut s = String::with_capacity(ms.len());
-    for t in MultiStr::new(ms).flatten() {
-        s.push_str(&t.to_string());
+    let mut norm = String::with_capacity(ms.len());
+    for v in MultiStr::new(ms).flatten() {
+        norm.push_str(&v.to_string());
     }
-    s
+    norm
 }
 
-/// Check if a MULTI string is a "blank" message
+/// Check if a MULTI string is "blank"
+///
+/// A blank string contains no text, graphics or color rectangles.
 pub fn is_blank(ms: &str) -> bool {
     MultiStr::new(ms).all(|val| match val {
         Ok(value) => value.is_blank(),

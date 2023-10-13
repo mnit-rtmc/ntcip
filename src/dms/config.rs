@@ -84,7 +84,7 @@ pub enum DmsSignTechnology {
     Drum = 1 << 6,
 }
 
-/// Character set for MULTI messages
+/// Character set for MULTI strings
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CharacterSet {
     Other = 1,

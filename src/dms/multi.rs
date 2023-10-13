@@ -1446,7 +1446,7 @@ pub fn join_text(ms: &str, sep: &str) -> String {
     text_spans(ms).collect::<Vec<_>>().join(sep)
 }
 
-/// Remove trailing whitespace, including tags
+/// Remove trailing whitespace, including blank tags
 ///
 /// The result is also normalized as a side effect.
 pub fn trim_end_tags(ms: &str) -> String {

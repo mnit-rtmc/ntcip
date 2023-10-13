@@ -1442,6 +1442,22 @@ pub fn join_text(ms: &str, sep: &str) -> String {
     text_spans(ms).collect::<Vec<_>>().join(sep)
 }
 
+/// Remove trailing whitespace, including tags
+///
+/// The result is also normalized as a side effect.
+pub fn trim_end_tags(ms: &str) -> String {
+    let mut trimmed = String::with_capacity(ms.len());
+    let mut trail = String::with_capacity(16);
+    for v in MultiStr::new(ms).flatten() {
+        trail.push_str(&v.to_string());
+        if !v.is_blank() {
+            trimmed.push_str(&trail);
+            trail.clear();
+        }
+    }
+    trimmed
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -3031,5 +3047,21 @@ mod test {
         assert_eq!(r1.intersection(r2), Rectangle::new(2, 2, 1, 1));
         let r3 = Rectangle::new(3, 3, 2, 2);
         assert_eq!(r1.intersection(r3), Rectangle::default());
+    }
+
+    #[test]
+    fn trim_end() {
+        assert_eq!(trim_end_tags("[nl]"), "");
+        assert_eq!(trim_end_tags("ABC[nl]"), "ABC");
+        assert_eq!(trim_end_tags("ABC[nl][nl]"), "ABC");
+        assert_eq!(trim_end_tags("[nl]ABC[nl]"), "[nl]ABC");
+        assert_eq!(trim_end_tags("ABC[np]"), "ABC");
+        assert_eq!(trim_end_tags("ABC[nl][np][nl]"), "ABC");
+        assert_eq!(trim_end_tags("ABC[nl] [nl]"), "ABC");
+        assert_eq!(trim_end_tags("ABC[nl]DEF[nl]"), "ABC[nl]DEF");
+        assert_eq!(trim_end_tags("ABC[jp3]"), "ABC");
+        assert_eq!(trim_end_tags("ABC[jl3]"), "ABC");
+        assert_eq!(trim_end_tags("ABC[fo2] "), "ABC");
+        assert_eq!(trim_end_tags("ABC[sc2]"), "ABC");
     }
 }

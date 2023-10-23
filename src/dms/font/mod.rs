@@ -5,6 +5,7 @@
 //! Font support for dynamic message signs
 use crate::dms::oer::Oer;
 use crc::Crc;
+use fstr::FStr;
 use log::debug;
 use pix::{rgb::SRgb8, Raster};
 
@@ -58,7 +59,7 @@ pub struct Font<const C: usize = 256> {
     /// Font number
     pub number: u8,
     /// Name (max 64 characters)
-    pub name: String,
+    pub name: FStr<64>,
     /// Height in pixels
     pub height: u8,
     /// Default pixel spacing between characters
@@ -145,7 +146,7 @@ impl<const C: usize> Default for Font<C> {
             [(); C].map(|_| CharacterEntry::default());
         Font {
             number: 0,
-            name: "".to_string(),
+            name: FStr::default(),
             height: 0,
             char_spacing: 0,
             line_spacing: 0,
@@ -318,7 +319,9 @@ impl<const C: usize, const F: usize> FontTable<C, F> {
 
     /// Lookup a font by name
     pub fn font_by_name<'a>(&'a self, name: &str) -> Option<&'a Font<C>> {
-        self.fonts.iter().find(|f| f.name == name)
+        self.fonts
+            .iter()
+            .find(|f| f.name.slice_to_terminator('\0') == name)
     }
 }
 
@@ -346,5 +349,12 @@ mod test {
         assert_eq!(font.version_id(), 0xED52);
         let font = fonts.font(8).unwrap();
         assert_eq!(font.version_id(), 0x28EB);
+    }
+
+    #[test]
+    fn font_by_name() {
+        let fonts = font_table();
+        let font = fonts.font_by_name("fontVersionId example").unwrap();
+        assert_eq!(font.number, 2);
     }
 }

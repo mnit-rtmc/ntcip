@@ -3,6 +3,7 @@
 // Copyright (C) 2023  Minnesota Department of Transportation
 //
 use super::{CharacterEntry, Font, FontError};
+use fstr::FStr;
 use std::io::{Read, Write};
 use std::str::Lines;
 
@@ -178,8 +179,11 @@ impl<'a> TfonIter<'a> {
     }
 
     /// Parse a key/value as string
-    fn parse_str(&mut self, key: &'static str) -> Result<String> {
-        Ok(self.parse_kv(key)?.to_string())
+    fn parse_str<const C: usize>(
+        &mut self,
+        key: &'static str,
+    ) -> Result<FStr<C>> {
+        Ok(FStr::from_str_lossy(self.parse_kv(key)?, b'\0'))
     }
 
     /// Parse a key/value as u8

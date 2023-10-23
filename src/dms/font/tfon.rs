@@ -84,14 +84,17 @@ pub fn read<R: Read>(mut reader: R) -> Result<Font> {
 }
 
 /// Parse a font in `.tfon` format
-pub fn parse(buf: &str) -> Result<Font> {
+pub fn parse<const C: usize>(buf: &str) -> Result<Font<C>> {
     let mut lines = TfonIter::new(&buf);
     let name = lines.parse_str("name")?;
     let number = lines.parse_u8("font_number")?;
     let char_spacing = lines.parse_u8("char_spacing")?;
     let line_spacing = lines.parse_u8("line_spacing")?;
     let mut height = 0;
-    let mut characters = Vec::new();
+    // workaround const generic default limitation
+    let mut characters: [CharacterEntry; C] =
+        [(); C].map(|_| CharacterEntry::default());
+    let mut row = 0;
     while lines.peek_line().is_some() {
         let (ch, h) = lines.read_char()?;
         if height > 0 {
@@ -101,7 +104,8 @@ pub fn parse(buf: &str) -> Result<Font> {
         } else {
             height = h;
         }
-        characters.push(ch);
+        characters[row] = ch;
+        row += 1;
     }
     let font = Font {
         number,

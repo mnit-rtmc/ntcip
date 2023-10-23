@@ -22,10 +22,10 @@ pub enum SignError {
 
 /// Builder for DMS
 #[derive(Clone, Default)]
-pub struct DmsBuilder<const F: usize, const G: usize> {
+pub struct DmsBuilder<const C: usize, const F: usize, const G: usize> {
     sign_cfg: SignCfg,
     vms_cfg: VmsCfg,
-    font_definition: FontTable<F>,
+    font_definition: FontTable<C, F>,
     multi_cfg: MultiCfg,
     graphic_definition: GraphicTable<G>,
 }
@@ -34,20 +34,20 @@ pub struct DmsBuilder<const F: usize, const G: usize> {
 ///
 /// This is the root node of the 1203 Message Information Base (MIB)
 #[derive(Clone)]
-pub struct Dms<const F: usize, const G: usize> {
+pub struct Dms<const C: usize, const F: usize, const G: usize> {
     /// Configuration common to all signs — `dmsSignCfg`
     pub(crate) sign_cfg: SignCfg,
     /// Configuration for variable message signs — `vmsCfg`
     pub(crate) vms_cfg: VmsCfg,
     /// Font definition — `fontDefinition`
-    pub(crate) font_definition: FontTable<F>,
+    pub(crate) font_definition: FontTable<C, F>,
     /// MULTI configuration — `multiCfg`
     pub(crate) multi_cfg: MultiCfg,
     /// Graphic definition — `graphicDefinition`
     pub(crate) graphic_definition: GraphicTable<G>,
 }
 
-impl<const F: usize, const G: usize> DmsBuilder<F, G> {
+impl<const C: usize, const F: usize, const G: usize> DmsBuilder<C, F, G> {
     /// Set sign configuration
     pub fn with_sign_cfg(mut self, cfg: SignCfg) -> Self {
         self.sign_cfg = cfg;
@@ -61,7 +61,7 @@ impl<const F: usize, const G: usize> DmsBuilder<F, G> {
     }
 
     /// Set font definition
-    pub fn with_font_definition(mut self, fonts: FontTable<{ F }>) -> Self {
+    pub fn with_font_definition(mut self, fonts: FontTable<C, F>) -> Self {
         self.font_definition = fonts;
         self
     }
@@ -82,7 +82,7 @@ impl<const F: usize, const G: usize> DmsBuilder<F, G> {
     }
 
     /// Build the DMS with validation
-    pub fn build(mut self) -> Result<Dms<{ F }, { G }>, SignError> {
+    pub fn build(mut self) -> Result<Dms<C, F, G>, SignError> {
         self.multi_cfg.validate()?;
         self.font_definition.validate()?;
         let width = self.vms_cfg.sign_width_pixels;
@@ -99,14 +99,14 @@ impl<const F: usize, const G: usize> DmsBuilder<F, G> {
     }
 }
 
-impl<const F: usize, const G: usize> Dms<F, G> {
+impl<const C: usize, const F: usize, const G: usize> Dms<C, F, G> {
     /// Create a DMS builder
-    pub fn builder() -> DmsBuilder<F, G> {
+    pub fn builder() -> DmsBuilder<C, F, G> {
         DmsBuilder::default()
     }
 
     /// Convert back into builder
-    pub fn into_builder(self) -> DmsBuilder<F, G> {
+    pub fn into_builder(self) -> DmsBuilder<C, F, G> {
         DmsBuilder {
             sign_cfg: self.sign_cfg,
             vms_cfg: self.vms_cfg,
@@ -117,7 +117,7 @@ impl<const F: usize, const G: usize> Dms<F, G> {
     }
 
     /// Get font definition
-    pub fn font_definition(&self) -> &FontTable<{ F }> {
+    pub fn font_definition(&self) -> &FontTable<C, F> {
         &self.font_definition
     }
 

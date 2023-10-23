@@ -105,9 +105,9 @@ struct TextLine {
 }
 
 /// Page renderer for dynamic message signs
-pub struct Pages<'a, const F: usize, const G: usize> {
+pub struct Pages<'a, const C: usize, const F: usize, const G: usize> {
     /// Sign to render
-    dms: &'a Dms<F, G>,
+    dms: &'a Dms<C, F, G>,
 
     /// Default rendering state
     default_state: RenderState,
@@ -158,7 +158,7 @@ impl PageState {
 
 impl RenderState {
     /// Create a new render state
-    fn new<const F: usize, const G: usize>(dms: &Dms<F, G>) -> Self {
+    fn new<const C: usize, const F: usize, const G: usize>(dms: &Dms<C, F, G>) -> Self {
         RenderState {
             color_ctx: dms.color_ctx(),
             page_on_time_ds: dms.multi_cfg.default_page_on_time,
@@ -205,10 +205,10 @@ impl RenderState {
     }
 
     /// Lookup current font in cache
-    fn font<'a, const F: usize>(
+    fn font<'a, const C: usize, const F: usize>(
         &self,
-        fonts: &'a FontTable<{ F }>,
-    ) -> Result<&'a Font> {
+        fonts: &'a FontTable<C, F>,
+    ) -> Result<&'a Font<C>> {
         match (fonts.font(self.font_num), self.font_version_id) {
             (Some(f), Some(vid)) => {
                 if vid == f.version_id() {
@@ -231,16 +231,19 @@ impl TextSpan {
     }
 
     /// Get the width of a text span
-    fn width<const F: usize>(&self, fonts: &FontTable<F>) -> Result<u16> {
+    fn width<const C: usize, const F: usize>(
+        &self,
+        fonts: &FontTable<C, F>,
+    ) -> Result<u16> {
         let font = self.state.font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
         Ok(font.text_width(&self.text, Some(cs))?)
     }
 
     /// Get the char spacing
-    fn char_spacing_fonts<const F: usize>(
+    fn char_spacing_fonts<const C: usize, const F: usize>(
         &self,
-        fonts: &FontTable<{ F }>,
+        fonts: &FontTable<C, F>,
     ) -> Result<u16> {
         match self.state.char_spacing {
             Some(sp) => Ok(sp.into()),
@@ -249,7 +252,7 @@ impl TextSpan {
     }
 
     /// Get the char spacing
-    fn char_spacing_font(&self, font: &Font) -> u8 {
+    fn char_spacing_font<const C: usize>(&self, font: &Font<C>) -> u8 {
         match self.state.char_spacing {
             Some(sp) => sp,
             None => font.char_spacing,
@@ -257,10 +260,10 @@ impl TextSpan {
     }
 
     /// Get the char spacing from a previous span
-    fn char_spacing_between<const F: usize>(
+    fn char_spacing_between<const C: usize, const F: usize>(
         &self,
         prev: &TextSpan,
-        fonts: &FontTable<{ F }>,
+        fonts: &FontTable<C, F>,
     ) -> Result<u16> {
         if let Some(c) = self.state.char_spacing {
             Ok(c.into())
@@ -275,14 +278,17 @@ impl TextSpan {
     }
 
     /// Get the height of a text span
-    fn height<const F: usize>(&self, fonts: &FontTable<{ F }>) -> Result<u16> {
+    fn height<const C: usize, const F: usize>(
+        &self,
+        fonts: &FontTable<C, F>,
+    ) -> Result<u16> {
         Ok(self.state.font(fonts)?.height.into())
     }
 
     /// Get the font line spacing
-    fn font_spacing<const F: usize>(
+    fn font_spacing<const C: usize, const F: usize>(
         &self,
-        fonts: &FontTable<{ F }>,
+        fonts: &FontTable<C, F>,
     ) -> Result<u16> {
         Ok(self.state.font(fonts)?.line_spacing.into())
     }
@@ -293,10 +299,10 @@ impl TextSpan {
     }
 
     /// Render the text span
-    fn render_text(
+    fn render_text<const C: usize>(
         &self,
         raster: &mut Raster<SRgb8>,
-        font: &Font,
+        font: &Font<C>,
         x: i32,
         y: i32,
     ) -> Result<()> {
@@ -339,7 +345,7 @@ impl TextLine {
     }
 }
 
-impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
+impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     /// Create a new DMS page renderer.
     ///
     /// * `dms` Sign to render.
@@ -352,7 +358,7 @@ impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
     /// * `[ms…]`: Manufacturer Specific
     /// * `[mv…]`: Moving Text
     ///
-    pub fn new(dms: &'a Dms<{ F }, { G }>, ms: &'a str) -> Self {
+    pub fn new(dms: &'a Dms<C, F, G>, ms: &'a str) -> Self {
         let default_state = RenderState::new(dms);
         let render_state = default_state.clone();
         Pages {
@@ -366,7 +372,7 @@ impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
     }
 
     /// Get the font definition
-    fn fonts(&self) -> &FontTable<F> {
+    fn fonts(&self) -> &FontTable<C, F> {
         self.dms.font_definition()
     }
 
@@ -879,7 +885,7 @@ impl<'a, const F: usize, const G: usize> Pages<'a, F, G> {
     }
 }
 
-impl<'a, const F: usize, const G: usize> Iterator for Pages<'a, F, G> {
+impl<'a, const C: usize, const F: usize, const G: usize> Iterator for Pages<'a, C, F, G> {
     type Item = Result<Page>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -924,7 +930,7 @@ mod test {
     use crate::dms::font::tfon;
     use crate::dms::multi::{ColorClassic, ColorScheme};
 
-    fn font_table() -> FontTable<4> {
+    fn font_table() -> FontTable<128, 4> {
         let mut fonts = FontTable::default();
         let buf = include_str!("../../test/F07-C.tfon");
         let f = fonts.font_mut(0).unwrap();
@@ -939,7 +945,7 @@ mod test {
     }
 
     fn render_full(ms: &str) -> Result<Vec<Page>> {
-        let dms = Dms::<4, 0>::builder()
+        let dms = Dms::<128, 4, 0>::builder()
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 0,
                 char_width_pixels: 0,
@@ -1052,7 +1058,7 @@ mod test {
     }
 
     fn render_char(ms: &str) -> Result<Vec<Page>> {
-        let dms = Dms::<4, 0>::builder()
+        let dms = Dms::<128, 4, 0>::builder()
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 7,
                 char_width_pixels: 5,

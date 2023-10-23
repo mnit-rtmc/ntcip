@@ -53,8 +53,8 @@ pub struct CharacterEntry {
 }
 
 /// Bitmap font
-#[derive(Clone, Default)]
-pub struct Font {
+#[derive(Clone)]
+pub struct Font<const C: usize = 256> {
     /// Font number
     pub number: u8,
     /// Name (max 64 characters)
@@ -66,22 +66,22 @@ pub struct Font {
     /// Default pixel spacing between lines
     pub line_spacing: u8,
     /// Characters in font
-    pub characters: Vec<CharacterEntry>,
+    pub characters: [CharacterEntry; C],
 }
 
 /// Table of fonts
 ///
 /// This represents the `fontDefinition` of a Dms.
 #[derive(Clone)]
-pub struct FontTable<const F: usize> {
+pub struct FontTable<const C: usize = 256, const F: usize = 24> {
     /// Fonts in table
-    fonts: [Font; F],
+    fonts: [Font<C>; F],
 }
 
 impl CharacterEntry {
     /// Check if character is valid
     fn is_valid(&self, height: u8) -> bool {
-        self.number > 0 && {
+        self.number == 0 || {
             let bits = usize::from(self.width) * usize::from(height);
             self.bitmap.len() == (bits + 7) / 8
         }
@@ -138,7 +138,23 @@ impl CharacterEntry {
     }
 }
 
-impl Font {
+impl<const C: usize> Default for Font<C> {
+    fn default() -> Self {
+        // workaround const generic default limitation
+        let characters: [CharacterEntry; C] =
+            [(); C].map(|_| CharacterEntry::default());
+        Font {
+            number: 0,
+            name: "".to_string(),
+            height: 0,
+            char_spacing: 0,
+            line_spacing: 0,
+            characters,
+        }
+    }
+}
+
+impl<const C: usize> Font<C> {
     /// Check if all character numbers are unique
     fn validate_char_numbers(&self) -> Result<()> {
         for i in 1..self.characters.len() {
@@ -174,11 +190,13 @@ impl Font {
         oer.u8(self.height);
         oer.u8(self.char_spacing);
         oer.u8(self.line_spacing);
-        oer.uint(self.characters.len() as u32);
+        oer.uint(self.characters.iter().filter(|c| c.number > 0).count() as u32);
         for ch in &self.characters {
-            oer.u16(ch.number);
-            oer.u8(ch.width);
-            oer.octet_string(&ch.bitmap)
+            if ch.number > 0 {
+                oer.u16(ch.number);
+                oer.u8(ch.width);
+                oer.octet_string(&ch.bitmap)
+            }
         }
         let buf = Vec::from(oer);
         u16::from_be(CRC.checksum(&buf))
@@ -258,15 +276,15 @@ impl Font {
     }
 }
 
-impl<const F: usize> Default for FontTable<F> {
+impl<const C: usize, const F: usize> Default for FontTable<C, F> {
     fn default() -> Self {
         // workaround const generic default limitation
-        let fonts: [Font; F] = [(); F].map(|_| Font::default());
+        let fonts: [Font<C>; F] = [(); F].map(|_| Font::<C>::default());
         FontTable { fonts }
     }
 }
 
-impl<const F: usize> FontTable<F> {
+impl<const C: usize, const F: usize> FontTable<C, F> {
     /// Validate the font table
     pub fn validate(&self) -> Result<()> {
         for font in &self.fonts {
@@ -289,17 +307,17 @@ impl<const F: usize> FontTable<F> {
     }
 
     /// Lookup a font by number
-    pub fn font(&self, fnum: u8) -> Option<&Font> {
+    pub fn font(&self, fnum: u8) -> Option<&Font<C>> {
         self.fonts.iter().find(|f| f.number == fnum)
     }
 
     /// Lookup a mutable font by number
-    pub fn font_mut(&mut self, fnum: u8) -> Option<&mut Font> {
+    pub fn font_mut(&mut self, fnum: u8) -> Option<&mut Font<C>> {
         self.fonts.iter_mut().find(|f| f.number == fnum)
     }
 
     /// Lookup a font by name
-    pub fn font_by_name<'a>(&'a self, name: &str) -> Option<&'a Font> {
+    pub fn font_by_name<'a>(&'a self, name: &str) -> Option<&'a Font<C>> {
         self.fonts.iter().find(|f| f.name == name)
     }
 }
@@ -309,7 +327,7 @@ mod test {
     use super::*;
     use crate::dms::font::tfon;
 
-    fn font_table() -> FontTable<2> {
+    fn font_table() -> FontTable<128, 2> {
         let mut fonts = FontTable::default();
         let buf = include_str!("../../../test/F02.tfon");
         let f = fonts.font_mut(0).unwrap();

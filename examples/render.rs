@@ -4,7 +4,7 @@ use ntcip::dms::config::{MultiCfg, VmsCfg};
 use ntcip::dms::multi::{ColorScheme, JustificationLine, JustificationPage};
 use ntcip::dms::{tfon, Dms, FontTable, Pages};
 
-fn font_table() -> FontTable<1> {
+fn font_table() -> FontTable<128, 1> {
     let mut fonts = FontTable::default();
     let buf = include_str!("../test/F08.tfon");
     let f = fonts.font_mut(0).unwrap();
@@ -12,7 +12,7 @@ fn font_table() -> FontTable<1> {
     fonts
 }
 
-fn make_dms() -> Dms<1, 0> {
+fn make_dms() -> Dms<128, 1, 0> {
     Dms::builder()
         .with_vms_cfg(VmsCfg {
             char_height_pixels: 0,

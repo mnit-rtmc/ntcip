@@ -15,9 +15,9 @@ enum PatValue<'p> {
 }
 
 /// Pattern value iterator
-struct PatIter<'p, const F: usize, const G: usize> {
+struct PatIter<'p, const C: usize, const F: usize, const G: usize> {
     /// Sign
-    dms: &'p Dms<F, G>,
+    dms: &'p Dms<C, F, G>,
     /// MULTI pattern
     pattern: MultiStr<'p>,
     /// Previous MULTI value
@@ -42,16 +42,16 @@ struct PatIter<'p, const F: usize, const G: usize> {
 /// To be fillable, a rectangle or page must not be followed by any text or
 /// tags before the next `[tr…]` or `[np]` tag.  The only exception allowed
 /// is the `[fo…]` tag, which applies to the **next** rectangle or page.
-pub struct MessagePattern<'p, const F: usize, const G: usize> {
+pub struct MessagePattern<'p, const C: usize, const F: usize, const G: usize> {
     /// Sign
-    dms: &'p Dms<F, G>,
+    dms: &'p Dms<C, F, G>,
     /// MULTI string
     ms: &'p str,
 }
 
-impl<'p, const F: usize, const G: usize> PatIter<'p, F, G> {
+impl<'p, const C: usize, const F: usize, const G: usize> PatIter<'p, C, F, G> {
     /// Create a new pattern iterator
-    fn new(dms: &'p Dms<F, G>, ms: &'p str) -> Self {
+    fn new(dms: &'p Dms<C, F, G>, ms: &'p str) -> Self {
         let rect = dms.full_rect();
         let font_num = dms.multi_cfg.default_font;
         PatIter {
@@ -65,12 +65,12 @@ impl<'p, const F: usize, const G: usize> PatIter<'p, F, G> {
     }
 }
 
-impl<'p, const F: usize, const G: usize> MessagePattern<'p, F, G> {
+impl<'p, const C: usize, const F: usize, const G: usize> MessagePattern<'p, C, F, G> {
     /// Create a new message pattern
     ///
     /// * `dms`: The sign
     /// * `ms`: MULTI string
-    pub fn new(dms: &'p Dms<F, G>, ms: &'p str) -> Self {
+    pub fn new(dms: &'p Dms<C, F, G>, ms: &'p str) -> Self {
         MessagePattern { dms, ms }
     }
 
@@ -206,7 +206,7 @@ impl<'p, const F: usize, const G: usize> MessagePattern<'p, F, G> {
     }
 }
 
-impl<'p, const F: usize, const G: usize> Iterator for PatIter<'p, F, G> {
+impl<'p, const C: usize, const F: usize, const G: usize> Iterator for PatIter<'p, C, F, G> {
     type Item = Result<PatValue<'p>, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -272,7 +272,7 @@ mod test {
     use crate::dms::config::*;
     use crate::dms::font::*;
 
-    fn font_table() -> FontTable<2> {
+    fn font_table() -> FontTable<128, 2> {
         let mut fonts = FontTable::default();
         let buf = include_str!("../../test/F07.tfon");
         let f = fonts.font_mut(0).unwrap();
@@ -283,7 +283,7 @@ mod test {
         fonts
     }
 
-    fn make_dms() -> Dms<2, 0> {
+    fn make_dms() -> Dms<128, 2, 0> {
         Dms::builder()
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 0,
@@ -302,7 +302,7 @@ mod test {
     }
 
     fn pattern_rects<'p>(
-        dms: &'p Dms<2, 0>,
+        dms: &'p Dms<128, 2, 0>,
         ms: &'p str,
     ) -> impl Iterator<Item = (Rectangle, u8)> + 'p {
         PatIter::new(&dms, ms).flatten().filter_map(|v| match v {

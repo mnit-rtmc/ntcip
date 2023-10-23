@@ -85,7 +85,7 @@ pub fn read<R: Read>(mut reader: R) -> Result<Font> {
 
 /// Parse a font in `.tfon` format
 pub fn parse<const C: usize>(buf: &str) -> Result<Font<C>> {
-    let mut lines = TfonIter::new(&buf);
+    let mut lines = TfonIter::new(buf);
     let name = lines.parse_str("name")?;
     let number = lines.parse_u8("font_number")?;
     let char_spacing = lines.parse_u8("char_spacing")?;
@@ -114,7 +114,6 @@ pub fn parse<const C: usize>(buf: &str) -> Result<Font<C>> {
         char_spacing,
         line_spacing,
         characters,
-        ..Default::default()
     };
     Ok(font)
 }
@@ -126,7 +125,7 @@ impl<'a> Iterator for TfonIter<'a> {
         if self.line.is_some() {
             self.line.take()
         } else {
-            while let Some(line) = self.lines.next() {
+            for line in self.lines.by_ref() {
                 self.line_num += 1;
                 if !line.is_empty() {
                     return Some(line);
@@ -150,13 +149,13 @@ impl<'a> TfonIter<'a> {
 
     /// Get the next line
     fn next_line(&mut self) -> Result<&'a str> {
-        Ok(self.next().ok_or(Error::UnexpectedEnd)?)
+        self.next().ok_or(Error::UnexpectedEnd)
     }
 
     /// Peek the next line
     fn peek_line(&mut self) -> Option<&'a str> {
         if self.line.is_none() {
-            while let Some(line) = self.lines.next() {
+            for line in self.lines.by_ref() {
                 self.line_num += 1;
                 if !line.is_empty() {
                     self.line = Some(line);

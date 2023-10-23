@@ -158,7 +158,9 @@ impl PageState {
 
 impl RenderState {
     /// Create a new render state
-    fn new<const C: usize, const F: usize, const G: usize>(dms: &Dms<C, F, G>) -> Self {
+    fn new<const C: usize, const F: usize, const G: usize>(
+        dms: &Dms<C, F, G>,
+    ) -> Self {
         RenderState {
             color_ctx: dms.color_ctx(),
             page_on_time_ds: dms.multi_cfg.default_page_on_time,
@@ -885,7 +887,9 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     }
 }
 
-impl<'a, const C: usize, const F: usize, const G: usize> Iterator for Pages<'a, C, F, G> {
+impl<'a, const C: usize, const F: usize, const G: usize> Iterator
+    for Pages<'a, C, F, G>
+{
     type Item = Result<Page>;
 
     fn next(&mut self) -> Option<Self::Item> {

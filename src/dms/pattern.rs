@@ -65,7 +65,9 @@ impl<'p, const C: usize, const F: usize, const G: usize> PatIter<'p, C, F, G> {
     }
 }
 
-impl<'p, const C: usize, const F: usize, const G: usize> MessagePattern<'p, C, F, G> {
+impl<'p, const C: usize, const F: usize, const G: usize>
+    MessagePattern<'p, C, F, G>
+{
     /// Create a new message pattern
     ///
     /// * `dms`: The sign
@@ -206,7 +208,9 @@ impl<'p, const C: usize, const F: usize, const G: usize> MessagePattern<'p, C, F
     }
 }
 
-impl<'p, const C: usize, const F: usize, const G: usize> Iterator for PatIter<'p, C, F, G> {
+impl<'p, const C: usize, const F: usize, const G: usize> Iterator
+    for PatIter<'p, C, F, G>
+{
     type Item = Result<PatValue<'p>, SyntaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {

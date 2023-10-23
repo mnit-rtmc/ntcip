@@ -77,7 +77,7 @@ struct Bitmap {
 }
 
 /// Read a font in `.tfon` format
-pub fn read<R: Read>(mut reader: R) -> Result<Font> {
+pub fn read<const C: usize, R: Read>(mut reader: R) -> Result<Font<C>> {
     let mut buf = String::with_capacity(4096);
     reader.read_to_string(&mut buf)?;
     parse(&buf)
@@ -293,7 +293,10 @@ impl From<Bitmap> for Vec<u8> {
 }
 
 /// Write a font to an `.tfon` file
-pub fn write<W: Write>(mut writer: W, font: &Font) -> Result<()> {
+pub fn write<const C: usize, W: Write>(
+    mut writer: W,
+    font: &Font<C>,
+) -> Result<()> {
     font.validate()?;
     writeln!(writer, "name: {}", font.name)?;
     writeln!(writer, "font_number: {}", font.number)?;

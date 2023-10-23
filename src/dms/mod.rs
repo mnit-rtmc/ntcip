@@ -14,7 +14,7 @@ mod pattern;
 mod render;
 mod sign;
 
-pub use font::{ifnt, CharacterEntry, Font, FontError, FontTable};
+pub use font::{tfon, CharacterEntry, Font, FontError, FontTable};
 pub use graphic::{Graphic, GraphicError, GraphicTable};
 pub use pattern::MessagePattern;
 pub use render::{Page, Pages};

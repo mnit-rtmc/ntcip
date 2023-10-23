@@ -274,12 +274,12 @@ mod test {
 
     fn font_table() -> FontTable<2> {
         let mut fonts = FontTable::default();
-        let buf = include_bytes!("../../test/F07.ifnt");
+        let buf = include_str!("../../test/F07.tfon");
         let f = fonts.font_mut(0).unwrap();
-        *f = ifnt::read(&buf[..]).unwrap();
-        let buf = include_bytes!("../../test/F08.ifnt");
+        *f = tfon::parse(&buf[..]).unwrap();
+        let buf = include_str!("../../test/F08.tfon");
         let f = fonts.font_mut(0).unwrap();
-        *f = ifnt::read(&buf[..]).unwrap();
+        *f = tfon::parse(&buf[..]).unwrap();
         fonts
     }
 

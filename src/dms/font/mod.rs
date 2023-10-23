@@ -8,8 +8,8 @@ use crc::Crc;
 use log::debug;
 use pix::{rgb::SRgb8, Raster};
 
-/// Read/write fonts in `.ifnt` format
-pub mod ifnt;
+/// Read/write fonts in `.tfon` format
+pub mod tfon;
 
 /// CRC-16 for calculating `fontVersionId`
 const CRC: Crc<u16> = Crc::<u16>::new(&crc::CRC_16_IBM_SDLC);
@@ -307,16 +307,16 @@ impl<const F: usize> FontTable<F> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::dms::font::ifnt;
+    use crate::dms::font::tfon;
 
     fn font_table() -> FontTable<2> {
         let mut fonts = FontTable::default();
-        let buf = include_bytes!("../../../test/F02.ifnt");
+        let buf = include_str!("../../../test/F02.tfon");
         let f = fonts.font_mut(0).unwrap();
-        *f = ifnt::read(&buf[..]).unwrap();
-        let buf = include_bytes!("../../../test/F08.ifnt");
+        *f = tfon::parse(&buf[..]).unwrap();
+        let buf = include_str!("../../../test/F08.tfon");
         let f = fonts.font_mut(0).unwrap();
-        *f = ifnt::read(&buf[..]).unwrap();
+        *f = tfon::parse(&buf[..]).unwrap();
         fonts.validate().unwrap();
         fonts
     }

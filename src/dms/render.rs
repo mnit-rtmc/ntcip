@@ -921,20 +921,20 @@ fn render_rect(
 mod test {
     use super::*;
     use crate::dms::config::{MultiCfg, VmsCfg};
-    use crate::dms::font::ifnt;
+    use crate::dms::font::tfon;
     use crate::dms::multi::{ColorClassic, ColorScheme};
 
     fn font_table() -> FontTable<4> {
         let mut fonts = FontTable::default();
-        let buf = include_bytes!("../../test/F07-C.ifnt");
+        let buf = include_str!("../../test/F07-C.tfon");
         let f = fonts.font_mut(0).unwrap();
-        *f = ifnt::read(&buf[..]).unwrap();
-        let buf = include_bytes!("../../test/F07-L.ifnt");
+        *f = tfon::parse(&buf[..]).unwrap();
+        let buf = include_str!("../../test/F07-L.tfon");
         let f = fonts.font_mut(0).unwrap();
-        *f = ifnt::read(&buf[..]).unwrap();
-        let buf = include_bytes!("../../test/F08.ifnt");
+        *f = tfon::parse(&buf[..]).unwrap();
+        let buf = include_str!("../../test/F08.tfon");
         let f = fonts.font_mut(0).unwrap();
-        *f = ifnt::read(&buf[..]).unwrap();
+        *f = tfon::parse(&buf[..]).unwrap();
         fonts
     }
 

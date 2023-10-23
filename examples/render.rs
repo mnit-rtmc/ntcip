@@ -2,13 +2,13 @@
 mod bmp;
 use ntcip::dms::config::{MultiCfg, VmsCfg};
 use ntcip::dms::multi::{ColorScheme, JustificationLine, JustificationPage};
-use ntcip::dms::{ifnt, Dms, FontTable, Pages};
+use ntcip::dms::{tfon, Dms, FontTable, Pages};
 
 fn font_table() -> FontTable<1> {
     let mut fonts = FontTable::default();
-    let buf = include_bytes!("../test/F08.ifnt");
+    let buf = include_str!("../test/F08.tfon");
     let f = fonts.font_mut(0).unwrap();
-    *f = ifnt::read(&buf[..]).unwrap();
+    *f = tfon::parse(&buf[..]).unwrap();
     fonts
 }
 

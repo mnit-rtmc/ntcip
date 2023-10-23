@@ -6,6 +6,29 @@ use super::{CharacterEntry, Font, FontError};
 use std::io::{Read, Write};
 use std::str::Lines;
 
+/// Symbols for all ASCII + Latin 1 characters
+const SYMBOL: &[&str] = &[
+    "NUL", "SOH", "STX", "ETX", "EOT", "ENQ", "ACK", "BEL", "BS", "HT", "LF",
+    "VT", "FF", "CR", "SO", "SI", "DLE", "DC1", "DC2", "DC3", "DC4", "NAK",
+    "SYN", "ETB", "CAN", "EM", "SUB", "ESC", "FS", "GS", "RS", "US", "SP", "!",
+    "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-", ".", "/", "0",
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", ":", ";", "<", "=", ">", "?",
+    "@", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N",
+    "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "[", "\\", "]",
+    "^", "_", "`", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
+    "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "{",
+    "|", "}", "~", "DEL", "PAD", "HOP", "BPH", "NBH", "IND", "NEL", "SSA",
+    "ESA", "HTS", "HTJ", "LTS", "PLD", "PLU", "RI", "SS2", "SS3", "DCS", "PU1",
+    "PU2", "STS", "CCH", "MW", "SPA", "EPA", "SOS", "SGCI", "SCI", "CSI", "ST",
+    "OSC", "PM", "APC", "NBSP", "¡", "¢", "£", "¤", "¥", "¦", "§", "¨", "©",
+    "ª", "«", "¬", "SHY", "®", "¯", "°", "±", "²", "³", "´", "µ", "¶", "·",
+    "¸", "¹", "º", "»", "¼", "½", "¾", "¿", "À", "Á", "Â", "Ã", "Ä", "Å", "Æ",
+    "Ç", "È", "É", "Ê", "Ë", "Ì", "Í", "Î", "Ï", "Ð", "Ñ", "Ò", "Ó", "Ô", "Õ",
+    "Ö", "×", "Ø", "Ù", "Ú", "Û", "Ü", "Ý", "Þ", "ß", "à", "á", "â", "ã", "ä",
+    "å", "æ", "ç", "è", "é", "ê", "ë", "ì", "í", "î", "ï", "ð", "ñ", "ò", "ó",
+    "ô", "õ", "ö", "÷", "ø", "ù", "ú", "û", "ü", "ý", "þ", "ÿ",
+];
+
 /// `.tfon` format error
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -114,7 +137,11 @@ impl<'a> TfonIter<'a> {
     /// Create a new tfon iterator
     fn new(buf: &'a str) -> Self {
         let lines = buf.lines();
-        TfonIter { lines, line: None, line_num: 0 }
+        TfonIter {
+            lines,
+            line: None,
+            line_num: 0,
+        }
     }
 
     /// Get the next line
@@ -160,9 +187,9 @@ impl<'a> TfonIter<'a> {
     /// Parse a character line
     fn parse_ch(&mut self) -> Result<u16> {
         let value = self.parse_kv("ch")?;
-        if let Some((val, ch)) = value.split_once(' ') {
+        if let Some((val, symbol)) = value.split_once(' ') {
             let cp = val.parse()?;
-            if ch.len() == 1 && ch.chars().next() == char::from_u32(u32::from(cp)) {
+            if symbol == SYMBOL[usize::from(cp)] {
                 return Ok(cp);
             }
         }
@@ -205,18 +232,26 @@ impl<'a> TfonIter<'a> {
             height += 1;
         }
         let bitmap = Vec::<u8>::from(bitmap);
-        Ok((CharacterEntry {
-            number,
-            width,
-            bitmap,
-        }, height))
+        Ok((
+            CharacterEntry {
+                number,
+                width,
+                bitmap,
+            },
+            height,
+        ))
     }
 }
 
 impl<'a> Row<'a> {
     fn new(line: &'a str, line_num: usize) -> Result<Self> {
-        let width = u8::try_from(line.len()).or(Err(Error::Parse("width", line_num)))?;
-        Ok(Row { line, width, line_num })
+        let width = u8::try_from(line.len())
+            .or(Err(Error::Parse("width", line_num)))?;
+        Ok(Row {
+            line,
+            width,
+            line_num,
+        })
     }
 
     fn pixels(&'a self) -> impl Iterator<Item = Result<bool>> + 'a {
@@ -262,10 +297,10 @@ pub fn write<W: Write>(mut writer: W, font: &Font) -> Result<()> {
     writeln!(writer, "char_spacing: {}", font.char_spacing)?;
     writeln!(writer, "line_spacing: {}", font.line_spacing)?;
     for character in &font.characters {
-        let cp = u32::from(character.number);
-        if let Some(ch) = char::from_u32(cp) {
+        let cp = character.number;
+        if let Some(symbol) = SYMBOL.get(usize::from(cp)) {
             writeln!(writer)?;
-            writeln!(writer, "ch: {cp} {ch}")?;
+            writeln!(writer, "ch: {cp} {symbol}")?;
             for row in 0..usize::from(font.height) {
                 for col in 0..usize::from(character.width) {
                     if character.is_pixel_lit(row, col) {

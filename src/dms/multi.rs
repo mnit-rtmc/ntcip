@@ -1414,11 +1414,45 @@ impl<'p> Iterator for MultiStr<'p> {
 
 /// Normalize a MULTI string
 ///
-/// Invalid characters and tags are removed.
+/// - Converts tags to lower case
+/// - Removes invalid characters
+/// - Strips unsupported tags
+/// - Strips tags containing unsupported values
+/// - Strips redundant [cf], [fo], [jl] and [jp] tags (value unchanged)
 pub fn normalize(ms: &str) -> String {
     let mut norm = String::with_capacity(ms.len());
+    let mut cf = None;
+    let mut fo = None;
+    let mut jl = None;
+    let mut jp = None;
     for v in MultiStr::new(ms).flatten() {
-        norm.push_str(&v.to_string());
+        let same = match v {
+            Value::ColorForeground(cfv) => {
+                let same = cfv == cf;
+                cf = cfv;
+                same
+            }
+            Value::Font(fov) => {
+                let same = fov == fo;
+                fo = fov;
+                same
+            }
+            Value::JustificationLine(jlv) => {
+                let same = jlv == jl;
+                jl = jlv;
+                same
+            }
+            Value::JustificationPage(jpv) => {
+                let same = jpv == jp;
+                jp = jpv;
+                same
+            }
+            _ => false,
+        };
+        // strip tag if same as current value
+        if !same {
+            norm.push_str(&v.to_string());
+        }
     }
     norm
 }
@@ -1751,12 +1785,14 @@ mod test {
     #[test]
     fn norm_cf() {
         assert_eq!(normalize("[cf0][CF255]"), "[cf0][cf255]");
-        assert_eq!(normalize("[cf][cf256]"), "[cf]");
+        assert_eq!(normalize("[cf1][cf256]"), "[cf1]");
         assert_eq!(
             normalize("[cf0,0,0][CF255,255,255]"),
             "[cf0,0,0][cf255,255,255]"
         );
         assert_eq!(normalize("[cf256,0,0][CFx]"), "");
+        assert_eq!(normalize("[cf]"), "");
+        assert_eq!(normalize("[cf3][cf3]"), "[cf3]");
     }
 
     #[test]
@@ -2030,6 +2066,18 @@ mod test {
     }
 
     #[test]
+    fn norm_fo() {
+        assert_eq!(normalize("[fo0]"), "");
+        assert_eq!(normalize("[fo256]"), "");
+        assert_eq!(normalize("[fo]"), "");
+        assert_eq!(normalize("[fo1]"), "[fo1]");
+        assert_eq!(normalize("[fo2,1234]"), "[fo2,1234]");
+        assert_eq!(normalize("[fo2][fo2]"), "[fo2]");
+        assert_eq!(normalize("[fo2,1234][fo2]"), "[fo2,1234][fo2]");
+        assert_eq!(normalize("[fo2][fo1]"), "[fo2][fo1]");
+    }
+
+    #[test]
     fn parse_fo() {
         let mut m = MultiStr::new("[fo]");
         assert_eq!(m.next(), Some(Ok(Value::Font(None))));
@@ -2244,6 +2292,15 @@ mod test {
     }
 
     #[test]
+    fn norm_jl() {
+        assert_eq!(normalize("[jl0]"), "");
+        assert_eq!(normalize("[jl]"), "");
+        assert_eq!(normalize("[jl2]"), "[jl2]");
+        assert_eq!(normalize("[jl2][jl2]"), "[jl2]");
+        assert_eq!(normalize("[jl2][jl]"), "[jl2][jl]");
+    }
+
+    #[test]
     fn parse_jl() {
         let mut m = MultiStr::new("[jl]");
         assert_eq!(m.next(), Some(Ok(Value::JustificationLine(None))));
@@ -2287,6 +2344,15 @@ mod test {
             Some(Ok(Value::JustificationLine(Some(JustificationLine::Full))))
         );
         assert_eq!(m.next(), None);
+    }
+
+    #[test]
+    fn norm_jp() {
+        assert_eq!(normalize("[jp0]"), "");
+        assert_eq!(normalize("[jp]"), "");
+        assert_eq!(normalize("[jp2]"), "[jp2]");
+        assert_eq!(normalize("[jp2][jp2]"), "[jp2]");
+        assert_eq!(normalize("[jp2][jp]"), "[jp2][jp]");
     }
 
     #[test]

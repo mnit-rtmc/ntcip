@@ -10,8 +10,10 @@ use crate::dms::multi::{
     SyntaxError, Tag, Value,
 };
 use crate::dms::sign::Dms;
+use fstr::FStr;
 use log::debug;
 use pix::{rgb::SRgb8, Raster, Region};
+use std::fmt::Write;
 
 /// Result type
 type Result<T> = std::result::Result<T, SyntaxError>;
@@ -81,14 +83,14 @@ struct RenderState {
     span_number: u8,
 }
 
-/// Text span
+/// Span of text
 #[derive(Clone)]
-struct TextSpan {
-    /// Render state for span
-    state: RenderState,
+enum Span<'a> {
+    /// Slice of text
+    Text(RenderState, &'a str),
 
-    /// Text string
-    text: String,
+    /// Hexadecimal character
+    HexChar(RenderState, FStr<4>),
 }
 
 /// Text line
@@ -122,7 +124,7 @@ pub struct Pages<'a, const C: usize, const F: usize, const G: usize> {
     values: MultiStr<'a>,
 
     /// Spans for current text rectangle
-    spans: Vec<TextSpan>,
+    spans: Vec<Span<'a>>,
 }
 
 impl PageState {
@@ -225,11 +227,21 @@ impl RenderState {
     }
 }
 
-impl TextSpan {
-    /// Create a new text span
-    fn new(state: &RenderState, text: String) -> Self {
-        let state = state.clone();
-        TextSpan { state, text }
+impl<'a> Span<'a> {
+    /// Get span as a str slice
+    fn as_str(&self) -> &str {
+        match self {
+            Span::Text(_state, text) => text,
+            Span::HexChar(_state, hc) => hc.slice_to_terminator('\0'),
+        }
+    }
+
+    /// Get the render state
+    fn state(&self) -> &RenderState {
+        match self {
+            Span::Text(state, _text) => state,
+            Span::HexChar(state, _hc) => state,
+        }
     }
 
     /// Get the width of a text span
@@ -237,9 +249,9 @@ impl TextSpan {
         &self,
         fonts: &FontTable<C, F>,
     ) -> Result<u16> {
-        let font = self.state.font(fonts)?;
+        let font = self.state().font(fonts)?;
         let cs = self.char_spacing_fonts(fonts)?;
-        Ok(font.text_width(&self.text, Some(cs))?)
+        Ok(font.text_width(self.as_str(), Some(cs))?)
     }
 
     /// Get the char spacing
@@ -247,15 +259,16 @@ impl TextSpan {
         &self,
         fonts: &FontTable<C, F>,
     ) -> Result<u16> {
-        match self.state.char_spacing {
+        let state = self.state();
+        match state.char_spacing {
             Some(sp) => Ok(sp.into()),
-            None => Ok(self.state.font(fonts)?.char_spacing.into()),
+            None => Ok(state.font(fonts)?.char_spacing.into()),
         }
     }
 
     /// Get the char spacing
     fn char_spacing_font<const C: usize>(&self, font: &Font<C>) -> u8 {
-        match self.state.char_spacing {
+        match self.state().char_spacing {
             Some(sp) => sp,
             None => font.char_spacing,
         }
@@ -264,10 +277,10 @@ impl TextSpan {
     /// Get the char spacing from a previous span
     fn char_spacing_between<const C: usize, const F: usize>(
         &self,
-        prev: &TextSpan,
+        prev: &Span,
         fonts: &FontTable<C, F>,
     ) -> Result<u16> {
-        if let Some(c) = self.state.char_spacing {
+        if let Some(c) = self.state().char_spacing {
             Ok(c.into())
         } else {
             // NTCIP 1203 fontCharSpacing:
@@ -284,7 +297,7 @@ impl TextSpan {
         &self,
         fonts: &FontTable<C, F>,
     ) -> Result<u16> {
-        Ok(self.state.font(fonts)?.height.into())
+        Ok(self.state().font(fonts)?.height.into())
     }
 
     /// Get the font line spacing
@@ -292,12 +305,12 @@ impl TextSpan {
         &self,
         fonts: &FontTable<C, F>,
     ) -> Result<u16> {
-        Ok(self.state.font(fonts)?.line_spacing.into())
+        Ok(self.state().font(fonts)?.line_spacing.into())
     }
 
     /// Get the line spacing
     fn line_spacing(&self) -> Option<u16> {
-        self.state.line_spacing.map(|sp| sp.into())
+        self.state().line_spacing.map(|sp| sp.into())
     }
 
     /// Render the text span
@@ -309,8 +322,8 @@ impl TextSpan {
         y: i32,
     ) -> Result<()> {
         let cs = self.char_spacing_font(font).into();
-        let cf = self.state.foreground_rgb();
-        Ok(font.render_text(raster, &self.text, x, y, cs, cf)?)
+        let cf = self.state().foreground_rgb();
+        Ok(font.render_text(raster, self.as_str(), x, y, cs, cf)?)
     }
 }
 
@@ -594,7 +607,7 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
                     let rs = &mut self.render_state;
                     // Insert an empty text span for blank lines.
                     if line_blank {
-                        self.spans.push(TextSpan::new(rs, "".into()));
+                        self.spans.push(Span::Text(rs.clone(), ""));
                     }
                     line_blank = true;
                     rs.line_spacing = ls;
@@ -635,16 +648,17 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
                 }
                 Value::Text(t) => {
                     let rs = &mut self.render_state;
-                    self.spans.push(TextSpan::new(rs, t.to_string()));
+                    self.spans.push(Span::Text(rs.clone(), t));
                     rs.span_number += 1;
                     line_blank = false;
                 }
                 Value::HexadecimalCharacter(hc) => {
                     match std::char::from_u32(hc.into()) {
                         Some(c) => {
-                            let t = String::from(c);
                             let rs = &mut self.render_state;
-                            self.spans.push(TextSpan::new(rs, t));
+                            let mut fs = FStr::repeat(0);
+                            write!(fs.writer(), "{c}").unwrap();
+                            self.spans.push(Span::HexChar(rs.clone(), fs));
                             rs.span_number += 1;
                             line_blank = false;
                         }
@@ -692,7 +706,7 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
         for span in &self.spans {
             let x = self.span_x(span)?.into();
             let y = self.span_y(span)?.into();
-            let font = span.state.font(self.fonts())?;
+            let font = span.state().font(self.fonts())?;
             span.render_text(raster, font, x, y)?;
         }
         Ok(())
@@ -706,9 +720,9 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
         let mut jl = JustificationLine::Other;
         let mut ln = 0;
         for span in &self.spans {
-            let just_page = span.state.just_page;
-            let just_line = span.state.just_line;
-            let line_number = span.state.line_number;
+            let just_page = span.state().just_page;
+            let just_line = span.state().just_line;
+            let line_number = span.state().line_number;
             if just_page < jp
                 || (just_page == jp && line_number == ln && just_line < jl)
             {
@@ -722,8 +736,8 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     }
 
     /// Get the X position of a text span
-    fn span_x(&self, span: &TextSpan) -> Result<u16> {
-        match span.state.just_line {
+    fn span_x(&self, span: &Span) -> Result<u16> {
+        match span.state().just_line {
             JustificationLine::Left => self.span_x_left(span),
             JustificationLine::Center => self.span_x_center(span),
             JustificationLine::Right => self.span_x_right(span),
@@ -732,16 +746,16 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     }
 
     /// Get the X position of a left-justified text span
-    fn span_x_left(&self, span: &TextSpan) -> Result<u16> {
-        let left = span.state.text_rectangle.x - 1;
+    fn span_x_left(&self, span: &Span) -> Result<u16> {
+        let left = span.state().text_rectangle.x - 1;
         let (before, _) = self.offset_horiz(span)?;
         Ok(left + before)
     }
 
     /// Get the X position of a center-justified text span
-    fn span_x_center(&self, span: &TextSpan) -> Result<u16> {
-        let left = span.state.text_rectangle.x - 1;
-        let w = span.state.text_rectangle.width;
+    fn span_x_center(&self, span: &Span) -> Result<u16> {
+        let left = span.state().text_rectangle.x - 1;
+        let w = span.state().text_rectangle.width;
         let (before, after) = self.offset_horiz(span)?;
         let offset = (w - before - after) / 2; // offset for centering
         let x = left + offset + before;
@@ -751,9 +765,9 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     }
 
     /// Get the X position of a right-justified span
-    fn span_x_right(&self, span: &TextSpan) -> Result<u16> {
-        let left = span.state.text_rectangle.x - 1;
-        let w = span.state.text_rectangle.width;
+    fn span_x_right(&self, span: &Span) -> Result<u16> {
+        let left = span.state().text_rectangle.x - 1;
+        let w = span.state().text_rectangle.width;
         let (_, after) = self.offset_horiz(span)?;
         Ok(left + w - after)
     }
@@ -761,29 +775,29 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     /// Calculate horizontal offsets of a span.
     ///
     /// Returns a tuple of (before, after) widths of matching spans.
-    fn offset_horiz(&self, text_span: &TextSpan) -> Result<(u16, u16)> {
-        debug!("offset_horiz '{}'", text_span.text);
-        let rs = &text_span.state;
+    fn offset_horiz(&self, text_span: &Span) -> Result<(u16, u16)> {
+        debug!("offset_horiz '{}'", text_span.as_str());
+        let rs = &text_span.state();
         let mut before = 0;
         let mut after = 0;
         let mut pspan = None;
-        for span in self.spans.iter().filter(|s| rs.matches_span(&s.state)) {
+        for span in self.spans.iter().filter(|s| rs.matches_span(s.state())) {
             if let Some(ps) = pspan {
                 let w = span.char_spacing_between(ps, self.fonts())?;
-                if span.state.span_number <= rs.span_number {
+                if span.state().span_number <= rs.span_number {
                     before += w
                 } else {
                     after += w
                 }
-                debug!("  spacing {} before {} after {}", w, before, after);
+                debug!("  spacing {w} before {before} after {after}");
             }
             let w = span.width(self.fonts())?;
-            if span.state.span_number < rs.span_number {
+            if span.state().span_number < rs.span_number {
                 before += w
             } else {
                 after += w
             }
-            debug!("  span '{}'  before {} after {}", span.text, before, after);
+            debug!("  span '{}'  before {before} after {after}", span.as_str());
             pspan = Some(span);
         }
         if before + after <= rs.text_rectangle.width {
@@ -794,7 +808,7 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     }
 
     /// Get the Y position of a text span
-    fn span_y(&self, span: &TextSpan) -> Result<u16> {
+    fn span_y(&self, span: &Span) -> Result<u16> {
         let b = self.baseline(span)?;
         let h = span.height(self.fonts())?;
         debug_assert!(b >= h);
@@ -802,8 +816,8 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     }
 
     /// Get the baseline of a text span
-    fn baseline(&self, span: &TextSpan) -> Result<u16> {
-        match span.state.just_page {
+    fn baseline(&self, span: &Span) -> Result<u16> {
+        match span.state().just_page {
             JustificationPage::Top => self.baseline_top(span),
             JustificationPage::Middle => self.baseline_middle(span),
             JustificationPage::Bottom => self.baseline_bottom(span),
@@ -812,16 +826,16 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     }
 
     /// Get the baseline of a top-justified span
-    fn baseline_top(&self, span: &TextSpan) -> Result<u16> {
-        let top = span.state.text_rectangle.y - 1;
+    fn baseline_top(&self, span: &Span) -> Result<u16> {
+        let top = span.state().text_rectangle.y - 1;
         let (above, _) = self.offset_vert(span)?;
         Ok(top + above)
     }
 
     /// Get the baseline of a middle-justified span
-    fn baseline_middle(&self, span: &TextSpan) -> Result<u16> {
-        let top = span.state.text_rectangle.y - 1;
-        let h = span.state.text_rectangle.height;
+    fn baseline_middle(&self, span: &Span) -> Result<u16> {
+        let top = span.state().text_rectangle.y - 1;
+        let h = span.state().text_rectangle.height;
         let (above, below) = self.offset_vert(span)?;
         let offset = (h - above - below) / 2; // offset for centering
         let y = top + offset + above;
@@ -831,9 +845,9 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     }
 
     /// Get the baseline of a bottom-justified span
-    fn baseline_bottom(&self, span: &TextSpan) -> Result<u16> {
-        let top = span.state.text_rectangle.y - 1;
-        let h = span.state.text_rectangle.height;
+    fn baseline_bottom(&self, span: &Span) -> Result<u16> {
+        let top = span.state().text_rectangle.y - 1;
+        let h = span.state().text_rectangle.height;
         let (_, below) = self.offset_vert(span)?;
         Ok(top + h - below)
     }
@@ -841,12 +855,12 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     /// Calculate vertical offset of a span.
     ///
     /// Returns a tuple of (above, below) heights of matching lines.
-    fn offset_vert(&self, text_span: &TextSpan) -> Result<(u16, u16)> {
-        debug!("offset_vert '{}'", text_span.text);
-        let rs = &text_span.state;
+    fn offset_vert(&self, text_span: &Span) -> Result<(u16, u16)> {
+        debug!("offset_vert '{}'", text_span.as_str());
+        let rs = &text_span.state();
         let mut lines = vec![];
-        for span in self.spans.iter().filter(|s| rs.matches_line(&s.state)) {
-            let ln = usize::from(span.state.line_number);
+        for span in self.spans.iter().filter(|s| rs.matches_line(s.state())) {
+            let ln = usize::from(span.state().line_number);
             let h = span.height(self.fonts())?;
             let fs = span.font_spacing(self.fonts())?;
             let ls = span.line_spacing();

@@ -1,5 +1,6 @@
 /// Graphic example
 mod bmp;
+use fstr::FStr;
 use ntcip::dms::multi::ColorScheme;
 use ntcip::dms::Graphic;
 
@@ -10,7 +11,7 @@ fn main() {
     ];
     let graphic = Graphic {
         number: 3,
-        name: String::from("arrow"),
+        name: FStr::from_str_lossy("arrow", b'\0'),
         height: 9,
         width: 11,
         gtype: ColorScheme::Monochrome1Bit,

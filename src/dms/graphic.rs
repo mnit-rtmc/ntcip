@@ -6,6 +6,7 @@
 use crate::dms::multi::{Color, ColorClassic, ColorCtx, ColorScheme};
 use crate::dms::oer::Oer;
 use crc::Crc;
+use fstr::FStr;
 use log::debug;
 use pix::{
     el::Pixel,
@@ -47,7 +48,7 @@ pub struct Graphic {
     /// Graphic number — `dmsGraphicNumber`
     pub number: u8,
     /// Name of graphic — `dmsGraphicName`
-    pub name: String,
+    pub name: FStr<64>,
     /// Height (pixels) — `dmsGraphicHeight`
     pub height: u8,
     /// Width (pixels) — `dmsGraphicWidth`
@@ -329,7 +330,7 @@ mod test {
         let mut graphics = GraphicTable::default();
         let g = graphics.graphic_mut(0).unwrap();
         *g = Graphic {
-            name: "Example 2".to_string(),
+            name: FStr::from_str_lossy("Example 2", b'\0'),
             number: 4,
             height: 6,
             width: 10,
@@ -339,7 +340,7 @@ mod test {
         };
         let g = graphics.graphic_mut(0).unwrap();
         *g = Graphic {
-            name: "Example 3".to_string(),
+            name: FStr::from_str_lossy("Example 3", b'\0'),
             number: 5,
             height: 4,
             width: 4,
@@ -349,7 +350,7 @@ mod test {
         };
         let g = graphics.graphic_mut(0).unwrap();
         *g = Graphic {
-            name: "Example 4".to_string(),
+            name: FStr::from_str_lossy("Example 4", b'\0'),
             number: 7,
             height: 2,
             width: 2,

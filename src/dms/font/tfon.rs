@@ -87,7 +87,7 @@ pub fn read<const C: usize, R: Read>(mut reader: R) -> Result<Font<C>> {
 /// Parse a font in `.tfon` format
 pub fn parse<const C: usize>(buf: &str) -> Result<Font<C>> {
     let mut lines = TfonIter::new(buf);
-    let name = lines.parse_str("name")?;
+    let name = lines.parse_fstr("name")?;
     let number = lines.parse_u8("font_number")?;
     let char_spacing = lines.parse_u8("char_spacing")?;
     let line_spacing = lines.parse_u8("line_spacing")?;
@@ -178,11 +178,11 @@ impl<'a> TfonIter<'a> {
         Err(Error::Parse(key, self.line_num))
     }
 
-    /// Parse a key/value as string
-    fn parse_str<const C: usize>(
+    /// Parse a key/value as an FStr
+    fn parse_fstr<const B: usize>(
         &mut self,
         key: &'static str,
-    ) -> Result<FStr<C>> {
+    ) -> Result<FStr<B>> {
         Ok(FStr::from_str_lossy(self.parse_kv(key)?, b'\0'))
     }
 

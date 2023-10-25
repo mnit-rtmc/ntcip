@@ -87,7 +87,7 @@ pub fn read<const C: usize, R: Read>(mut reader: R) -> Result<Font<C>> {
 /// Parse a font in `.tfon` format
 pub fn parse<const C: usize>(buf: &str) -> Result<Font<C>> {
     let mut lines = TfonIter::new(buf);
-    let name = lines.parse_fstr("name")?;
+    let name = lines.parse_fstr("font_name")?;
     let number = lines.parse_u8("font_number")?;
     let char_spacing = lines.parse_u8("char_spacing")?;
     let line_spacing = lines.parse_u8("line_spacing")?;
@@ -302,7 +302,7 @@ pub fn write<const C: usize, W: Write>(
     font: &Font<C>,
 ) -> Result<()> {
     font.validate()?;
-    writeln!(writer, "name: {}", font.name)?;
+    writeln!(writer, "font_name: {}", font.name)?;
     writeln!(writer, "font_number: {}", font.number)?;
     writeln!(writer, "char_spacing: {}", font.char_spacing)?;
     writeln!(writer, "line_spacing: {}", font.line_spacing)?;

@@ -1418,7 +1418,8 @@ impl<'p> Iterator for MultiStr<'p> {
 /// - Removes invalid characters
 /// - Strips unsupported tags
 /// - Strips tags containing unsupported values
-/// - Strips redundant [cf], [fo], [jl] and [jp] tags (value unchanged)
+/// - Strips redundant `[cf]`, `[fo]`, `[jl]` and `[jp]` tags (value
+///   unchanged)
 pub fn normalize(ms: &str) -> String {
     let mut norm = String::with_capacity(ms.len());
     let mut cf = None;

@@ -1479,14 +1479,6 @@ pub fn is_blank(ms: &str) -> bool {
     })
 }
 
-/// Get an iterator of text spans in a MULTI string
-pub fn text_spans(ms: &str) -> impl Iterator<Item = &str> + '_ {
-    MultiStr::new(ms).flatten().filter_map(|v| match v {
-        Value::Text(t) => Some(t),
-        _ => None,
-    })
-}
-
 /// Remove MULTI tags and join text spans
 pub fn join_text(ms: &str, sep: &str) -> String {
     text_spans(ms).collect::<Vec<_>>().join(sep)
@@ -1508,9 +1500,17 @@ pub fn trim_end_tags(ms: &str) -> String {
     trimmed
 }
 
-/// Get an iterator of tags/text values in a MULTI string
+/// Get an iterator of tags/text spans in a MULTI string
 pub fn split(ms: &str) -> impl Iterator<Item = &str> {
     MultiSplitter(MultiStr::new(ms))
+}
+
+/// Get an iterator of text spans in a MULTI string
+pub fn text_spans(ms: &str) -> impl Iterator<Item = &str> {
+    MultiStr::new(ms).flatten().filter_map(|v| match v {
+        Value::Text(t) => Some(t),
+        _ => None,
+    })
 }
 
 #[cfg(test)]

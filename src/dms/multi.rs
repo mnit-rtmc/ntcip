@@ -373,6 +373,9 @@ pub(crate) struct MultiStr<'p> {
     offset: usize,
 }
 
+/// MULTI string splitter
+pub(crate) struct MultiSplitter<'p>(MultiStr<'p>);
+
 impl ColorClassic {
     /// Get RGB triplet for a classic color
     pub fn rgb(self) -> (u8, u8, u8) {
@@ -1372,7 +1375,7 @@ impl<'p> MultiStr<'p> {
     }
 
     /// Get the next slice, split on tag boundaries
-    pub(crate) fn next_slice(&mut self) -> Option<&'p str> {
+    pub fn next_slice(&mut self) -> Option<&'p str> {
         let ms = self.remaining();
         if ms.starts_with("[[") || ms.starts_with("]]") {
             return self.chop_start(2);
@@ -1409,6 +1412,14 @@ impl<'p> Iterator for MultiStr<'p> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.parse_value()
+    }
+}
+
+impl<'p> Iterator for MultiSplitter<'p> {
+    type Item = &'p str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next_slice()
     }
 }
 
@@ -1495,6 +1506,11 @@ pub fn trim_end_tags(ms: &str) -> String {
         }
     }
     trimmed
+}
+
+/// Get an iterator of tags/text values in a MULTI string
+pub fn split(ms: &str) -> impl Iterator<Item = &str> {
+    MultiSplitter(MultiStr::new(ms))
 }
 
 #[cfg(test)]
@@ -3134,5 +3150,19 @@ mod test {
         assert_eq!(trim_end_tags("ABC[jl3]"), "ABC");
         assert_eq!(trim_end_tags("ABC[fo2] "), "ABC");
         assert_eq!(trim_end_tags("ABC[sc2]"), "ABC");
+    }
+
+    #[test]
+    fn split_values() {
+        assert_eq!(split("TEST").next(), Some("TEST"));
+        let mut m = split("TEST[nl]TEXT");
+        assert_eq!(m.next(), Some("TEST"));
+        assert_eq!(m.next(), Some("[nl]"));
+        assert_eq!(m.next(), Some("TEXT"));
+        assert_eq!(m.next(), None);
+        let mut m = split("[tr1,1,0,0]TEXT");
+        assert_eq!(m.next(), Some("[tr1,1,0,0]"));
+        assert_eq!(m.next(), Some("TEXT"));
+        assert_eq!(m.next(), None);
     }
 }

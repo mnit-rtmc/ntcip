@@ -84,7 +84,7 @@ pub enum DmsSignTechnology {
     Drum = 1 << 6,
 }
 
-/// Character set for MULTI strings
+/// Character set for MULTI text spans
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CharacterSet {
     Other = 1,
@@ -93,7 +93,7 @@ pub enum CharacterSet {
 
 /// Sign configuration — `dmsSignCfg`
 ///
-/// Configuration common to all signs.
+/// Configuration common to all sign types.
 #[derive(Clone)]
 pub struct SignCfg {
     /// Access bits — `dmsSignAccess`
@@ -139,7 +139,9 @@ pub struct VmsCfg {
 
 /// MULTI configuration — `multiCfg`
 ///
-/// Default values for MarkUp Language for Transportation Information.
+/// Default values for [MULTI] messages.
+///
+/// [multi]: ../multi/index.html
 #[derive(Clone)]
 pub struct MultiCfg {
     /// Serves as `dmsDefaultBackgroundRGB` and `dmsDefaultBackgroundColor`

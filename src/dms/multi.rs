@@ -4,7 +4,12 @@
 //
 //! **M**ark**U**p **L**anguage for **T**ransportation **I**nformation
 //!
-//! MULTI strings consist of text and [Tag](enum.Tag.html)s
+//! MULTI is used to compose DMS messages.  It consists of text spans and
+//! [Tag](enum.Tag.html)s.
+//!
+//! Default message values are specified in [MultiCfg].
+//!
+//! [MultiCfg]: ../config/struct.MultiCfg.html
 use crate::dms::{FontError, GraphicError};
 use log::{debug, warn};
 use std::fmt;
@@ -12,7 +17,9 @@ use std::str::FromStr;
 
 /// MULTI tag
 ///
-/// All tags allowed in MULTI strings.
+/// Tags are [MULTI] markup enclosed in square brackets, such as `[nl]`.
+///
+/// [multi]: index.html
 #[enumflags2::bitflags]
 #[repr(u32)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

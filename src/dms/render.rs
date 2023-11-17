@@ -107,6 +107,21 @@ struct TextLine {
 }
 
 /// Page renderer for dynamic message signs
+///
+/// This renders a MULTI string on a Dms, as a [Page] iterator.
+///
+/// These tags are not currently supported:
+///
+/// * `[f…]`: [Field]
+/// * `[fl…]`: [Flash]
+/// * `[ms…]`: [Manufacturer Specific]
+/// * `[mv…]`: [Moving Text]
+///
+/// [field]: multi/enum.Tag.html#variant.F1
+/// [flash]: multi/enum.Tag.html#variant.Fl
+/// [manufacturer specific]: multi/enum.Tag.html#variant.Ms
+/// [moving text]: multi/enum.Tag.html#variant.Mv
+/// [page]: struct.Page.html
 pub struct Pages<'a, const C: usize, const F: usize, const G: usize> {
     /// Sign to render
     dms: &'a Dms<C, F, G>,
@@ -365,18 +380,6 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     ///
     /// * `dms` Sign to render.
     /// * `ms` MULTI string to render.
-    ///
-    /// Some tags are not supported:
-    ///
-    /// * `[f…]`: [Field]
-    /// * `[fl…]`: [Flash]
-    /// * `[ms…]`: [Manufacturer Specific]
-    /// * `[mv…]`: [Moving Text]
-    ///
-    /// [field]: multi/enum.Tag.html#variant.F1
-    /// [flash]: multi/enum.Tag.html#variant.Fl
-    /// [manufacturer specific]: multi/enum.Tag.html#variant.Ms
-    /// [moving text]: multi/enum.Tag.html#variant.Mv
     pub fn new(dms: &'a Dms<C, F, G>, ms: &'a str) -> Self {
         let default_state = RenderState::new(dms);
         let render_state = default_state.clone();

@@ -45,28 +45,28 @@ type Result<T> = std::result::Result<T, FontError>;
 /// [font]: struct.Font.html
 #[derive(Clone, Default)]
 pub struct CharacterEntry {
-    /// Character number (code point)
+    /// Character number (code point) — `characterNumber`
     pub number: u16,
-    /// Width in pixels
+    /// Width (pixels) — `characterWidth`
     pub width: u8,
-    /// Bitmap data (by rows)
+    /// Bitmap data (by rows) — `characterBitmap`
     pub bitmap: Vec<u8>,
 }
 
-/// Bitmap font
+/// Bitmap font — `fontEntry`
 #[derive(Clone)]
 pub struct Font<const C: usize = 256> {
-    /// Font number
+    /// Font number — `fontNumber`
     pub number: u8,
-    /// Name (max 64 characters)
+    /// Name of font — `fontName`
     pub name: FStr<64>,
-    /// Height in pixels
+    /// Height (pixels) — `fontHeight`
     pub height: u8,
-    /// Default pixel spacing between characters
+    /// Default pixel spacing between characters — `fontCharSpacing`
     pub char_spacing: u8,
-    /// Default pixel spacing between lines
+    /// Default pixel spacing between lines — `fontLineSpacing`
     pub line_spacing: u8,
-    /// Characters in font
+    /// Characters in font — `characterTable`
     pub characters: [CharacterEntry; C],
 }
 

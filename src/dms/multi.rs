@@ -5,11 +5,12 @@
 //! **M**ark**U**p **L**anguage for **T**ransportation **I**nformation
 //!
 //! MULTI is used to compose DMS messages.  It consists of text spans and
-//! [Tag](enum.Tag.html)s.
+//! [Tag]s.
 //!
 //! Default message values are specified in [MultiCfg].
 //!
 //! [MultiCfg]: ../config/struct.MultiCfg.html
+//! [Tag]: enum.Tag.html
 use crate::dms::{FontError, GraphicError};
 use log::{debug, warn};
 use std::fmt;

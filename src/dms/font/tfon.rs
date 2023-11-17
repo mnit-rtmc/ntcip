@@ -17,9 +17,6 @@ pub enum Error {
     #[error("tfon: {0}")]
     Tfon(#[from] tfon::Error),
 
-    #[error("height mismatch")]
-    HeightMismatch(),
-
     #[error("Font: {0}")]
     Invalid(#[from] FontError),
 }
@@ -48,7 +45,7 @@ pub fn parse<const C: usize>(buf: &str) -> Result<Font<C>> {
             Prop::Bitmap(bmap) => {
                 if font.height > 0 {
                     if bmap.height() != font.height {
-                        return Err(Error::HeightMismatch());
+                        return Err(FontError::InvalidCharHeight.into());
                     }
                 } else {
                     font.height = bmap.height();

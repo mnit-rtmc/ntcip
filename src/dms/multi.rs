@@ -1425,14 +1425,16 @@ impl<'p> Iterator for MultiSplitter<'p> {
 
 /// Normalize a MULTI string
 ///
-/// - Converts tags to lower case
-/// - Removes invalid characters
-/// - Strips unsupported tags
-/// - Strips tags containing unsupported values
-/// - Strips redundant `[cf]`, `[fo]`, `[jl]` and `[jp]` tags (value
-///   unchanged)
+/// - Convert tags to lower case
+/// - Remove invalid characters from text spans
+/// - Remove malformed tags
+/// - Remove unsupported tags
+/// - Remove tags containing unsupported values
+/// - Remove `[cf]`, `[fo]`, `[jl]` and `[jp]` tags when value unchanged
+/// - Remove trailing whitespace, including "blank" tags
 pub fn normalize(ms: &str) -> String {
     let mut norm = String::with_capacity(ms.len());
+    let mut trail = String::with_capacity(16);
     let mut cf = None;
     let mut fo = None;
     let mut jl = None;
@@ -1463,7 +1465,13 @@ pub fn normalize(ms: &str) -> String {
         };
         // strip tag if same as current value
         if !same {
-            norm.push_str(&v.to_string());
+            if v.is_blank() {
+                trail.push_str(&v.to_string());
+            } else {
+                norm.push_str(&trail);
+                norm.push_str(&v.to_string());
+                trail.clear();
+            }
         }
     }
     norm
@@ -1482,22 +1490,6 @@ pub fn is_blank(ms: &str) -> bool {
 /// Remove MULTI tags and join text spans
 pub fn join_text(ms: &str, sep: &str) -> String {
     text_spans(ms).collect::<Vec<_>>().join(sep)
-}
-
-/// Remove trailing whitespace, including blank tags
-///
-/// The result is also normalized as a side effect.
-pub fn trim_end_tags(ms: &str) -> String {
-    let mut trimmed = String::with_capacity(ms.len());
-    let mut trail = String::with_capacity(16);
-    for v in MultiStr::new(ms).flatten() {
-        trail.push_str(&v.to_string());
-        if !v.is_blank() {
-            trimmed.push_str(&trail);
-            trail.clear();
-        }
-    }
-    trimmed
 }
 
 /// Get an iterator of tags/text spans in a MULTI string
@@ -1683,12 +1675,6 @@ mod test {
     }
 
     #[test]
-    fn norm_cb() {
-        assert_eq!(normalize("[cb1][CB255]"), "[cb1][cb255]");
-        assert_eq!(normalize("[cb][cb256]"), "[cb]");
-    }
-
-    #[test]
     fn parse_cb1() {
         let mut m = MultiStr::new("[cb0][CB1][cB255][cb256][cb]");
         assert_eq!(
@@ -1723,17 +1709,6 @@ mod test {
             Some(Err(SyntaxError::UnsupportedTagValue("cb0,0,0".into())))
         );
         assert_eq!(m.next(), None);
-    }
-
-    #[test]
-    fn norm_pb() {
-        assert_eq!(normalize("[pb0][PB255]"), "[pb0][pb255]");
-        assert_eq!(normalize("[pb][pb256]"), "[pb]");
-        assert_eq!(
-            normalize("[pb0,0,0][PB255,255,255]"),
-            "[pb0,0,0][pb255,255,255]"
-        );
-        assert_eq!(normalize("[pb256,0,0][PBx]"), "");
     }
 
     #[test]
@@ -1797,19 +1772,6 @@ mod test {
             Some(Err(SyntaxError::UnsupportedTagValue("pb0,0.5,255".into())))
         );
         assert_eq!(m.next(), None);
-    }
-
-    #[test]
-    fn norm_cf() {
-        assert_eq!(normalize("[cf0][CF255]"), "[cf0][cf255]");
-        assert_eq!(normalize("[cf1][cf256]"), "[cf1]");
-        assert_eq!(
-            normalize("[cf0,0,0][CF255,255,255]"),
-            "[cf0,0,0][cf255,255,255]"
-        );
-        assert_eq!(normalize("[cf256,0,0][CFx]"), "");
-        assert_eq!(normalize("[cf]"), "");
-        assert_eq!(normalize("[cf3][cf3]"), "[cf3]");
     }
 
     #[test]
@@ -2083,18 +2045,6 @@ mod test {
     }
 
     #[test]
-    fn norm_fo() {
-        assert_eq!(normalize("[fo0]"), "");
-        assert_eq!(normalize("[fo256]"), "");
-        assert_eq!(normalize("[fo]"), "");
-        assert_eq!(normalize("[fo1]"), "[fo1]");
-        assert_eq!(normalize("[fo2,1234]"), "[fo2,1234]");
-        assert_eq!(normalize("[fo2][fo2]"), "[fo2]");
-        assert_eq!(normalize("[fo2,1234][fo2]"), "[fo2,1234][fo2]");
-        assert_eq!(normalize("[fo2][fo1]"), "[fo2][fo1]");
-    }
-
-    #[test]
     fn parse_fo() {
         let mut m = MultiStr::new("[fo]");
         assert_eq!(m.next(), Some(Ok(Value::Font(None))));
@@ -2309,15 +2259,6 @@ mod test {
     }
 
     #[test]
-    fn norm_jl() {
-        assert_eq!(normalize("[jl0]"), "");
-        assert_eq!(normalize("[jl]"), "");
-        assert_eq!(normalize("[jl2]"), "[jl2]");
-        assert_eq!(normalize("[jl2][jl2]"), "[jl2]");
-        assert_eq!(normalize("[jl2][jl]"), "[jl2][jl]");
-    }
-
-    #[test]
     fn parse_jl() {
         let mut m = MultiStr::new("[jl]");
         assert_eq!(m.next(), Some(Ok(Value::JustificationLine(None))));
@@ -2361,15 +2302,6 @@ mod test {
             Some(Ok(Value::JustificationLine(Some(JustificationLine::Full))))
         );
         assert_eq!(m.next(), None);
-    }
-
-    #[test]
-    fn norm_jp() {
-        assert_eq!(normalize("[jp0]"), "");
-        assert_eq!(normalize("[jp]"), "");
-        assert_eq!(normalize("[jp2]"), "[jp2]");
-        assert_eq!(normalize("[jp2][jp2]"), "[jp2]");
-        assert_eq!(normalize("[jp2][jp]"), "[jp2][jp]");
     }
 
     #[test]
@@ -3030,7 +2962,7 @@ mod test {
     }
 
     #[test]
-    fn norm() {
+    fn norm_ok() {
         assert_eq!(normalize("01234567890"), "01234567890");
         assert_eq!(normalize("ABC"), "ABC");
         assert_eq!(normalize("ABC_DEF"), "ABC_DEF");
@@ -3047,36 +2979,64 @@ mod test {
     }
 
     #[test]
-    fn norm_2() {
-        assert_eq!(normalize("ABC[NL]DEF"), "ABC[nl]DEF");
+    fn norm_ok_tags() {
+        assert_eq!(normalize("[jl2]ABC"), "[jl2]ABC");
+        assert_eq!(normalize("[jl2][jl]ABC"), "[jl2][jl]ABC");
+        assert_eq!(normalize("[jp2]ABC"), "[jp2]ABC");
+        assert_eq!(normalize("[jp2][jp]ABC"), "[jp2][jp]ABC");
+        assert_eq!(normalize("[fo2,1234]ABC"), "[fo2,1234]ABC");
+        assert_eq!(normalize("[fo2,1234][fo2]ABC"), "[fo2,1234][fo2]ABC");
+        assert_eq!(normalize("[fo2][fo1]ABC"), "[fo2][fo1]ABC");
+        assert_eq!(normalize("[cf0,0,0]ABC"), "[cf0,0,0]ABC");
+        assert_eq!(normalize("[pb0]ABC"), "[pb0]ABC");
+        assert_eq!(normalize("[pb0,0,0]ABC"), "[pb0,0,0]ABC");
+        assert_eq!(normalize("[pb0,128,255]ABC"), "[pb0,128,255]ABC");
         assert_eq!(normalize("ABC[nl3]DEF"), "ABC[nl3]DEF");
         assert_eq!(normalize("ABC[np]DEF"), "ABC[np]DEF");
         assert_eq!(normalize("ABC[jl4]DEF"), "ABC[jl4]DEF");
-        assert_eq!(normalize("ABC[jl6]DEF"), "ABCDEF");
         assert_eq!(normalize("ABC[jp4]DEF"), "ABC[jp4]DEF");
         assert_eq!(normalize("[fo3]ABC DEF"), "[fo3]ABC DEF");
         assert_eq!(normalize("[fo3,beef]ABC DEF"), "[fo3,beef]ABC DEF");
         assert_eq!(normalize("[g1]"), "[g1]");
-        assert_eq!(normalize("[g1_]"), "");
         assert_eq!(normalize("[g1,5,5]"), "[g1,5,5]");
         assert_eq!(normalize("[g1,5,5,beef]"), "[g1,5,5,beef]");
-        assert_eq!(normalize("[g1,4,4,BEEF]"), "[g1,4,4,beef]");
-        assert_eq!(normalize("[cf255,255,255]"), "[cf255,255,255]");
-        assert_eq!(normalize("[cf0,255,255]"), "[cf0,255,255]");
-        assert_eq!(normalize("[cf0,255,0]"), "[cf0,255,0]");
-        assert_eq!(normalize("[pto]"), "[pto]");
-        assert_eq!(normalize("[pt10o]"), "[pt10o]");
-        assert_eq!(normalize("[pt10o5]"), "[pt10o5]");
-        assert_eq!(normalize("[pto5]"), "[pto5]");
+        assert_eq!(normalize("[cf255,255,255]ABC"), "[cf255,255,255]ABC");
+        assert_eq!(normalize("[cf0,255,255]ABC"), "[cf0,255,255]ABC");
+        assert_eq!(normalize("[cf0,255,0]ABC"), "[cf0,255,0]ABC");
+        assert_eq!(normalize("[pto]ABC"), "[pto]ABC");
+        assert_eq!(normalize("[pt10o]ABC"), "[pt10o]ABC");
+        assert_eq!(normalize("[pt10o5]ABC"), "[pt10o5]ABC");
+        assert_eq!(normalize("[pto5]ABC"), "[pto5]ABC");
         assert_eq!(normalize("ABC[sc3]DEF"), "ABC[sc3]DEF");
         assert_eq!(normalize("ABC[sc3]DEF[/sc]GHI"), "ABC[sc3]DEF[/sc]GHI");
-        assert_eq!(normalize("[tr1,1,40,20]"), "[tr1,1,40,20]");
-        assert_eq!(normalize("[tr1,1,0,0]"), "[tr1,1,0,0]");
-        assert_eq!(normalize("[pb0,128,255]"), "[pb0,128,255]");
+        assert_eq!(normalize("[tr1,1,40,20]ABC"), "[tr1,1,40,20]ABC");
+        assert_eq!(normalize("[tr1,1,0,0]ABC"), "[tr1,1,0,0]ABC");
     }
 
     #[test]
-    fn norm_3() {
+    fn norm_lowercase() {
+        assert_eq!(normalize("[CB255]ABC"), "[cb255]ABC");
+        assert_eq!(normalize("[Jl2]ABC"), "[jl2]ABC");
+        assert_eq!(normalize("[jP3]ABC"), "[jp3]ABC");
+        assert_eq!(normalize("[FO1]ABC"), "[fo1]ABC");
+        assert_eq!(normalize("[CF255]ABC"), "[cf255]ABC");
+        assert_eq!(normalize("[Cf255,255,255]ABC"), "[cf255,255,255]ABC");
+        assert_eq!(normalize("[PB255]ABC"), "[pb255]ABC");
+        assert_eq!(normalize("[pB255,255,255]ABC"), "[pb255,255,255]ABC");
+        assert_eq!(normalize("ABC[NL]DEF"), "ABC[nl]DEF");
+        assert_eq!(normalize("[g1,4,4,BEEF]"), "[g1,4,4,beef]");
+    }
+
+    #[test]
+    fn norm_invalid_char() {
+        assert_eq!(normalize("😀"), "");
+        assert_eq!(normalize("👍"), "");
+        assert_eq!(normalize("🦀🦀🦀🦀🦀🦀🦀🦀"), "");
+        assert_eq!(normalize("🔪"), "");
+    }
+
+    #[test]
+    fn norm_malformed_tags() {
         assert_eq!(normalize("["), "");
         assert_eq!(normalize("]"), "");
         assert_eq!(normalize("[bad tag"), "");
@@ -3084,8 +3044,59 @@ mod test {
         assert_eq!(normalize("bad[tag"), "bad");
         assert_eq!(normalize("bad]tag"), "badtag");
         assert_eq!(normalize("bad[ [nl] tag"), "bad[nl] tag");
-        assert_eq!(normalize("bad ]tag [nl]"), "bad tag [nl]");
+        assert_eq!(normalize("bad ]tag [nl]X"), "bad tag [nl]X");
+    }
+
+    #[test]
+    fn norm_unsupported_tags() {
+        assert_eq!(normalize("[xx]"), "");
+        assert_eq!(normalize("[ab]"), "");
+        assert_eq!(normalize("[zz]"), "");
         assert_eq!(normalize("[ttS123]"), "");
+    }
+
+    #[test]
+    fn norm_invalid_tag_values() {
+        assert_eq!(normalize("[cb256]ABC"), "ABC");
+        assert_eq!(normalize("[jl0]ABC"), "ABC");
+        assert_eq!(normalize("ABC[jl6]DEF"), "ABCDEF");
+        assert_eq!(normalize("[jp0]ABC"), "ABC");
+        assert_eq!(normalize("[jp]ABC"), "ABC");
+        assert_eq!(normalize("[fo0]ABC"), "ABC");
+        assert_eq!(normalize("[fo256]ABC"), "ABC");
+        assert_eq!(normalize("[cf256]ABC"), "ABC");
+        assert_eq!(normalize("[cf256,0,0][cfx]ABC"), "ABC");
+        assert_eq!(normalize("[pb256]ABC"), "ABC");
+        assert_eq!(normalize("[pb256,0,0][pbx]ABC"), "ABC");
+        assert_eq!(normalize("[g1_]"), "");
+    }
+
+    #[test]
+    fn norm_redundant_tags() {
+        assert_eq!(normalize("[jl]ABC"), "ABC");
+        assert_eq!(normalize("[jl2][jl2]ABC"), "[jl2]ABC");
+        assert_eq!(normalize("[jp2][jp2]ABC"), "[jp2]ABC");
+        assert_eq!(normalize("[fo]ABC"), "ABC");
+        assert_eq!(normalize("[fo2][fo2]ABC"), "[fo2]ABC");
+        assert_eq!(normalize("[cf]ABC"), "ABC");
+        assert_eq!(normalize("[cf3][cf3]ABC"), "[cf3]ABC");
+    }
+
+    #[test]
+    fn norm_trailing_whitespace() {
+        assert_eq!(normalize(" \t "), "");
+        assert_eq!(normalize("[nl]"), "");
+        assert_eq!(normalize("ABC[nl]"), "ABC");
+        assert_eq!(normalize("ABC[nl][nl]"), "ABC");
+        assert_eq!(normalize("[nl]ABC[nl]"), "[nl]ABC");
+        assert_eq!(normalize("ABC[np]"), "ABC");
+        assert_eq!(normalize("ABC[nl][np][nl]"), "ABC");
+        assert_eq!(normalize("ABC[nl] [nl]"), "ABC");
+        assert_eq!(normalize("ABC[nl]DEF[nl]"), "ABC[nl]DEF");
+        assert_eq!(normalize("ABC[jp3]"), "ABC");
+        assert_eq!(normalize("ABC[jl3]"), "ABC");
+        assert_eq!(normalize("ABC[fo2] "), "ABC");
+        assert_eq!(normalize("ABC[sc2]"), "ABC");
     }
 
     #[test]
@@ -3134,22 +3145,6 @@ mod test {
         assert_eq!(r1.intersection(r2), Rectangle::new(2, 2, 1, 1));
         let r3 = Rectangle::new(3, 3, 2, 2);
         assert_eq!(r1.intersection(r3), Rectangle::default());
-    }
-
-    #[test]
-    fn trim_end() {
-        assert_eq!(trim_end_tags("[nl]"), "");
-        assert_eq!(trim_end_tags("ABC[nl]"), "ABC");
-        assert_eq!(trim_end_tags("ABC[nl][nl]"), "ABC");
-        assert_eq!(trim_end_tags("[nl]ABC[nl]"), "[nl]ABC");
-        assert_eq!(trim_end_tags("ABC[np]"), "ABC");
-        assert_eq!(trim_end_tags("ABC[nl][np][nl]"), "ABC");
-        assert_eq!(trim_end_tags("ABC[nl] [nl]"), "ABC");
-        assert_eq!(trim_end_tags("ABC[nl]DEF[nl]"), "ABC[nl]DEF");
-        assert_eq!(trim_end_tags("ABC[jp3]"), "ABC");
-        assert_eq!(trim_end_tags("ABC[jl3]"), "ABC");
-        assert_eq!(trim_end_tags("ABC[fo2] "), "ABC");
-        assert_eq!(trim_end_tags("ABC[sc2]"), "ABC");
     }
 
     #[test]

@@ -72,7 +72,7 @@ pub struct Font<const C: usize = 256> {
 
 /// Table of fonts
 ///
-/// This represents the `fontDefinition` of a Dms.
+/// This represents the `fontDefinition` of a DMS.
 #[derive(Clone)]
 pub struct FontTable<const C: usize = 256, const F: usize = 24> {
     /// Fonts in table

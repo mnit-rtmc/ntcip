@@ -108,7 +108,7 @@ struct TextLine {
 
 /// Page renderer for dynamic message signs
 ///
-/// This renders a MULTI string on a Dms, as a [Page] iterator.
+/// This renders a MULTI string on a DMS, as a [Page] iterator.
 ///
 /// These tags are not currently supported:
 ///

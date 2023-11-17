@@ -1510,6 +1510,15 @@ mod test {
     use super::*;
 
     #[test]
+    fn rectangles() {
+        let r1 = Rectangle::new(1, 1, 2, 2);
+        let r2 = Rectangle::new(2, 2, 2, 2);
+        assert_eq!(r1.intersection(r2), Rectangle::new(2, 2, 1, 1));
+        let r3 = Rectangle::new(3, 3, 2, 2);
+        assert_eq!(r1.intersection(r3), Rectangle::default());
+    }
+
+    #[test]
     fn value_size() {
         assert_eq!(std::mem::size_of::<Value>(), 24);
     }
@@ -3126,8 +3135,26 @@ mod test {
         assert!(!is_blank("[mvcl100,1,10,Text]"));
     }
 
+    fn check_text(ms: &str, spans: &[&str]) {
+        for (left, right) in text_spans(ms).zip(spans) {
+            assert_eq!(&left, right);
+        }
+    }
+
     #[test]
-    fn text() {
+    fn text_split() {
+        check_text("ABC[nl]DEF", &["ABC", "DEF"]);
+        check_text("ABC[np]DEF", &["ABC", "DEF"]);
+        check_text("ABC[jl4]DEF", &["ABC", "DEF"]);
+        check_text("[fo3]ABC DEF", &["ABC DEF"]);
+        check_text("[cf255,255,255]ABC", &["ABC"]);
+        check_text("ABC[sc2]DEF", &["ABC", "DEF"]);
+        check_text("DEF[tr1,1,40,20]ABC", &["DEF", "ABC"]);
+        check_text("ABC[x]DEF", &["ABC", "DEF"]);
+    }
+
+    #[test]
+    fn text_join() {
         assert_eq!(join_text("ABC[nl]DEF", " "), "ABC DEF");
         assert_eq!(join_text("ABC[np]DEF", " "), "ABC DEF");
         assert_eq!(join_text("ABC[jl4]DEF", " "), "ABC DEF");
@@ -3136,15 +3163,6 @@ mod test {
         assert_eq!(join_text("ABC[sc2]DEF", " "), "ABC DEF");
         assert_eq!(join_text("DEF[tr1,1,40,20]ABC", " "), "DEF ABC");
         assert_eq!(join_text("ABC[x]DEF", "_"), "ABC_DEF");
-    }
-
-    #[test]
-    fn rectangles() {
-        let r1 = Rectangle::new(1, 1, 2, 2);
-        let r2 = Rectangle::new(2, 2, 2, 2);
-        assert_eq!(r1.intersection(r2), Rectangle::new(2, 2, 1, 1));
-        let r3 = Rectangle::new(3, 3, 2, 2);
-        assert_eq!(r1.intersection(r3), Rectangle::default());
     }
 
     #[test]

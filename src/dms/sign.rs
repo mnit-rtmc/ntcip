@@ -385,3 +385,14 @@ impl<const C: usize, const F: usize, const G: usize> Dms<C, F, G> {
         n_lines
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn dms_size() {
+        assert_eq!(std::mem::size_of::<Dms<128, 16, 32>>(), 70_072);
+        assert_eq!(std::mem::size_of::<Dms<256, 24, 32>>(), 201_720);
+    }
+}

@@ -67,7 +67,7 @@ pub fn write<const C: usize, W: Write>(
 ) -> Result<()> {
     font.validate()?;
     let mut props = Vec::with_capacity(128);
-    props.push(Prop::FontName(font.name.as_str()));
+    props.push(Prop::FontName(font.name.slice_to_terminator('\0')));
     props.push(Prop::FontNumber(font.number));
     props.push(Prop::CharSpacing(font.char_spacing));
     props.push(Prop::LineSpacing(font.line_spacing));

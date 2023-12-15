@@ -419,6 +419,15 @@ mod test {
     }
 
     #[test]
+    fn fillable_rect13() {
+        let dms = make_dms();
+        let mut r = pattern_rects(&dms, "[tr1,1,0,0][np][tr1,1,0,0]");
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
+        assert_eq!(r.next(), Some((Rectangle::new(1, 1, 50, 21), 8)));
+        assert_eq!(r.next(), None);
+    }
+
+    #[test]
     fn fillable_width_1() {
         let dms = make_dms();
         let mut w = MessagePattern::new(&dms, "").widths();
@@ -556,6 +565,11 @@ mod test {
             "[tr1,1,25,0][tr26,1,0,0]",
             "[tr1,1,25,0]ONE[tr26,1,0,0]TWO",
             "[tr1,1,25,0]ONE[nl][tr26,1,0,0]TWO[nl]",
+        );
+        roundtrip_2(
+            "[tr1,1,0,0][np][tr1,1,0,0]",
+            "[tr1,1,0,0]TEXT[np][tr1,1,0,0]PAGE 2",
+            "[tr1,1,0,0]TEXT[nl][np][tr1,1,0,0]PAGE 2[nl]",
         );
     }
 }

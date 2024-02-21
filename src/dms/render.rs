@@ -1,6 +1,6 @@
 // render.rs
 //
-// Copyright (C) 2018-2023  Minnesota Department of Transportation
+// Copyright (C) 2018-2024  Minnesota Department of Transportation
 //
 //! This module is for NTCIP 1203 DMS rendering.
 use crate::dms::font::{Font, FontTable};
@@ -865,7 +865,7 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     fn offset_vert(&self, text_span: &Span) -> Result<(u16, u16)> {
         debug!("offset_vert '{}'", text_span.as_str());
         let rs = &text_span.state();
-        let mut lines = vec![];
+        let mut lines = Vec::new();
         for span in self.spans.iter().filter(|s| rs.matches_line(s.state())) {
             let ln = usize::from(span.state().line_number);
             let h = span.height(self.fonts())?;
@@ -958,9 +958,6 @@ mod test {
     fn font_table() -> FontTable<128, 4> {
         let mut fonts = FontTable::default();
         let buf = include_str!("../../test/F07-C.tfon");
-        let f = fonts.font_mut(0).unwrap();
-        *f = tfon::parse(&buf[..]).unwrap();
-        let buf = include_str!("../../test/F07-L.tfon");
         let f = fonts.font_mut(0).unwrap();
         *f = tfon::parse(&buf[..]).unwrap();
         let buf = include_str!("../../test/F08.tfon");

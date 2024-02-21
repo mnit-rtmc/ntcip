@@ -360,7 +360,7 @@ impl TextLine {
     }
 
     /// Get the spacing between two text lines.
-    fn spacing(&self, rhs: &Self) -> u16 {
+    fn line_spacing(&self, rhs: &Self) -> u16 {
         if let Some(ls) = self.line_spacing {
             ls
         } else {
@@ -864,6 +864,7 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     /// Returns a tuple of (above, below) heights of matching lines.
     fn offset_vert(&self, text_span: &Span) -> Result<(u16, u16)> {
         debug!("offset_vert '{}'", text_span.as_str());
+        let is_full_matrix = self.dms.char_height() == 0;
         let rs = &text_span.state();
         let mut lines = Vec::new();
         for span in self.spans.iter().filter(|s| rs.matches_line(s.state())) {
@@ -883,8 +884,8 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
         let mut below = 0;
         for ln in 0..lines.len() {
             let line = &lines[ln];
-            if ln > 0 {
-                let h = line.spacing(&lines[ln - 1]);
+            if ln > 0 && is_full_matrix {
+                let h = line.line_spacing(&lines[ln - 1]);
                 if ln <= sln {
                     above += h
                 } else {
@@ -1132,6 +1133,47 @@ mod test {
         }
         match render_char("[sc0][/sc]") {
             Ok(_) => assert!(true),
+            _ => assert!(false),
+        }
+    }
+
+    fn render_line(ms: &str) -> Result<Vec<Page>> {
+        let dms = Dms::<128, 4, 0>::builder()
+            .with_vms_cfg(VmsCfg {
+                char_height_pixels: 8,
+                char_width_pixels: 0,
+                sign_height_pixels: 24,
+                sign_width_pixels: 100,
+                ..Default::default()
+            })
+            .with_font_definition(font_table())
+            .with_multi_cfg(MultiCfg {
+                default_justification_line: JustificationLine::Left,
+                default_justification_page: JustificationPage::Top,
+                default_font: 8,
+                ..Default::default()
+            })
+            .build()
+            .unwrap();
+        Pages::new(&dms, ms).collect()
+    }
+
+    #[test]
+    fn line_matrix_lines() {
+        match render_line(".[nl].[nl].") {
+            Ok(_) => assert!(true),
+            Err(e) => panic!("{e}"),
+        }
+    }
+
+    #[test]
+    fn line_matrix_spacing() {
+        match render_line("[nl]") {
+            Ok(_) => assert!(true),
+            _ => assert!(false),
+        }
+        match render_line("[nl1]") {
+            Err(SyntaxError::UnsupportedTagValue(_)) => assert!(true),
             _ => assert!(false),
         }
     }

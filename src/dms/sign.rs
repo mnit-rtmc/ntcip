@@ -1,6 +1,6 @@
 // sign.rs
 //
-// Copyright (C) 2018-2023  Minnesota Department of Transportation
+// Copyright (C) 2018-2024  Minnesota Department of Transportation
 //
 use crate::dms::config::{CfgError, MultiCfg, SignCfg, VmsCfg};
 use crate::dms::font::{FontError, FontTable};
@@ -374,12 +374,20 @@ impl<const C: usize, const F: usize, const G: usize> Dms<C, F, G> {
     pub(crate) fn rect_lines(&self, rect: Rectangle, font_num: u8) -> usize {
         let mut n_lines = 0;
         if let Some(font) = self.font_definition().font(font_num) {
-            let height = u16::from(font.height);
-            let spacing = height + u16::from(font.line_spacing);
-            let mut rheight = rect.height;
-            while rheight >= height {
+            let font_height = usize::from(font.height);
+            let char_height = usize::from(self.char_height());
+            let (line_height, line_spacing) = if char_height == 0 {
+                (font_height, usize::from(font.line_spacing))
+            } else {
+                if font_height > char_height {
+                    return 0;
+                }
+                (char_height, 0)
+            };
+            while line_height * (n_lines + 1) + line_spacing * n_lines
+                <= usize::from(rect.height)
+            {
                 n_lines += 1;
-                rheight = rheight.saturating_sub(spacing);
             }
         }
         n_lines

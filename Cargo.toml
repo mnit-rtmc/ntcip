@@ -7,6 +7,8 @@ documentation = "https://docs.rs/ntcip"
 repository = "https://github.com/mnit-rtmc/ntcip"
 readme = "README.md"
 edition = "2021"
+keywords = ["highway", "road", "road-sign", "transportation", "transport"]
+categories = ["rendering"]
 
 [dependencies]
 crc = "3"

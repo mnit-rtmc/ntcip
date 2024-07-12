@@ -1,6 +1,6 @@
 // graphic.rs
 //
-// Copyright (C) 2018-2023  Minnesota Department of Transportation
+// Copyright (C) 2018-2024  Minnesota Department of Transportation
 //
 //! Graphic image support
 use crate::dms::multi::{Color, ColorClassic, ColorCtx, ColorScheme};
@@ -63,7 +63,7 @@ pub struct Graphic {
 
 /// Table of graphics
 #[derive(Clone)]
-pub struct GraphicTable<const G: usize> {
+pub struct GraphicTable<const G: usize = 32> {
     /// Graphics in table
     graphics: [Graphic; G],
 }

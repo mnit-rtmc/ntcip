@@ -1,6 +1,6 @@
 [package]
 name = "ntcip"
-version = "0.12.3"
+version = "0.12.4"
 description = "NTCIP: National Transportation Communications for ITS Protocol"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/ntcip"

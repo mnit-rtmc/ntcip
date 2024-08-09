@@ -599,9 +599,12 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
                 }
                 Value::JustificationPage(jp) => {
                     let rs = &mut self.render_state;
-                    rs.just_page = jp.unwrap_or(ds.just_page);
-                    rs.line_number = 0;
-                    rs.span_number = 0;
+                    let jp = jp.unwrap_or(ds.just_page);
+                    if jp != rs.just_page {
+                        rs.just_page = jp;
+                        rs.line_number = 0;
+                        rs.span_number = 0;
+                    }
                 }
                 Value::NewLine(ls) => {
                     if let Some(ls) = ls {
@@ -1175,6 +1178,14 @@ mod test {
         match render_line("[nl1]") {
             Err(SyntaxError::UnsupportedTagValue(_)) => assert!(true),
             _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn page_just_quirk() {
+        match render_line("[jl3]LINE 1[nl][jl2][jp2]LINE 2") {
+            Ok(_) => assert!(true),
+            Err(_) => assert!(false),
         }
     }
 }

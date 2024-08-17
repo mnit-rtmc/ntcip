@@ -83,6 +83,7 @@ impl<const C: usize, const F: usize, const G: usize> DmsBuilder<C, F, G> {
 
     /// Build the DMS with validation
     pub fn build(mut self) -> Result<Dms<C, F, G>, SignError> {
+        self.sign_cfg.validate(&self.vms_cfg)?;
         self.multi_cfg.validate()?;
         self.font_definition.validate()?;
         let width = self.vms_cfg.sign_width_pixels;

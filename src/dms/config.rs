@@ -1,6 +1,6 @@
 // config.rs
 //
-// Copyright (C) 2018-2023  Minnesota Department of Transportation
+// Copyright (C) 2018-2024  Minnesota Department of Transportation
 //
 //! Configuration information
 use crate::dms::multi::{
@@ -13,6 +13,9 @@ use enumflags2::BitFlags;
 pub enum CfgError {
     #[error("Invalid page config")]
     InvalidPageCfg,
+
+    #[error("Invalid sign dimensions")]
+    InvalidDimensions,
 }
 
 /// Sign access
@@ -187,6 +190,31 @@ impl Default for SignCfg {
             beacon_type: DmsBeaconType::None,
             sign_technology: DmsSignTechnology::Led.into(),
         }
+    }
+}
+
+impl SignCfg {
+    /// Validate the sign configuration
+    pub fn validate(&self, vms_cfg: &VmsCfg) -> Result<(), CfgError> {
+        if self.is_width_valid(vms_cfg) && self.is_height_valid(vms_cfg) {
+            Ok(())
+        } else {
+            Err(CfgError::InvalidDimensions)
+        }
+    }
+
+    /// Check if sign width is valid
+    fn is_width_valid(&self, vms_cfg: &VmsCfg) -> bool {
+        self.horizontal_border
+            + vms_cfg.sign_width_pixels * u16::from(vms_cfg.horizontal_pitch)
+            <= self.sign_width
+    }
+
+    /// Check if sign height is valid
+    fn is_height_valid(&self, vms_cfg: &VmsCfg) -> bool {
+        self.vertical_border
+            + vms_cfg.sign_height_pixels * u16::from(vms_cfg.vertical_pitch)
+            <= self.sign_height
     }
 }
 

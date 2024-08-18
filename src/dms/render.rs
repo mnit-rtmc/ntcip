@@ -955,7 +955,7 @@ fn render_rect(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::dms::config::{MultiCfg, VmsCfg};
+    use crate::dms::config::{MultiCfg, SignCfg, VmsCfg};
     use crate::dms::font::tfon;
     use crate::dms::multi::{ColorClassic, ColorScheme};
 
@@ -972,11 +972,18 @@ mod test {
 
     fn render_full(ms: &str) -> Result<Vec<Page>> {
         let dms = Dms::<128, 4, 0>::builder()
+            .with_sign_cfg(SignCfg {
+                sign_width: 2100,
+                sign_height: 1110,
+                ..Default::default()
+            })
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 0,
                 char_width_pixels: 0,
                 sign_height_pixels: 30,
                 sign_width_pixels: 60,
+                horizontal_pitch: 33,
+                vertical_pitch: 33,
                 ..Default::default()
             })
             .with_font_definition(font_table())
@@ -1085,6 +1092,11 @@ mod test {
 
     fn render_char(ms: &str) -> Result<Vec<Page>> {
         let dms = Dms::<128, 4, 0>::builder()
+            .with_sign_cfg(SignCfg {
+                sign_width: 7120,
+                sign_height: 1590,
+                ..Default::default()
+            })
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 7,
                 char_width_pixels: 5,
@@ -1142,6 +1154,11 @@ mod test {
 
     fn render_line(ms: &str) -> Result<Vec<Page>> {
         let dms = Dms::<128, 4, 0>::builder()
+            .with_sign_cfg(SignCfg {
+                sign_width: 7120,
+                sign_height: 1800,
+                ..Default::default()
+            })
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 8,
                 char_width_pixels: 0,

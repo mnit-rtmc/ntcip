@@ -182,10 +182,10 @@ impl Default for SignCfg {
         SignCfg {
             sign_access: BitFlags::empty(),
             sign_type: DmsSignType::VmsChar,
-            sign_height: 1800,
-            sign_width: 3500,
-            horizontal_border: 80,
-            vertical_border: 80,
+            sign_height: 1650,
+            sign_width: 2920,
+            horizontal_border: 60,
+            vertical_border: 60,
             legend: DmsLegend::NoLegend,
             beacon_type: DmsBeaconType::None,
             sign_technology: DmsSignTechnology::Led.into(),
@@ -225,8 +225,8 @@ impl Default for VmsCfg {
             char_width_pixels: 5,
             sign_height_pixels: 21,
             sign_width_pixels: 40,
-            horizontal_pitch: 66,
-            vertical_pitch: 66,
+            horizontal_pitch: 70,
+            vertical_pitch: 70,
             monochrome_color: [0xFF, 0x70, 0xE0, 0, 0, 0],
         }
     }

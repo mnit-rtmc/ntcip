@@ -289,6 +289,11 @@ mod test {
 
     fn make_dms() -> Dms<128, 2, 0> {
         Dms::builder()
+            .with_sign_cfg(SignCfg {
+                sign_width: 5120,
+                sign_height: 1590,
+                ..Default::default()
+            })
             .with_vms_cfg(VmsCfg {
                 char_height_pixels: 0,
                 char_width_pixels: 0,

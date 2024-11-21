@@ -1,6 +1,6 @@
 [package]
 name = "ntcip"
-version = "0.13.0"
+version = "0.13.1"
 description = "NTCIP: National Transportation Communications for ITS Protocol"
 license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/ntcip"
@@ -17,4 +17,4 @@ fstr = "0.2"
 log = "0.4"
 pix = "0.13"
 tfon = "0.1"
-thiserror = "1"
+thiserror = "2"

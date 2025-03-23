@@ -1,6 +1,6 @@
 // font.rs
 //
-// Copyright (C) 2018-2023  Minnesota Department of Transportation
+// Copyright (C) 2018-2025  Minnesota Department of Transportation
 //
 //! Font support for dynamic message signs
 use crate::dms::oer::Oer;
@@ -123,7 +123,7 @@ impl CharacterEntry {
         let mut yy = 0;
         for by in &self.bitmap {
             for bi in 0..8 {
-                if by >> (7 - bi) & 1 != 0 {
+                if (by >> (7 - bi)) & 1 != 0 {
                     *page.pixel_mut(x + xx, y + yy) = cf;
                 }
                 xx += 1;

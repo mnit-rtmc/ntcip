@@ -1,6 +1,6 @@
 // multi.rs
 //
-// Copyright (C) 2018-2023  Minnesota Department of Transportation
+// Copyright (C) 2018-2025  Minnesota Department of Transportation
 //
 //! **M**ark**U**p **L**anguage for **T**ransportation **I**nformation
 //!
@@ -717,7 +717,7 @@ impl fmt::Display for MovingTextDirection {
     }
 }
 
-impl<'p> fmt::Display for Value<'p> {
+impl fmt::Display for Value<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Value::ColorBackground(None) => write!(f, "[cb]"),
@@ -825,7 +825,7 @@ impl<'p> TryFrom<&'p str> for Value<'p> {
     }
 }
 
-impl<'p> Value<'p> {
+impl Value<'_> {
     /// Get tag associated with the value
     pub(crate) fn tag(&self) -> Option<Tag> {
         use Value::*;
@@ -1088,7 +1088,7 @@ fn parse_flash_time(tag: &str) -> Option<Value> {
 
 /// Parse a flash on -> off tag fragment
 fn parse_flash_on(v: &str) -> Option<Value> {
-    let mut vs = v.splitn(2, |c| c == 'o' || c == 'O');
+    let mut vs = v.splitn(2, ['o', 'O']);
     let t = parse_optional_99(&mut vs).ok()?;
     let o = parse_optional_99(&mut vs).ok()?;
     Some(Value::Flash(FlashOrder::OnOff, t, o))
@@ -1096,7 +1096,7 @@ fn parse_flash_on(v: &str) -> Option<Value> {
 
 /// Parse a flash off -> on tag fragment
 fn parse_flash_off(v: &str) -> Option<Value> {
-    let mut vs = v.splitn(2, |c| c == 't' || c == 'T');
+    let mut vs = v.splitn(2, ['t', 'T']);
     let o = parse_optional_99(&mut vs).ok()?;
     let t = parse_optional_99(&mut vs).ok()?;
     Some(Value::Flash(FlashOrder::OffOn, o, t))
@@ -1287,7 +1287,7 @@ fn parse_new_page(tag: &str) -> Option<Value> {
 
 /// Parse a Page Time tag [pt]
 fn parse_page_time(tag: &str) -> Option<Value> {
-    let mut vs = tag[2..].splitn(2, |c| c == 'o' || c == 'O');
+    let mut vs = tag[2..].splitn(2, ['o', 'O']);
     match (parse_optional(&mut vs), parse_optional(&mut vs)) {
         (Ok(t), Ok(o)) => Some(Value::PageTime(t, o)),
         _ => None,

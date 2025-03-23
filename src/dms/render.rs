@@ -242,7 +242,7 @@ impl RenderState {
     }
 }
 
-impl<'a> Span<'a> {
+impl Span<'_> {
     /// Get span as a str slice
     fn as_str(&self) -> &str {
         match self {
@@ -912,8 +912,8 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
     }
 }
 
-impl<'a, const C: usize, const F: usize, const G: usize> Iterator
-    for Pages<'a, C, F, G>
+impl<const C: usize, const F: usize, const G: usize> Iterator
+    for Pages<'_, C, F, G>
 {
     type Item = Result<Page>;
 

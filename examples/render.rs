@@ -2,7 +2,7 @@
 mod bmp;
 use ntcip::dms::config::{MultiCfg, VmsCfg};
 use ntcip::dms::multi::{ColorScheme, JustificationLine, JustificationPage};
-use ntcip::dms::{tfon, Dms, FontTable, Pages};
+use ntcip::dms::{Dms, FontTable, Pages, tfon};
 
 fn font_table() -> FontTable<128, 1> {
     let mut fonts = FontTable::default();

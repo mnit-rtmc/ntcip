@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 documentation = "https://docs.rs/ntcip"
 repository = "https://github.com/mnit-rtmc/ntcip"
 readme = "README.md"
-edition = "2021"
+edition = "2024"
 keywords = ["highway", "road", "road-sign", "transportation", "transport"]
 categories = ["rendering"]
 

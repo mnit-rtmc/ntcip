@@ -12,7 +12,7 @@ use crate::dms::multi::{
 use crate::dms::sign::Dms;
 use fstr::FStr;
 use log::debug;
-use pix::{rgb::SRgb8, Raster, Region};
+use pix::{Raster, Region, rgb::SRgb8};
 use std::fmt::Write;
 
 /// Result type
@@ -651,7 +651,7 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
                         None => {
                             return Err(SyntaxError::UnsupportedTagValue(
                                 val.into(),
-                            ))
+                            ));
                         }
                     }
                     break;

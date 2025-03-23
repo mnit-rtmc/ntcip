@@ -1,6 +1,6 @@
 // graphic.rs
 //
-// Copyright (C) 2018-2024  Minnesota Department of Transportation
+// Copyright (C) 2018-2025  Minnesota Department of Transportation
 //
 //! Graphic image support
 use crate::dms::multi::{Color, ColorClassic, ColorCtx, ColorScheme};
@@ -9,9 +9,9 @@ use crc::Crc;
 use fstr::FStr;
 use log::debug;
 use pix::{
+    Raster,
     el::Pixel,
     rgb::{SRgb8, SRgba8},
-    Raster,
 };
 
 /// CRC-16 for calculating `dmsGraphicId`

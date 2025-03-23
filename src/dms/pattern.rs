@@ -1,6 +1,6 @@
 // pattern.rs
 //
-// Copyright (C) 2023  Minnesota Department of Transportation
+// Copyright (C) 2023-2025  Minnesota Department of Transportation
 //
 use crate::dms::multi::{MultiStr, Rectangle, SyntaxError, Value};
 use crate::dms::sign::Dms;
@@ -142,7 +142,10 @@ impl<'p, const C: usize, const F: usize, const G: usize>
     ///
     /// Returns an iterator of string slices matching each fillable line in
     /// the pattern.
-    pub fn lines(self, mut ms: &str) -> impl Iterator<Item = &str> {
+    pub fn lines(
+        self,
+        mut ms: &str,
+    ) -> impl Iterator<Item = &str> + use<'_, C, F, G> {
         let mut lines = Vec::new();
         for pval in PatIter::new(self.dms, self.ms).flatten() {
             match pval {

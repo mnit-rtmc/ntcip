@@ -1,8 +1,8 @@
 /// Graphic example
 mod bmp;
 use fstr::FStr;
-use ntcip::dms::multi::ColorScheme;
 use ntcip::dms::Graphic;
+use ntcip::dms::multi::ColorScheme;
 
 fn main() {
     let bitmap = vec![

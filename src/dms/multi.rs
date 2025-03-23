@@ -1343,7 +1343,7 @@ fn parse_tag(tag: &str) -> Result<Value> {
         // Don't treat "fe" as a field tag -- this allows non-MULTI
         // tag (e.g. [feedx]) properly by returning UnsupportedTag.
         (Some('f'), Some('e'), _) => {
-            return Err(SyntaxError::UnsupportedTag(tag.into()))
+            return Err(SyntaxError::UnsupportedTag(tag.into()));
         }
         (Some('f'), _, _) => parse_field(tag),
         (Some('g'), _, _) => parse_graphic(tag),
@@ -1402,11 +1402,7 @@ impl<'p> MultiStr<'p> {
         }
         let ms = self.remaining();
         self.offset += ms.len();
-        if !ms.is_empty() {
-            Some(ms)
-        } else {
-            None
-        }
+        if !ms.is_empty() { Some(ms) } else { None }
     }
 
     /// Parse a value at the current position

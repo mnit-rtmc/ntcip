@@ -7,7 +7,7 @@ use crate::dms::oer::Oer;
 use crc::Crc;
 use fstr::FStr;
 use log::debug;
-use pix::{rgb::SRgb8, Raster};
+use pix::{Raster, rgb::SRgb8};
 
 /// Read/write fonts in `.tfon` format
 pub mod tfon;

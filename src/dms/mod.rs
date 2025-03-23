@@ -1,6 +1,6 @@
 // ntcip::dms
 //
-// Copyright (C) 2019-2023  Minnesota Department of Transportation
+// Copyright (C) 2019-2025  Minnesota Department of Transportation
 //
 //! 1203 \([PDF]\) — Dynamic message signs
 //!
@@ -14,7 +14,7 @@ mod pattern;
 mod render;
 mod sign;
 
-pub use font::{tfon, CharacterEntry, Font, FontError, FontTable};
+pub use font::{CharacterEntry, Font, FontError, FontTable, tfon};
 pub use graphic::{Graphic, GraphicError, GraphicTable};
 pub use pattern::MessagePattern;
 pub use render::{Page, Pages};

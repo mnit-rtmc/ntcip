@@ -1,6 +1,6 @@
 // render.rs
 //
-// Copyright (C) 2018-2024  Minnesota Department of Transportation
+// Copyright (C) 2018-2025  Minnesota Department of Transportation
 //
 //! This module is for NTCIP 1203 DMS rendering.
 use crate::dms::font::{Font, FontTable};
@@ -666,8 +666,8 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
                     match std::char::from_u32(hc.into()) {
                         Some(c) => {
                             let rs = &mut self.render_state;
-                            let mut fs = FStr::repeat(0);
-                            write!(fs.writer(), "{c}").unwrap();
+                            let mut fs = FStr::from_ascii_filler(0);
+                            write!(fs.writer_at(0), "{c}").unwrap();
                             self.spans.push(Span::HexChar(rs.clone(), fs));
                             rs.span_number += 1;
                             line_blank = false;

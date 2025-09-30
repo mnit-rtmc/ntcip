@@ -1022,7 +1022,7 @@ where
 }
 
 /// Parse a Color -- Background tag (cb)
-fn parse_color_background(tag: &str) -> Option<Value> {
+fn parse_color_background(tag: &str) -> Option<Value<'_>> {
     if tag.len() > 2 {
         // 1203 specifies a numeric value between 0 and 999,
         // but anything above 255 does not make sense
@@ -1036,7 +1036,7 @@ fn parse_color_background(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Page -- Background tag [pb]
-fn parse_page_background(tag: &str) -> Option<Value> {
+fn parse_page_background(tag: &str) -> Option<Value<'_>> {
     if tag.len() > 2 {
         parse_color(tag[2..].split(',')).map(|c| Value::PageBackground(Some(c)))
     } else {
@@ -1045,7 +1045,7 @@ fn parse_page_background(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Color -- Foreground tag [cf]
-fn parse_color_foreground(tag: &str) -> Option<Value> {
+fn parse_color_foreground(tag: &str) -> Option<Value<'_>> {
     if tag.len() > 2 {
         parse_color(tag[2..].split(','))
             .map(|c| Value::ColorForeground(Some(c)))
@@ -1055,7 +1055,7 @@ fn parse_color_foreground(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Color Rectangle tag [cr]
-fn parse_color_rectangle(tag: &str) -> Option<Value> {
+fn parse_color_rectangle(tag: &str) -> Option<Value<'_>> {
     let mut vs = tag[2..].splitn(7, ',');
     match (parse_rectangle(&mut vs), parse_color(vs)) {
         (Some(r), Some(c)) => Some(Value::ColorRectangle(r, c)),
@@ -1064,7 +1064,7 @@ fn parse_color_rectangle(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Field tag [f]
-fn parse_field(tag: &str) -> Option<Value> {
+fn parse_field(tag: &str) -> Option<Value<'_>> {
     let mut vs = tag[1..].splitn(2, ',');
     match (parse_int(&mut vs), parse_optional(&mut vs)) {
         (Some(fid), Ok(w)) if fid < 14 => Some(Value::Field(fid, w)),
@@ -1073,7 +1073,7 @@ fn parse_field(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Flash time tag [fl]
-fn parse_flash_time(tag: &str) -> Option<Value> {
+fn parse_flash_time(tag: &str) -> Option<Value<'_>> {
     if tag.len() > 2 {
         let v = &tag[2..];
         match &v[..1] {
@@ -1087,7 +1087,7 @@ fn parse_flash_time(tag: &str) -> Option<Value> {
 }
 
 /// Parse a flash on -> off tag fragment
-fn parse_flash_on(v: &str) -> Option<Value> {
+fn parse_flash_on(v: &str) -> Option<Value<'_>> {
     let mut vs = v.splitn(2, ['o', 'O']);
     let t = parse_optional_99(&mut vs).ok()?;
     let o = parse_optional_99(&mut vs).ok()?;
@@ -1095,7 +1095,7 @@ fn parse_flash_on(v: &str) -> Option<Value> {
 }
 
 /// Parse a flash off -> on tag fragment
-fn parse_flash_off(v: &str) -> Option<Value> {
+fn parse_flash_off(v: &str) -> Option<Value<'_>> {
     let mut vs = v.splitn(2, ['t', 'T']);
     let o = parse_optional_99(&mut vs).ok()?;
     let t = parse_optional_99(&mut vs).ok()?;
@@ -1103,7 +1103,7 @@ fn parse_flash_off(v: &str) -> Option<Value> {
 }
 
 /// Parse a flash end tag [/fl]
-fn parse_flash_end(tag: &str) -> Option<Value> {
+fn parse_flash_end(tag: &str) -> Option<Value<'_>> {
     if tag.len() == 3 {
         Some(Value::FlashEnd())
     } else {
@@ -1112,7 +1112,7 @@ fn parse_flash_end(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Font tag [fo]
-fn parse_font(tag: &str) -> Option<Value> {
+fn parse_font(tag: &str) -> Option<Value<'_>> {
     if tag.len() > 2 {
         let mut vs = tag[2..].splitn(2, ',');
         match (parse_nonzero(&mut vs), parse_version_id(&mut vs)) {
@@ -1125,7 +1125,7 @@ fn parse_font(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Graphic tag [g]
-fn parse_graphic(tag: &str) -> Option<Value> {
+fn parse_graphic(tag: &str) -> Option<Value<'_>> {
     let mut vs = tag[1..].splitn(4, ',');
     let n = parse_nonzero(&mut vs);
     let p = parse_point(&mut vs);
@@ -1162,7 +1162,7 @@ fn parse_xy(x: &str, y: &str) -> std::result::Result<(u16, u16), ()> {
 }
 
 /// Parse a hexadecimal character tag [hc]
-fn parse_hexadecimal_character(tag: &str) -> Option<Value> {
+fn parse_hexadecimal_character(tag: &str) -> Option<Value<'_>> {
     // May be 1 to 4 hexadecimal digits
     u16::from_str_radix(&tag[2..], 16)
         .ok()
@@ -1170,7 +1170,7 @@ fn parse_hexadecimal_character(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Justification -- Line tag [jl]
-fn parse_justification_line(tag: &str) -> Option<Value> {
+fn parse_justification_line(tag: &str) -> Option<Value<'_>> {
     if tag.len() > 2 {
         JustificationLine::new(&tag[2..])
             .map(|jl| Value::JustificationLine(Some(jl)))
@@ -1180,7 +1180,7 @@ fn parse_justification_line(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Justification -- Page tag [jp]
-fn parse_justification_page(tag: &str) -> Option<Value> {
+fn parse_justification_page(tag: &str) -> Option<Value<'_>> {
     if tag.len() > 2 {
         JustificationPage::new(&tag[2..])
             .map(|jl| Value::JustificationPage(Some(jl)))
@@ -1190,7 +1190,7 @@ fn parse_justification_page(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Manufacturer Specific tag [ms]
-fn parse_manufacturer_specific(tag: &str) -> Option<Value> {
+fn parse_manufacturer_specific(tag: &str) -> Option<Value<'_>> {
     let mut vs = tag[2..].splitn(2, ',');
     match (parse_int(&mut vs), vs.next()) {
         (Some(m), Some(t)) => Some(Value::ManufacturerSpecific(m, Some(t))),
@@ -1200,7 +1200,7 @@ fn parse_manufacturer_specific(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Manufacturer Specific end tag [/ms]
-fn parse_manufacturer_specific_end(tag: &str) -> Option<Value> {
+fn parse_manufacturer_specific_end(tag: &str) -> Option<Value<'_>> {
     let mut vs = tag[3..].splitn(2, ',');
     match (parse_int(&mut vs), vs.next()) {
         (Some(m), Some(t)) => Some(Value::ManufacturerSpecificEnd(m, Some(t))),
@@ -1210,7 +1210,7 @@ fn parse_manufacturer_specific_end(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Moving text tag [mv]
-fn parse_moving_text(tag: &str) -> Option<Value> {
+fn parse_moving_text(tag: &str) -> Option<Value<'_>> {
     if tag.len() > 2 {
         let t = &tag[3..];
         match &tag[2..3] {
@@ -1224,7 +1224,7 @@ fn parse_moving_text(tag: &str) -> Option<Value> {
 }
 
 /// Parse a moving text linear fragment
-fn parse_moving_text_linear(tag: &str) -> Option<Value> {
+fn parse_moving_text_linear(tag: &str) -> Option<Value<'_>> {
     if !tag.is_empty() {
         let t = &tag[1..];
         if let Ok(i) = &tag[..1].parse::<u8>() {
@@ -1238,7 +1238,10 @@ fn parse_moving_text_linear(tag: &str) -> Option<Value> {
 }
 
 /// Parse a moving text mode fragment
-fn parse_moving_text_mode(tag: &str, mode: MovingTextMode) -> Option<Value> {
+fn parse_moving_text_mode(
+    tag: &str,
+    mode: MovingTextMode,
+) -> Option<Value<'_>> {
     if !tag.is_empty() {
         let dir = parse_moving_text_dir(tag.chars().next());
         let mut vs = tag[1..].splitn(4, ',');
@@ -1265,7 +1268,7 @@ fn parse_moving_text_dir(d: Option<char>) -> Option<MovingTextDirection> {
 }
 
 /// Parse a New Line tag [nl]
-fn parse_new_line(tag: &str) -> Option<Value> {
+fn parse_new_line(tag: &str) -> Option<Value<'_>> {
     // 1203 only specifies a single digit parameter for "nl" tag (0-9)
     match tag.len() {
         2 => Some(Value::NewLine(None)),
@@ -1278,7 +1281,7 @@ fn parse_new_line(tag: &str) -> Option<Value> {
 }
 
 /// Parse a New Page tag [np]
-fn parse_new_page(tag: &str) -> Option<Value> {
+fn parse_new_page(tag: &str) -> Option<Value<'_>> {
     match tag.len() {
         2 => Some(Value::NewPage()),
         _ => None,
@@ -1286,7 +1289,7 @@ fn parse_new_page(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Page Time tag [pt]
-fn parse_page_time(tag: &str) -> Option<Value> {
+fn parse_page_time(tag: &str) -> Option<Value<'_>> {
     let mut vs = tag[2..].splitn(2, ['o', 'O']);
     match (parse_optional(&mut vs), parse_optional(&mut vs)) {
         (Ok(t), Ok(o)) => Some(Value::PageTime(t, o)),
@@ -1295,7 +1298,7 @@ fn parse_page_time(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Spacing -- Character tag [sc]
-fn parse_spacing_character(tag: &str) -> Option<Value> {
+fn parse_spacing_character(tag: &str) -> Option<Value<'_>> {
     let mut vs = std::iter::once(&tag[2..]);
     match parse_int(&mut vs) {
         Some(s) if s < 100 => Some(Value::SpacingCharacter(s)),
@@ -1304,7 +1307,7 @@ fn parse_spacing_character(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Spacing -- Character end tag [/sc]
-fn parse_spacing_character_end(tag: &str) -> Option<Value> {
+fn parse_spacing_character_end(tag: &str) -> Option<Value<'_>> {
     if tag.len() == 3 {
         Some(Value::SpacingCharacterEnd())
     } else {
@@ -1313,13 +1316,13 @@ fn parse_spacing_character_end(tag: &str) -> Option<Value> {
 }
 
 /// Parse a Text Rectangle tag [tr]
-fn parse_text_rectangle(tag: &str) -> Option<Value> {
+fn parse_text_rectangle(tag: &str) -> Option<Value<'_>> {
     let mut vs = tag[2..].splitn(4, ',');
     parse_rectangle(&mut vs).map(Value::TextRectangle)
 }
 
 /// Parse a tag (without brackets)
-fn parse_tag(tag: &str) -> Result<Value> {
+fn parse_tag(tag: &str) -> Result<Value<'_>> {
     let mut chars = tag.chars().map(|c| c.to_ascii_lowercase());
     let (t0, t1, t2) = (chars.next(), chars.next(), chars.next());
     // Sorted by most likely occurrence

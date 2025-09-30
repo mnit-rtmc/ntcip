@@ -1,6 +1,6 @@
 // sign.rs
 //
-// Copyright (C) 2018-2024  Minnesota Department of Transportation
+// Copyright (C) 2018-2025  Minnesota Department of Transportation
 //
 use crate::dms::config::{CfgError, MultiCfg, SignCfg, VmsCfg};
 use crate::dms::font::{FontError, FontTable};
@@ -133,7 +133,7 @@ impl<const C: usize, const F: usize, const G: usize> Dms<C, F, G> {
     }
 
     /// Get the width of the sign (pixels)
-    fn pixel_width(&self) -> u16 {
+    pub fn pixel_width(&self) -> u16 {
         self.vms_cfg.sign_width_pixels
     }
 
@@ -228,7 +228,7 @@ impl<const C: usize, const F: usize, const G: usize> Dms<C, F, G> {
     }
 
     /// Get the height of the sign (pixels)
-    fn pixel_height(&self) -> u16 {
+    pub fn pixel_height(&self) -> u16 {
         self.vms_cfg.sign_height_pixels
     }
 

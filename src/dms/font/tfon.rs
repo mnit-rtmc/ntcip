@@ -73,13 +73,12 @@ pub fn write<const C: usize, W: Write>(
     props.push(Prop::LineSpacing(font.line_spacing));
     let height = font.height;
     for ch in &font.characters {
-        if ch.number > 0 {
-            if let Some(bmap) =
+        if ch.number > 0
+            && let Some(bmap) =
                 Bitmap::from_bits(height, ch.width, ch.bitmap.clone())
-            {
-                props.push(Prop::CodePoint(ch.number));
-                props.push(Prop::Bitmap(bmap));
-            }
+        {
+            props.push(Prop::CodePoint(ch.number));
+            props.push(Prop::Bitmap(bmap));
         }
     }
     tfon::tfon::write(writer, props.into_iter())?;

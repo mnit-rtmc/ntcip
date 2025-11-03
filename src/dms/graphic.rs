@@ -73,7 +73,7 @@ impl Graphic {
     fn is_bitmap_valid(&self) -> bool {
         let pix = usize::from(self.height) * usize::from(self.width);
         let len = match self.gtype {
-            ColorScheme::Monochrome1Bit => (pix + 7) / 8,
+            ColorScheme::Monochrome1Bit => pix.div_ceil(8),
             ColorScheme::Color24Bit => pix * 3,
             _ => pix,
         };
@@ -238,10 +238,10 @@ impl Graphic {
     fn pixel_8(&self, x: i32, y: i32, ctx: &ColorCtx) -> Option<SRgb8> {
         let offset = y * i32::from(self.width) + x;
         let v = self.bitmap[offset as usize];
-        if let Some(Color::Legacy(c)) = self.transparent_color {
-            if v == c {
-                return None;
-            }
+        if let Some(Color::Legacy(c)) = self.transparent_color
+            && v == c
+        {
+            return None;
         }
         match ctx.rgb(Color::Legacy(v)) {
             Some((red, green, blue)) => Some(SRgb8::new(red, green, blue)),
@@ -259,10 +259,12 @@ impl Graphic {
         let blue = self.bitmap[offset];
         let green = self.bitmap[offset + 1];
         let red = self.bitmap[offset + 2];
-        if let Some(Color::Rgb(r, g, b)) = self.transparent_color {
-            if red == r && green == g && blue == b {
-                return None;
-            }
+        if let Some(Color::Rgb(r, g, b)) = self.transparent_color
+            && red == r
+            && green == g
+            && blue == b
+        {
+            return None;
         }
         Some(SRgb8::new(red, green, blue))
     }

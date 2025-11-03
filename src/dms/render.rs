@@ -607,12 +607,13 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
                     }
                 }
                 Value::NewLine(ls) => {
-                    if let Some(ls) = ls {
-                        if is_char_or_line_matrix && ls > 0 {
-                            return Err(SyntaxError::UnsupportedTagValue(
-                                val.into(),
-                            ));
-                        }
+                    if let Some(ls) = ls
+                        && is_char_or_line_matrix
+                        && ls > 0
+                    {
+                        return Err(SyntaxError::UnsupportedTagValue(
+                            val.into(),
+                        ));
                     }
                     let rs = &mut self.render_state;
                     // Insert an empty text span for blank lines.
@@ -697,14 +698,14 @@ impl<'a, const C: usize, const F: usize, const G: usize> Pages<'a, C, F, G> {
         debug_assert!(cw > 0);
         // Check text rectangle matches character boundaries
         let x = rect.x - 1;
-        if x % cw != 0 || rect.width % cw != 0 {
+        if !x.is_multiple_of(cw) || !rect.width.is_multiple_of(cw) {
             return None;
         }
         let lh = self.char_height();
         debug_assert!(lh > 0);
         // Check text rectangle matches line boundaries
         let y = rect.y - 1;
-        if y % lh != 0 || rect.height % lh != 0 {
+        if !y.is_multiple_of(lh) || !rect.height.is_multiple_of(lh) {
             return None;
         }
         Some(rect)

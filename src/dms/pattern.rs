@@ -233,10 +233,10 @@ impl<'p, const C: usize, const F: usize, const G: usize> Iterator
                 Value::NewPage()
             }
         };
-        if let Some(tag) = value.tag() {
-            if !self.dms.multi_cfg.supported_multi_tags.contains(tag) {
-                return Some(Err(SyntaxError::UnsupportedTag(value.into())));
-            }
+        if let Some(tag) = value.tag()
+            && !self.dms.multi_cfg.supported_multi_tags.contains(tag)
+        {
+            return Some(Err(SyntaxError::UnsupportedTag(value.into())));
         }
         match value {
             Value::Font(None) => {
@@ -261,11 +261,11 @@ impl<'p, const C: usize, const F: usize, const G: usize> Iterator
                 let rect_font = self.rect_font;
                 self.rect_font =
                     Some((tr.extend_width_height(full_rect), self.font_num));
-                if let Some((rect, font)) = rect_font {
-                    if rect != full_rect {
-                        self.value = Some(value);
-                        return Some(Ok(PatValue::FillableRect(rect, font)));
-                    }
+                if let Some((rect, font)) = rect_font
+                    && rect != full_rect
+                {
+                    self.value = Some(value);
+                    return Some(Ok(PatValue::FillableRect(rect, font)));
                 }
             }
             _ => (),
@@ -511,8 +511,7 @@ mod test {
     #[test]
     fn fillable_lines_pages() {
         let dms = make_dms();
-        let mut l = MessagePattern::new(&dms, "[np]")
-            .lines("LINE 1[nl]LINE 2");
+        let mut l = MessagePattern::new(&dms, "[np]").lines("LINE 1[nl]LINE 2");
         assert_eq!(l.next(), Some("LINE 1"));
         assert_eq!(l.next(), Some("LINE 2"));
         assert_eq!(l.next(), Some(""));

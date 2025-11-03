@@ -84,7 +84,7 @@ impl CharacterEntry {
     fn is_valid(&self, height: u8) -> bool {
         self.number == 0 || {
             let bits = usize::from(self.width) * usize::from(height);
-            self.bitmap.len() == (bits + 7) / 8
+            self.bitmap.len() == bits.div_ceil(8)
         }
     }
 
@@ -216,10 +216,10 @@ impl<const C: usize> Font<C> {
 
     /// Get a character
     pub fn character(&self, ch: char) -> Option<&CharacterEntry> {
-        if let Ok(n) = u16::try_from(u32::from(ch)) {
-            if let Some(c) = self.characters.iter().find(|c| c.number == n) {
-                return Some(c);
-            }
+        if let Ok(n) = u16::try_from(u32::from(ch))
+            && let Some(c) = self.characters.iter().find(|c| c.number == n)
+        {
+            return Some(c);
         }
         None
     }

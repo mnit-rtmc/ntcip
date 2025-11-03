@@ -928,14 +928,12 @@ where
 {
     if let (Some(x), Some(y), Some(w), Some(h)) =
         (v.next(), v.next(), v.next(), v.next())
-    {
-        if let (Ok(x), Ok(y), Ok(w), Ok(h)) =
+        && let (Ok(x), Ok(y), Ok(w), Ok(h)) =
             (x.parse(), y.parse(), w.parse(), h.parse())
-        {
-            if x > 0 && y > 0 {
-                return Some(Rectangle::new(x, y, w, h));
-            }
-        }
+        && x > 0
+        && y > 0
+    {
+        return Some(Rectangle::new(x, y, w, h));
     }
     None
 }
@@ -946,10 +944,10 @@ where
     I: Iterator<Item = &'a str>,
     T: FromStr,
 {
-    if let Some(s) = v.next() {
-        if let Ok(i) = s.parse::<T>() {
-            return Some(i);
-        }
+    if let Some(s) = v.next()
+        && let Ok(i) = s.parse::<T>()
+    {
+        return Some(i);
     }
     None
 }
@@ -962,10 +960,10 @@ where
     I: Iterator<Item = &'a str>,
     T: FromStr,
 {
-    if let Some(s) = v.next() {
-        if !s.is_empty() {
-            return s.parse::<T>().map(Some);
-        }
+    if let Some(s) = v.next()
+        && !s.is_empty()
+    {
+        return s.parse::<T>().map(Some);
     }
     Ok(None)
 }
@@ -979,10 +977,10 @@ where
         if s.is_empty() {
             return Ok(None);
         }
-        if let Ok(i) = s.parse::<u8>() {
-            if i <= 99 {
-                return Ok(Some(i));
-            }
+        if let Ok(i) = s.parse::<u8>()
+            && i <= 99
+        {
+            return Ok(Some(i));
         }
         return Err(());
     }
@@ -995,12 +993,12 @@ where
     I: Iterator<Item = &'a str>,
     T: FromStr + PartialOrd + Default,
 {
-    if let Some(s) = v.next() {
-        if let Ok(i) = s.parse::<T>() {
-            // Use default to check for nonzero
-            if i != T::default() {
-                return Some(i);
-            }
+    if let Some(s) = v.next()
+        && let Ok(i) = s.parse::<T>()
+    {
+        // Use default to check for nonzero
+        if i != T::default() {
+            return Some(i);
         }
     }
     None
@@ -1153,10 +1151,11 @@ where
 
 /// Parse an x/y pair
 fn parse_xy(x: &str, y: &str) -> std::result::Result<(u16, u16), ()> {
-    if let (Ok(x), Ok(y)) = (x.parse(), y.parse()) {
-        if x > 0 && y > 0 {
-            return Ok((x, y));
-        }
+    if let (Ok(x), Ok(y)) = (x.parse(), y.parse())
+        && x > 0
+        && y > 0
+    {
+        return Ok((x, y));
     }
     Err(())
 }

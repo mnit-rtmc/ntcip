@@ -196,6 +196,7 @@ impl<'p, const C: usize, const F: usize, const G: usize>
                     }
                     match value {
                         Some(Ok(v)) if v == val => (),
+                        None if Value::NewPage() == val => (),
                         _ => {
                             // abort!  ms does not match pattern
                             lines.clear();
@@ -504,6 +505,18 @@ mod test {
         assert_eq!(l.next(), None);
         l = MessagePattern::new(&dms, "[tr1,1,25,0]")
             .lines("[tr1,1,25,21]TEXT");
+        assert_eq!(l.next(), None);
+    }
+
+    #[test]
+    fn fillable_lines_pages() {
+        let dms = make_dms();
+        let mut l = MessagePattern::new(&dms, "[np]")
+            .lines("LINE 1[nl]LINE 2");
+        assert_eq!(l.next(), Some("LINE 1"));
+        assert_eq!(l.next(), Some("LINE 2"));
+        assert_eq!(l.next(), Some(""));
+        assert_eq!(l.next(), Some(""));
         assert_eq!(l.next(), None);
     }
 

@@ -1,6 +1,6 @@
 // multi.rs
 //
-// Copyright (C) 2018-2025  Minnesota Department of Transportation
+// Copyright (C) 2018-2026  Minnesota Department of Transportation
 //
 //! **M**ark**U**p **L**anguage for **T**ransportation **I**nformation
 //!
@@ -3182,6 +3182,17 @@ mod test {
         let mut m = split("[tr1,1,0,0]TEXT");
         assert_eq!(m.next(), Some("[tr1,1,0,0]"));
         assert_eq!(m.next(), Some("TEXT"));
+        assert_eq!(m.next(), None);
+    }
+
+    #[test]
+    fn split_invalid() {
+        let mut m = split("[ttS123][vsa][slow45,10][feedL123][tz1,2,3]");
+        assert_eq!(m.next(), Some("[ttS123]"));
+        assert_eq!(m.next(), Some("[vsa]"));
+        assert_eq!(m.next(), Some("[slow45,10]"));
+        assert_eq!(m.next(), Some("[feedL123]"));
+        assert_eq!(m.next(), Some("[tz1,2,3]"));
         assert_eq!(m.next(), None);
     }
 }
